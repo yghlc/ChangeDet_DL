@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 .idea
+other_repo
 
 # C extensions
 *.so
