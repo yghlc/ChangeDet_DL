@@ -22,13 +22,14 @@ import torchvision.datasets.mnist
 from torchvision import transforms
 from tqdm import tqdm
 
-do_learn = True
+do_learn = False
 save_frequency = 2
 batch_size = 16
 lr = 0.001
 num_epochs = 10
 weight_decay = 0.0001
 
+load_model_path = "siamese_009.pt"
 def get_int(b):
    return int(codecs.encode(b, 'hex'), 16)
 
@@ -341,12 +342,22 @@ def main():
          train(model, device, train_loader, epoch, optimizer)
          test(model, device, test_loader)
          if epoch & save_frequency == 0:
-            torch.save(model, 'siamese_{:03}.pt'.format(epoch))
+            #torch.save(model, 'siamese_{:03}.pt'.format(epoch))             # save the entire model
+            torch.save(model.state_dict(), 'siamese_{:03}.pt'.format(epoch))# save only the state dick, i.e. the weight 
    else: # prediction
-      prediction_loader = torch.utils.data.DataLoader(BalancedMNISTPair('../data', train=False, download=True, transform=trans), batch_size=1, shuffle=True)
+      prediction_loader = torch.utils.data.DataLoader(BalancedMNISTPair('./data', train=False, download=True, transform=trans), batch_size=1, shuffle=True)
       model.load_state_dict(torch.load(load_model_path))
       data = []
       data.extend(next(iter(prediction_loader))[0][:3:2])
+      target = []
+      target.extend(next(iter(prediction_loader))[1][:3:2])
+      for i in range(random.randint(1,100)):
+          print(i)
+          print(next(iter(prediction_loader))[1]) 
+          #data = next(iter(prediction_loader))[0][:3:2]
+          #target = next(iter(prediction_loader))[1][:3:2]
+          #print(data)
+          #print(target)
       same = oneshot(model, device, data)
       if same > 0:
          print('These two images are of the same number')
