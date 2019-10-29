@@ -333,8 +333,8 @@ def main():
    model = Net().to(device)
    
    if do_learn: # training mode
-      train_loader = torch.utils.data.DataLoader(BalancedMNISTPair('../data', train=True, download=True, transform=trans), batch_size=batch_size, shuffle=True)
-      test_loader = torch.utils.data.DataLoader(BalancedMNISTPair('../data', train=False, download=True, transform=trans), batch_size=batch_size, shuffle=False)
+      train_loader = torch.utils.data.DataLoader(BalancedMNISTPair('./data', train=True, download=True, transform=trans), batch_size=batch_size, shuffle=True)
+      test_loader = torch.utils.data.DataLoader(BalancedMNISTPair('./data', train=False, download=True, transform=trans), batch_size=batch_size, shuffle=False)
       
       optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
       for epoch in range(num_epochs):
