@@ -22,7 +22,7 @@ import torchvision.datasets.mnist
 from torchvision import transforms
 from tqdm import tqdm
 
-do_learn = False
+do_learn = True
 save_frequency = 2
 batch_size = 16
 lr = 0.001
