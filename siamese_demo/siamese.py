@@ -253,7 +253,15 @@ class Net(nn.Module):
          x = x.view(x.shape[0], -1)
          x = self.linear1(x)
          res.append(F.relu(x))
-         
+
+      #The crucial step of the whole procedure is the next one:
+      # we calculate the squared distance of the feature vectors.
+      # In principle, to train the network, we could use the triplet loss with the outputs
+      # of this squared differences. However, I obtained better results
+      # (faster convergence) using binary cross entropy loss. Therefore,
+      # we attach one more linear layer with 2 output features (equal number,
+      # different number) to the network to obtain the logits.
+
       res = torch.abs(res[1] - res[0])
       res = self.linear2(res)
       return res
