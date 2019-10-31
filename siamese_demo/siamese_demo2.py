@@ -224,7 +224,7 @@ def main():
 
         # Declare Siamese Network
         if torch.cuda.is_available() is False:
-            raise RuntimeError('This code requires GPU')
+            raise RuntimeError('This codes require GPUs')
         net = SiameseNetwork().cuda()
 
         # Decalre Loss Function
