@@ -53,7 +53,7 @@ class Config():
     training_dir = "./data/faces/training/"
     testing_dir = "./data/faces/testing/"
     train_batch_size = 32
-    train_number_epochs = 20
+    train_number_epochs = 100
 
 
 # manually download data
@@ -187,11 +187,84 @@ def train(train_dataloader, optimizer, criterion, net):
                 iteration_number += 10
                 counter.append(iteration_number)
                 loss_history.append(loss_contrastive.item())
+
+        # save and evl accuarcy
+        torch.save(net.state_dict(), "model.pt")
+        print("Model Saved Successfully")
+        evl()
+
     return net
+
+
+def evl():
+
+    # Load the saved model
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = SiameseNetwork().to(device)
+    model.load_state_dict(torch.load("model.pt"))
+
+    # Load the test dataset
+    test_dataset = SiameseNetworkDataset(training_csv=testing_csv, training_dir=testing_dir,
+                                         transform=transforms.Compose([transforms.Resize((105, 105)),
+                                                                       transforms.ToTensor()
+                                                                       ])
+                                         )
+
+    test_dataloader = DataLoader(test_dataset, num_workers=6, batch_size=1, shuffle=True)
+
+    # Print the sample outputs to view its dissimilarity
+    # counter = 0
+    # list_0 = torch.FloatTensor([[0]])
+    # list_1 = torch.FloatTensor([[1]])
+    # for i, data in enumerate(test_dataloader, 0):
+    #     x0, x1, label = data
+    #     concatenated = torch.cat((x0, x1), 0)
+    #     output1, output2 = model(x0.to(device), x1.to(device))
+    #     eucledian_distance = F.pairwise_distance(output1, output2)
+    #     if label == list_0:
+    #         label = "Orginial"
+    #     else:
+    #         label = "Forged"
+    #     imshow(torchvision.utils.make_grid(concatenated),
+    #            'Dissimilarity: {:.2f} Label: {}'.format(eucledian_distance.item(), label))
+    #     counter = counter + 1
+    #     if counter == 20:
+    #         break
+
+    ### Accuracy Check
+    test_dataloader = DataLoader(test_dataset, num_workers=6, batch_size=1, shuffle=True)
+    accuracy = 0
+    counter = 0
+    correct = 0
+    for i, data in enumerate(test_dataloader, 0):
+        x0, x1, label = data
+        # onehsot applies in the output of 128 dense vectors which is then converted to 2 dense vectors
+        output1, output2 = model(x0.to(device), x1.to(device))
+        res = torch.abs(output1.cuda() - output2.cuda())
+        label = label[0].tolist()
+        label = int(label[0])
+        # max_value = torch.max(res, 1)
+        # print(max_value)
+        # print(max_value.data[0])
+        # print(max_value[1][0][0])
+        # result = torch.max(res, 1)[1][0][0][0].data[0].tolist()
+        result = torch.max(res, 1)[1][0].data.item()
+        if label == result:
+            correct = correct + 1
+        counter = counter + 1
+    #   if counter ==20:
+    #      break
+
+    accuracy = (correct / len(test_dataloader)) * 100
+    print("Accuracy:{}%".format(accuracy))
+    with open('accuracy.txt','a') as log:
+        log.writelines("Accuracy:{}% \n".format(accuracy))
+
 
 def main():
 
     isTrain=True
+    # isTrain = False
 
     # Load the the dataset from raw image folders
     siamese_dataset = SiameseNetworkDataset(training_csv, training_dir,
@@ -238,6 +311,7 @@ def main():
         torch.save(model.state_dict(), "model.pt")
         print("Model Saved Successfully")
 
+
     else:
         # Load the saved model
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -254,23 +328,23 @@ def main():
         test_dataloader = DataLoader(test_dataset, num_workers=6, batch_size=1, shuffle=True)
 
         # Print the sample outputs to view its dissimilarity
-        counter = 0
-        list_0 = torch.FloatTensor([[0]])
-        list_1 = torch.FloatTensor([[1]])
-        for i, data in enumerate(test_dataloader, 0):
-            x0, x1, label = data
-            concatenated = torch.cat((x0, x1), 0)
-            output1, output2 = model(x0.to(device), x1.to(device))
-            eucledian_distance = F.pairwise_distance(output1, output2)
-            if label == list_0:
-                label = "Orginial"
-            else:
-                label = "Forged"
-            imshow(torchvision.utils.make_grid(concatenated),
-                   'Dissimilarity: {:.2f} Label: {}'.format(eucledian_distance.item(), label))
-            counter = counter + 1
-            if counter == 20:
-                break
+        # counter = 0
+        # list_0 = torch.FloatTensor([[0]])
+        # list_1 = torch.FloatTensor([[1]])
+        # for i, data in enumerate(test_dataloader, 0):
+        #     x0, x1, label = data
+        #     concatenated = torch.cat((x0, x1), 0)
+        #     output1, output2 = model(x0.to(device), x1.to(device))
+        #     eucledian_distance = F.pairwise_distance(output1, output2)
+        #     if label == list_0:
+        #         label = "Orginial"
+        #     else:
+        #         label = "Forged"
+        #     imshow(torchvision.utils.make_grid(concatenated),
+        #            'Dissimilarity: {:.2f} Label: {}'.format(eucledian_distance.item(), label))
+        #     counter = counter + 1
+        #     if counter == 20:
+        #         break
 
         ### Accuracy Check
         test_dataloader = DataLoader(test_dataset, num_workers=6, batch_size=1, shuffle=True)
@@ -284,7 +358,12 @@ def main():
             res = torch.abs(output1.cuda() - output2.cuda())
             label = label[0].tolist()
             label = int(label[0])
-            result = torch.max(res, 1)[1][0][0][0].data[0].tolist()
+            # max_value = torch.max(res, 1)
+            # print(max_value)
+            # print(max_value.data[0])
+            # print(max_value[1][0][0])
+            # result = torch.max(res, 1)[1][0][0][0].data[0].tolist()
+            result = torch.max(res, 1)[1][0].data.item()
             if label == result:
                 correct = correct + 1
             counter = counter + 1
