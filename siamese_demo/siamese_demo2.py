@@ -232,11 +232,9 @@ def main():
         # Declare Optimizer
         optimizer = optim.RMSprop(net.parameters(), lr=1e-4, alpha=0.99, eps=1e-8, weight_decay=0.0005, momentum=0.9)
 
-        train(train_dataloader, optimizer, criterion, net)
-
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # Train the model
-        model = train()
+        model = train(train_dataloader, optimizer, criterion, net)
+
         torch.save(model.state_dict(), "model.pt")
         print("Model Saved Successfully")
 
