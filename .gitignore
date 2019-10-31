@@ -5,6 +5,8 @@ __pycache__/
 
 .idea
 other_repo
+sign_data
+*.pt
 
 # C extensions
 *.so
