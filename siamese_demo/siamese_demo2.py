@@ -173,6 +173,8 @@ def train(train_dataloader, optimizer, criterion, net):
     loss_history = []
     iteration_number = 0
 
+    net.train() # indicate its training
+
     for epoch in range(0, Config.train_number_epochs):
         for i, data in enumerate(train_dataloader, 0):
             img0, img1, label = data
