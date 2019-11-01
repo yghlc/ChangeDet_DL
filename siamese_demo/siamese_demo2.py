@@ -52,8 +52,8 @@ def show_plot(iteration,loss):
 class Config():
     training_dir = "./data/faces/training/"
     testing_dir = "./data/faces/testing/"
-    train_batch_size = 32
-    train_number_epochs = 100
+    train_batch_size = 80 #32
+    train_number_epochs = 300
 
 
 # manually download data
