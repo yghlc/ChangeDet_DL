@@ -205,6 +205,8 @@ def evl():
     model = SiameseNetwork().to(device)
     model.load_state_dict(torch.load("model.pt"))
 
+    model.eval()
+
     # Load the test dataset
     test_dataset = SiameseNetworkDataset(training_csv=testing_csv, training_dir=testing_dir,
                                          transform=transforms.Compose([transforms.Resize((105, 105)),
