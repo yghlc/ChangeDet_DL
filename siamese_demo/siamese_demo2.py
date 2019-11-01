@@ -267,8 +267,8 @@ def evl():
 
 def main():
 
-    isTrain=True
-    # isTrain = False
+    #isTrain=True
+    isTrain = False
 
     # Load the the dataset from raw image folders
     siamese_dataset = SiameseNetworkDataset(training_csv, training_dir,
@@ -321,6 +321,8 @@ def main():
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         model = SiameseNetwork().to(device)
         model.load_state_dict(torch.load("model20.pt"))
+        
+        model.eval()    # need to set this one, or the accuracy will be a litte different each time with the same trained model
 
         # Load the test dataset
         test_dataset = SiameseNetworkDataset(training_csv=testing_csv, training_dir=testing_dir,
