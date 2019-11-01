@@ -35,6 +35,7 @@ from torch import optim
 import torch.nn.functional as F
 import pandas as pd
 
+import sys
 
 def imshow(img,text=None,should_save=False):
     npimg = img.numpy()
@@ -267,8 +268,10 @@ def evl():
 
 def main():
 
-    #isTrain=True
-    isTrain = False
+    if sys.argv[1] == 'train':
+        isTrain=True
+    else:
+        isTrain = False
 
     # Load the the dataset from raw image folders
     siamese_dataset = SiameseNetworkDataset(training_csv, training_dir,
