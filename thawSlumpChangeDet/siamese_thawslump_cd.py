@@ -196,11 +196,11 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         new_patch = self._crop_padding(new_img_patch)
 
         if self.train:
-            return old_patch, new_patch, label
+            return [old_patch, new_patch], label
 
         else:
             # only read old and new image, no label (None)
-            return old_patch, new_patch
+            return [old_patch, new_patch], None
 
 
     def __len__(self):
@@ -254,23 +254,26 @@ class Net(nn.Module):
 
 def train(model, device, train_loader, epoch, optimizer, batch_size):
     model.train()
-
+    total_loss = 0
+    iter_count = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         for i in range(len(data)):
             data[i] = data[i].to(device)
 
         optimizer.zero_grad()
-        output_positive = model(data[:2])
-        output_negative = model(data[0:3:2])
+        out_target = model(data[:2])
 
-        target = target.type(torch.LongTensor).to(device)
-        target_positive = torch.squeeze(target[:, 0])
-        target_negative = torch.squeeze(target[:, 1])
+        # target = target.type(torch.LongTensor).to(device)
+        # label_target = torch.squeeze(target)
+        if target == 1: # no change
+            label_target = torch.tensor([1., 0.])
+        else:   # change
+            label_target = torch.tensor([0., 1.])
+        label_target = label_target.to(device)
+        label_target = torch.squeeze(label_target)
 
-        loss_positive = F.cross_entropy(output_positive, target_positive)
-        loss_negative = F.cross_entropy(output_negative, target_negative)
+        loss = F.cross_entropy(out_target, label_target)
 
-        loss = loss_positive + loss_negative
         loss.backward()
 
         optimizer.step()
@@ -280,9 +283,13 @@ def train(model, device, train_loader, epoch, optimizer, batch_size):
                        100. * batch_idx * batch_size / len(train_loader.dataset),
                 loss.item()))
 
+        total_loss += loss.item()
+        iter_count += 1
+    return total_loss/iter_count
 
 def test(model, device, test_loader):
     model.eval()
+
 
     with torch.no_grad():
         accurate_labels = 0
@@ -292,26 +299,28 @@ def test(model, device, test_loader):
             for i in range(len(data)):
                 data[i] = data[i].to(device)
 
-            output_positive = model(data[:2])
-            output_negative = model(data[0:3:2])
+            output_target = model(data[:2])
 
-            target = target.type(torch.LongTensor).to(device)
-            target_positive = torch.squeeze(target[:, 0])
-            target_negative = torch.squeeze(target[:, 1])
+            if target == 1:  # no change
+                label_target = torch.tensor([1., 0.])
+            else:  # change
+                label_target = torch.tensor([0., 1.])
+            label_target = label_target.to(device)
+            label_target = torch.squeeze(label_target)
 
-            loss_positive = F.cross_entropy(output_positive, target_positive)
-            loss_negative = F.cross_entropy(output_negative, target_negative)
+            loss_test = F.cross_entropy(output_target, label_target)
 
-            loss = loss + loss_positive + loss_negative
+            loss = loss + loss_test
 
-            accurate_labels_positive = torch.sum(torch.argmax(output_positive, dim=1) == target_positive).cpu()
-            accurate_labels_negative = torch.sum(torch.argmax(output_negative, dim=1) == target_negative).cpu()
+            accurate_labels_pre = torch.sum(torch.argmax(output_target, dim=1) == label_target).cpu()
 
-            accurate_labels = accurate_labels + accurate_labels_positive + accurate_labels_negative
-            all_labels = all_labels + len(target_positive) + len(target_negative)
+
+            accurate_labels = accurate_labels + accurate_labels_pre
+            all_labels = all_labels + len(label_target)
 
         accuracy = 100. * accurate_labels / all_labels
         print('Test accuracy: {}/{} ({:.3f}%)\tLoss: {:.6f}'.format(accurate_labels, all_labels, accuracy, loss))
+        return accuracy, loss
 
 
 def oneshot(model, device, data):
@@ -342,6 +351,9 @@ def main(options, args):
     num_epochs = options.num_epochs
     save_frequency = options.save_frequency
 
+    train_loss_list = []
+    evl_loss_list = []
+    evl_acc_list = []
 
     if do_learn:  # training mode
         train_loader = torch.utils.data.DataLoader(
@@ -354,8 +366,13 @@ def main(options, args):
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         for epoch in range(num_epochs):
-            train(model, device, train_loader, epoch, optimizer)
-            test(model, device, test_loader)
+            t_loss = train(model, device, train_loader, epoch, optimizer)
+            eval_acc, eval_loss =  test(model, device, test_loader)
+
+            train_loss_list.append(t_loss)
+            evl_loss_list.append(eval_acc)
+            evl_acc_list.append(eval_loss)
+
             if epoch & save_frequency == 0:
                 # torch.save(model, 'siamese_{:03}.pt'.format(epoch))             # save the entire model
                 torch.save(model.state_dict(),
@@ -363,6 +380,7 @@ def main(options, args):
     else:  # prediction
         prediction_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, train=False, transform=trans), batch_size=1, shuffle=True)
+        load_model_path = 'siamese_020.pt'
 
         model.load_state_dict(torch.load(load_model_path))
         data = []
@@ -378,9 +396,9 @@ def main(options, args):
             # print(target)
         same = oneshot(model, device, data)
         if same > 0:
-            print('These two images are of the same number')
+            print('These two pixels the same')
         else:
-            print('These two images are not of the same number')
+            print('These two pixels are not the same')
 
 
 
