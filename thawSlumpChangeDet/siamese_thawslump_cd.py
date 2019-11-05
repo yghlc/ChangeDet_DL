@@ -95,7 +95,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             change_idx = []
             idx = 0
             # get pairs for training
-            for idx, image_pair in enumerate(self.img_pair_list):
+            for pair_id, image_pair in enumerate(self.img_pair_list):
 
                 check_image_pairs(image_pair)
                 # old_img_path = image_pair[0]  # an old image
@@ -106,10 +106,11 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                     if len(indexes) != 1:
                         raise ValueError('error, the label should only have one band')
                     label_data = src.read(indexes)
-                    height, width = label_data.shape
+                    label_data = np.squeeze(label_data)
+                    height, width = label_data.shape # nband, height, width
                     for row in range(height):
                         for col in range(width):
-                            self.pixel_index_pairs.append((idx, row, col, label_data[row, col]))
+                            self.pixel_index_pairs.append((pair_id, row, col, label_data[row, col]))
                             if label_data[row, col] == 2:       # change pixel
                                 change_idx.append(idx)
                             elif label_data[row, col] == 1:     # no-change pixel
@@ -123,11 +124,12 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             #remove some no-change pixel because the number of them is too large
             # or maybe we manually selected some non-change areas
             if len(no_change_idx) > len(change_idx)*3:
-                rm_count = len(no_change_idx) - len(change_idx)*3
-                rm_idx_list = random.sample(range(len(no_change_idx)), rm_count)
+                keep_count = len(change_idx)*3
+                keep_idx_list = random.sample(range(len(no_change_idx)), keep_count)
 
-                for rm_idx in rm_idx_list:
-                    del self.pixel_index_pairs[no_change_idx[rm_idx]]
+                keep_pixel_index_pairs = [self.pixel_index_pairs[item] for item in change_idx]
+                keep_pixel_index_pairs.extend([self.pixel_index_pairs[no_change_idx[keep_idx]] for keep_idx in keep_idx_list ])
+                self.pixel_index_pairs = keep_pixel_index_pairs
 
             pass
         else:
@@ -140,6 +142,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                 # change_map_path = image_pair[2] # label
                 with rasterio.open(old_img_path) as src:
                     label_data = src.read([1]) # read the first band
+                    label_data = np.squeeze(label_data)
                     height, width = label_data.shape
                     for row in range(height):
                         for col in range(width):
@@ -164,10 +167,10 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
 
     def _crop_padding(self, image_array):
 
-        new_image = np.zeros((self.win_size[0],self.win_size[1],image_array.shape[2]),
+        new_image = np.zeros((image_array.shape[0], self.win_size[0],self.win_size[1]),
                              dtype=image_array.dtype)
 
-        new_image[0:image_array.shape[0], 0:image_array.shape[1],:] = image_array
+        new_image[:, 0:image_array.shape[1], 0:image_array.shape[2]] = image_array
 
         return new_image
 
@@ -184,7 +187,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             width = old_src.width
 
             window  = self._get_window(row_index, col_index, width, height)
-            old_img_patch = old_src.read(indexes, window=window)
+            old_img_patch = old_src.read(indexes, window=window)    # shape (ncount, height, width)
 
             ####################################################
             # then, red a patch in new image
@@ -192,15 +195,20 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                 new_img_patch = new_src.read(indexes, window=window)
 
         # crop and padding to win_size
-        old_patch = self._crop_padding(old_img_patch)
-        new_patch = self._crop_padding(new_img_patch)
+        if old_img_patch.shape[1] != self.win_size[0] or old_img_patch.shape[2] != self.win_size[1]:
+            old_img_patch = self._crop_padding(old_img_patch)
+            new_img_patch = self._crop_padding(new_img_patch)
+
+        if self.transform is not None:
+            old_img_patch = self.transform(old_img_patch)
+            new_img_patch = self.transform(new_img_patch)
 
         if self.train:
-            return [old_patch, new_patch], label
+            return [old_img_patch, new_img_patch], label
 
         else:
             # only read old and new image, no label (None)
-            return [old_patch, new_patch], None
+            return [old_img_patch, new_img_patch], None
 
 
     def __len__(self):
@@ -339,12 +347,12 @@ def main(options, args):
     normalize = transforms.Normalize((128,128, 128), (128, 128, 128)) # mean, std # for 3 band images with 0-255 grey
     trans = transforms.Compose([transforms.ToTensor(), normalize])
 
-    data_root = args[0]
-    image_paths_txt = args[1]
+    data_root = os.path.expanduser(args[0])
+    image_paths_txt = os.path.expanduser(args[1])
 
     model = Net().to(device)
 
-    do_learn = options.train
+    do_learn = options.dotrain
     batch_size = options.batch_size
     lr = options.learning_rate
     weight_decay = options.weight_decay
@@ -357,16 +365,16 @@ def main(options, args):
 
     if do_learn:  # training mode
         train_loader = torch.utils.data.DataLoader(
-            two_images_pixel_pair(data_root, image_paths_txt, train=True, transform=trans),
+            two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=True, transform=trans),
             batch_size=batch_size, shuffle=True)
 
         test_loader = torch.utils.data.DataLoader(
-            two_images_pixel_pair(data_root, image_paths_txt, train=False, transform=trans),
+            two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=True, transform=trans),
             batch_size=batch_size, shuffle=False)
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         for epoch in range(num_epochs):
-            t_loss = train(model, device, train_loader, epoch, optimizer)
+            t_loss = train(model, device, train_loader, epoch, optimizer,batch_size)
             eval_acc, eval_loss =  test(model, device, test_loader)
 
             train_loss_list.append(t_loss)
@@ -379,7 +387,7 @@ def main(options, args):
                            'siamese_{:03}.pt'.format(epoch))  # save only the state dict, i.e. the weight
     else:  # prediction
         prediction_loader = torch.utils.data.DataLoader(
-            two_images_pixel_pair(data_root, image_paths_txt, train=False, transform=trans), batch_size=1, shuffle=True)
+            two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans), batch_size=1, shuffle=True)
         load_model_path = 'siamese_020.pt'
 
         model.load_state_dict(torch.load(load_model_path))
