@@ -14,16 +14,133 @@ from optparse import OptionParser
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torchvision import transforms
+from torch import optim
+import random
+
+import rasterio
 
 
-class two_images_pixel_Pair(torch.utils.data.Dataset):
+def read_img_pair_paths(dir, imgs_path_txt):
+    '''
+    get path list for image pair
+    :param dir:
+    :param imgs_path_txt:
+    :return:
+    '''
+    img_pair_path = []
+    dir = os.path.expanduser(dir)
+    with open(imgs_path_txt) as f_obj:
+        lines = f_obj.readlines()
+        for str_line in lines:
+            #path_str [old_image, new_image, label_path (if available)]
+            path_str = [os.path.join(dir, item.strip()) for item in str_line.split(':')]
+            img_pair_path.append(path_str)
 
-    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
-        # need super?
+    return img_pair_path
 
-        pass
+def check_image_pairs(image_pair):
+    # these images should have the same width and height.
+    old_img_path = image_pair[0]  # an old image
+    new_img_path = image_pair[1]  # a new image
+
+    with rasterio.open(old_img_path) as src:
+        height = src.height
+        width = src.width
+        band_count = src.count
+
+    with rasterio.open(new_img_path) as src:
+        if height != src.height or width != src.width:
+            raise ValueError('error, %s and %s do not have the same size')
+        if band_count != src.count:
+            raise ValueError('error, %s and %s do not have the band counts')
+    if len(image_pair) > 2:
+        label_path = image_pair[2]
+        with rasterio.open(label_path) as src:
+            if height != src.height or width != src.width:
+                raise ValueError('error, %s and %s do not have the same size')
+
+
+def read_image():
+    pass
+
+class two_images_pixel_pair(torch.utils.data.Dataset):
+
+    def __init__(self, root, changedet_pair_txt, win_size, train=True, transform=None, target_transform=None):
+        # super().__init__() need this one?
+        '''
+        read images for change detections
+        :param root: a directory, support ~/
+        :param changedet_pair_txt: a txt file store image name in format: old_image_path:new_image_path: label_path(if available)
+        :param win_size: window size of the patches, default is 28 by 28, the same as MNIST dataset.
+        :param train: indicate it is for training
+        :param transform: apply training transform to original images
+        :param target_transform: apply tarnsform to target images
+        '''
+
+        self.root = os.path.expanduser(root)
+        self.transform = transform
+        self.imgs_path_txt = changedet_pair_txt
+        self.win_size = win_size
+        self.img_pair_list = [] # image list, each one is (old_image, new_image, label_path)
+        self.target_transform = target_transform
+        self.train = train  # True for training and validation (also need label), False for prediction
+
+        # for each element: [old_image, new_image, label_path (if available)]
+        self.img_pair_list = read_img_pair_paths(self.root, changedet_pair_txt)
+
+        self.pixel_index_pairs = []  # each one: (image_id, row_index, col_index, label) # label for change or no-change
+
+        if self.train:
+            # get pairs for training
+            for idx, image_pair in enumerate(self.img_pair_list):
+
+                check_image_pairs(image_pair)
+                # old_img_path = image_pair[0]  # an old image
+                # new_img_path = image_pair[1]  # a new image
+                change_map_path = image_pair[2] # label
+                with rasterio.open(change_map_path) as src:
+                    indexes = src.indexes
+                    if len(indexes) != 1:
+                        raise ValueError('error, the label should only have one band')
+                    label_data = src.read(indexes)
+                    height, width = label_data.shape
+                    for row in range(height):
+                        for col in range(width):
+                            self.pixel_index_pairs.append((idx, row, col, label_data[row, col]))
+
+                #TODO: remove some no-change pixel because the number of them is too large
+
+            pass
+        else:
+            # read all pixels, and be ready for testing
+            for idx, image_pair in enumerate(self.img_pair_list):
+
+                check_image_pairs(image_pair)
+                old_img_path = image_pair[0]  # an old image
+                # new_img_path = image_pair[1]  # a new image
+                # change_map_path = image_pair[2] # label
+                with rasterio.open(old_img_path) as src:
+                    label_data = src.read([1]) # read the first band
+                    height, width = label_data.shape
+                    for row in range(height):
+                        for col in range(width):
+                            self.pixel_index_pairs.append((idx, row, col, label_data[row, col]))
+
+            pass
+
 
     def __getitem__(self, index):
+        if self.train:
+            # read old and new image, as well as label
+            pass
+
+        else:
+            # only read old and new image, no label
+            pass
+
+
+
         pass
 
     def __len__(self):
@@ -75,22 +192,169 @@ class Net(nn.Module):
         return res
 
 
+def train(model, device, train_loader, epoch, optimizer, batch_size):
+    model.train()
+
+    for batch_idx, (data, target) in enumerate(train_loader):
+        for i in range(len(data)):
+            data[i] = data[i].to(device)
+
+        optimizer.zero_grad()
+        output_positive = model(data[:2])
+        output_negative = model(data[0:3:2])
+
+        target = target.type(torch.LongTensor).to(device)
+        target_positive = torch.squeeze(target[:, 0])
+        target_negative = torch.squeeze(target[:, 1])
+
+        loss_positive = F.cross_entropy(output_positive, target_positive)
+        loss_negative = F.cross_entropy(output_negative, target_negative)
+
+        loss = loss_positive + loss_negative
+        loss.backward()
+
+        optimizer.step()
+        if batch_idx % 10 == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * batch_size, len(train_loader.dataset),
+                       100. * batch_idx * batch_size / len(train_loader.dataset),
+                loss.item()))
+
+
+def test(model, device, test_loader):
+    model.eval()
+
+    with torch.no_grad():
+        accurate_labels = 0
+        all_labels = 0
+        loss = 0
+        for batch_idx, (data, target) in enumerate(test_loader):
+            for i in range(len(data)):
+                data[i] = data[i].to(device)
+
+            output_positive = model(data[:2])
+            output_negative = model(data[0:3:2])
+
+            target = target.type(torch.LongTensor).to(device)
+            target_positive = torch.squeeze(target[:, 0])
+            target_negative = torch.squeeze(target[:, 1])
+
+            loss_positive = F.cross_entropy(output_positive, target_positive)
+            loss_negative = F.cross_entropy(output_negative, target_negative)
+
+            loss = loss + loss_positive + loss_negative
+
+            accurate_labels_positive = torch.sum(torch.argmax(output_positive, dim=1) == target_positive).cpu()
+            accurate_labels_negative = torch.sum(torch.argmax(output_negative, dim=1) == target_negative).cpu()
+
+            accurate_labels = accurate_labels + accurate_labels_positive + accurate_labels_negative
+            all_labels = all_labels + len(target_positive) + len(target_negative)
+
+        accuracy = 100. * accurate_labels / all_labels
+        print('Test accuracy: {}/{} ({:.3f}%)\tLoss: {:.6f}'.format(accurate_labels, all_labels, accuracy, loss))
+
+
+def oneshot(model, device, data):
+    model.eval()
+
+    with torch.no_grad():
+        for i in range(len(data)):
+            data[i] = data[i].to(device)
+
+        output = model(data)
+        return torch.squeeze(torch.argmax(output, dim=1)).cpu().item()
+
+
 def main(options, args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    normalize = transforms.Normalize((128,128, 128), (128, 128, 128)) # mean, std # for 3 band images with 0-255 grey
+    trans = transforms.Compose([transforms.ToTensor(), normalize])
+
+    data_root = args[0]
+    image_paths_txt = args[1]
+
+    model = Net().to(device)
+
+    do_learn = options.train
+    batch_size = options.batch_size
+    lr = options.learning_rate
+    weight_decay = options.weight_decay
+    num_epochs = options.num_epochs
+    save_frequency = options.save_frequency
 
 
-    pass
+    if do_learn:  # training mode
+        train_loader = torch.utils.data.DataLoader(
+            two_images_pixel_pair(data_root, image_paths_txt, train=True, transform=trans),
+            batch_size=batch_size, shuffle=True)
+
+        test_loader = torch.utils.data.DataLoader(
+            two_images_pixel_pair(data_root, image_paths_txt, train=False, transform=trans),
+            batch_size=batch_size, shuffle=False)
+
+        optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        for epoch in range(num_epochs):
+            train(model, device, train_loader, epoch, optimizer)
+            test(model, device, test_loader)
+            if epoch & save_frequency == 0:
+                # torch.save(model, 'siamese_{:03}.pt'.format(epoch))             # save the entire model
+                torch.save(model.state_dict(),
+                           'siamese_{:03}.pt'.format(epoch))  # save only the state dict, i.e. the weight
+    else:  # prediction
+        prediction_loader = torch.utils.data.DataLoader(
+            two_images_pixel_pair(data_root, image_paths_txt, train=False, transform=trans), batch_size=1, shuffle=True)
+
+        model.load_state_dict(torch.load(load_model_path))
+        data = []
+        data.extend(next(iter(prediction_loader))[0][:3:2])
+        target = []
+        target.extend(next(iter(prediction_loader))[1][:3:2])
+        for i in range(random.randint(1, 100)):
+            print(i)
+            print(next(iter(prediction_loader))[1])
+            # data = next(iter(prediction_loader))[0][:3:2]
+            # target = next(iter(prediction_loader))[1][:3:2]
+            # print(data)
+            # print(target)
+        same = oneshot(model, device, data)
+        if same > 0:
+            print('These two images are of the same number')
+        else:
+            print('These two images are not of the same number')
+
 
 
 if __name__ == "__main__":
-    usage = "usage: %prog [options] "
+    usage = "usage: %prog [options] root_dir images_paths_txt"
     parser = OptionParser(usage=usage, version="1.0 2019-11-05")
     parser.description = 'Introduction: conduct change detection using siamese neural network '
 
-    parser.add_option("-o", "--output",
-                      action="store", dest="output",
-                      help="the output file path")
+    parser.add_option("-t", "--dotrain",
+                      action="store_true", dest="dotrain", default=False,
+                      help="set this flag for training")
+
+    parser.add_option("-b", "--batch_size", type=int, default=32,
+                      action="store", dest="batch_size",
+                      help="the batch size")
+
+    parser.add_option('-l', '--learning_rate', type = float, default = 0.001,
+                      action="store", dest='learning_rate',
+                      help='the learning rate for training')
+
+    parser.add_option('-w', '--weight_decay', type = float, default = 0.0001,
+                      action="store", dest='weight_decay',
+                      help='the weight decay for training')
+
+    parser.add_option('-e', '--num_epochs', type = int, default = 20,
+                      action="store", dest='num_epochs',
+                      help='the number of epochs for training')
+
+    parser.add_option('-s', '--save_frequency', type = int, default = 5,
+                      action="store", dest = 'save_frequency',
+                      help='the frequency for saving traned model')
 
     # parser.add_option("-p", "--para",
+
     #                   action="store", dest="para_file",
     #                   help="the parameters file")
 
