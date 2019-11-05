@@ -19,6 +19,7 @@ from torch import optim
 import random
 
 import rasterio
+import numpy as np
 
 
 def read_img_pair_paths(dir, imgs_path_txt):
@@ -72,7 +73,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         read images for change detections
         :param root: a directory, support ~/
         :param changedet_pair_txt: a txt file store image name in format: old_image_path:new_image_path: label_path(if available)
-        :param win_size: window size of the patches, default is 28 by 28, the same as MNIST dataset.
+        :param win_size: window size of the patches, default is 28 by 28, the same as MNIST dataset. (height, width)
         :param train: indicate it is for training
         :param transform: apply training transform to original images
         :param target_transform: apply tarnsform to target images
@@ -125,26 +126,68 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                     height, width = label_data.shape
                     for row in range(height):
                         for col in range(width):
-                            self.pixel_index_pairs.append((idx, row, col, label_data[row, col]))
+                            self.pixel_index_pairs.append((idx, row, col, None))   #label_data[row, col]
 
             pass
 
+    def _get_window(self, row_index, col_index, width, height):
+        # set window (row_start, row_stop), (col_start, col_stop)
+        row_start = row_index - self.win_size[0] / 2  # win_size: (height, width)
+        row_stop = row_index + self.win_size[0] / 2
+        col_start = col_index - self.win_size[1] / 2
+        col_stop = col_index + self.win_size[1] / 2
+
+        if row_start < 0: row_start = 0
+        if row_stop > height: row_stop = height
+        if col_start < 0: col_start = 0
+        if col_stop > width: col_stop = width
+
+        window = ((row_start, row_stop), (col_start, col_stop))
+        return window
+
+    def _crop_padding(self, image_array):
+
+        new_image = np.zeros((self.win_size[0],self.win_size[1],image_array.shape[2]),
+                             dtype=image_array.dtype)
+
+        new_image[0:image_array.shape[0], 0:image_array.shape[1],:] = image_array
+
+        return new_image
 
     def __getitem__(self, index):
+
+        # read old and new image, as well as label
+        pair_id, row_index, col_index, label = self.pixel_index_pairs[index]
+        old_img_path, new_img_path = self.img_pair_list[pair_id][:2]
+
+        # read old image
+        with rasterio.open(old_img_path) as old_src:
+            indexes = old_src.indexes
+            height = old_src.height
+            width = old_src.width
+
+            window  = self._get_window(row_index, col_index, width, height)
+            old_img_patch = old_src.read(indexes, window=window)
+
+            ####################################################
+            # then, red a patch in new image
+            with rasterio.open(new_img_path) as new_src:
+                new_img_patch = new_src.read(indexes, window=window)
+
+        # crop and padding to win_size
+        old_patch = self._crop_padding(old_img_patch)
+        new_patch = self._crop_padding(new_img_patch)
+
         if self.train:
-            # read old and new image, as well as label
-            pass
+            return old_patch, new_patch, label
 
         else:
-            # only read old and new image, no label
-            pass
+            # only read old and new image, no label (None)
+            return old_patch, new_patch
 
-
-
-        pass
 
     def __len__(self):
-        pass
+        return len(self.pixel_index_pairs)
 
 
 
