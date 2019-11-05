@@ -229,11 +229,11 @@ class BalancedMNISTPair(torch.utils.data.Dataset):
 class Net(nn.Module):
    def __init__(self):
       super().__init__()
-      
-      self.conv1 = nn.Conv2d(1, 64, 7)
-      self.pool1 = nn.MaxPool2d(2)
-      self.conv2 = nn.Conv2d(64, 128, 5)
-      self.conv3 = nn.Conv2d(128, 256, 5)
+
+      self.conv1 = nn.Conv2d(1, 64, 7)  # input is 1 channel, 28 by 28 (MNIST), output height by width 22 by 22
+      self.pool1 = nn.MaxPool2d(2)  # output height by : 11 by 11
+      self.conv2 = nn.Conv2d(64, 128, 5)  # output height by : 7 by 7
+      self.conv3 = nn.Conv2d(128, 256, 5)  # output height by : 3 by 3, therefore, 2304 =  256*3*3
       self.linear1 = nn.Linear(2304, 512)
       
       self.linear2 = nn.Linear(512, 2)
