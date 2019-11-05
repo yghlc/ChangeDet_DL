@@ -62,9 +62,6 @@ def check_image_pairs(image_pair):
                 raise ValueError('error, %s and %s do not have the same size')
 
 
-def read_image():
-    pass
-
 class two_images_pixel_pair(torch.utils.data.Dataset):
 
     def __init__(self, root, changedet_pair_txt, win_size, train=True, transform=None, target_transform=None):
@@ -92,7 +89,11 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
 
         self.pixel_index_pairs = []  # each one: (image_id, row_index, col_index, label) # label for change or no-change
 
+
         if self.train:
+            no_change_idx = []
+            change_idx = []
+            idx = 0
             # get pairs for training
             for idx, image_pair in enumerate(self.img_pair_list):
 
@@ -109,8 +110,24 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                     for row in range(height):
                         for col in range(width):
                             self.pixel_index_pairs.append((idx, row, col, label_data[row, col]))
+                            if label_data[row, col] == 2:       # change pixel
+                                change_idx.append(idx)
+                            elif label_data[row, col] == 1:     # no-change pixel
+                                no_change_idx.append(idx)
+                            else:
+                                raise ValueError('Error: unknow label: %d at row: %d, col: %d'
+                                                 %(label_data[row, col],row, col))
 
-                #TODO: remove some no-change pixel because the number of them is too large
+                            idx += 1
+
+            #remove some no-change pixel because the number of them is too large
+            # or maybe we manually selected some non-change areas
+            if len(no_change_idx) > len(change_idx)*3:
+                rm_count = len(no_change_idx) - len(change_idx)*3
+                rm_idx_list = random.sample(range(len(no_change_idx)), rm_count)
+
+                for rm_idx in rm_idx_list:
+                    del self.pixel_index_pairs[no_change_idx[rm_idx]]
 
             pass
         else:
@@ -198,7 +215,7 @@ class Net(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.conv1 = nn.Conv2d(1, 64, 7)        #input is 1 channel, 28 by 28 (MNIST), output height by width 22 by 22
+        self.conv1 = nn.Conv2d(3, 64, 7)        #input is 3 channel, 28 by 28 (MNIST), output height by width 22 by 22
         self.pool1 = nn.MaxPool2d(2)            # output height by : 11 by 11
         self.conv2 = nn.Conv2d(64, 128, 5)      # output height by : 7 by 7
         self.conv3 = nn.Conv2d(128, 256, 5)     # output height by : 3 by 3, therefore, 2304 =  256*3*3
