@@ -61,6 +61,15 @@ def check_image_pairs(image_pair):
             if height != src.height or width != src.width:
                 raise ValueError('error, %s and %s do not have the same size')
 
+class ToTensor(object):
+    """Convert ndarrays read by rasterio to Tensors."""
+
+    def __call__(self, image):
+        # swap color axis because
+        # rasterio numpy image: C X H X W
+        # torch image: C X H X W
+        # image = image.transpose((2, 0, 1))
+        return torch.from_numpy(image).float() # from Byte to float
 
 class two_images_pixel_pair(torch.utils.data.Dataset):
 
@@ -203,8 +212,13 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             old_img_patch = self.transform(old_img_patch)
             new_img_patch = self.transform(new_img_patch)
 
+        if label == 1: # no change
+            label_target = torch.tensor([0])    #torch.tensor([1, 0])
+        else:   # change
+            label_target = torch.tensor([1])    #torch.tensor([0, 1])
+
         if self.train:
-            return [old_img_patch, new_img_patch], label
+            return [old_img_patch, new_img_patch], label_target
 
         else:
             # only read old and new image, no label (None)
@@ -273,13 +287,10 @@ def train(model, device, train_loader, epoch, optimizer, batch_size):
 
         # target = target.type(torch.LongTensor).to(device)
         # label_target = torch.squeeze(target)
-        if target == 1: # no change
-            label_target = torch.tensor([1., 0.])
-        else:   # change
-            label_target = torch.tensor([0., 1.])
-        label_target = label_target.to(device)
+        label_target = target.type(torch.LongTensor).to(device)
         label_target = torch.squeeze(label_target)
 
+        # https://pytorch.org/docs/stable/nn.html#torch.nn.CrossEntropyLoss
         loss = F.cross_entropy(out_target, label_target)
 
         loss.backward()
@@ -297,8 +308,6 @@ def train(model, device, train_loader, epoch, optimizer, batch_size):
 
 def test(model, device, test_loader):
     model.eval()
-
-
     with torch.no_grad():
         accurate_labels = 0
         all_labels = 0
@@ -309,12 +318,11 @@ def test(model, device, test_loader):
 
             output_target = model(data[:2])
 
-            if target == 1:  # no change
-                label_target = torch.tensor([1., 0.])
-            else:  # change
-                label_target = torch.tensor([0., 1.])
-            label_target = label_target.to(device)
+            label_target = target.type(torch.LongTensor).to(device)
             label_target = torch.squeeze(label_target)
+
+            # https://pytorch.org/docs/stable/nn.html#torch.nn.CrossEntropyLoss
+            loss = F.cross_entropy(output_target, label_target)
 
             loss_test = F.cross_entropy(output_target, label_target)
 
@@ -345,12 +353,13 @@ def oneshot(model, device, data):
 def main(options, args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     normalize = transforms.Normalize((128,128, 128), (128, 128, 128)) # mean, std # for 3 band images with 0-255 grey
-    trans = transforms.Compose([transforms.ToTensor(), normalize])
+    trans = transforms.Compose([ToTensor(), normalize])
 
     data_root = os.path.expanduser(args[0])
     image_paths_txt = os.path.expanduser(args[1])
 
-    model = Net().to(device)
+    model = Net().to(device)   #Net().double().to(device)
+    # print(model)
 
     do_learn = options.dotrain
     batch_size = options.batch_size
