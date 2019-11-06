@@ -190,7 +190,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         old_img_path, new_img_path = self.img_pair_list[pair_id][:2]
 
         # read old image
-        with rasterio.open(old_img_path) as old_src:
+        with rasterio.open(old_img_path) as old_src:       # every time, read image from disk is very time consuming
             indexes = old_src.indexes
             height = old_src.height
             width = old_src.width
