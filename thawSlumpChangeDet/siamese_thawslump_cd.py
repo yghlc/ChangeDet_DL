@@ -446,7 +446,7 @@ if __name__ == "__main__":
                       action="store", dest='num_epochs',
                       help='the number of epochs for training')
 
-    parser.add_option('-w', '--num_workers', type = int, default = 4,
+    parser.add_option('-n', '--num_workers', type = int, default = 4,
                       action="store", dest='num_workers',
                       help='the number of workers for loading images')
 
