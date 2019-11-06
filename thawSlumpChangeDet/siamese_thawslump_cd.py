@@ -367,6 +367,7 @@ def main(options, args):
     weight_decay = options.weight_decay
     num_epochs = options.num_epochs
     save_frequency = options.save_frequency
+    num_workers = options.num_workers
 
     train_loss_list = []
     evl_loss_list = []
@@ -375,11 +376,11 @@ def main(options, args):
     if do_learn:  # training mode
         train_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=True, transform=trans),
-            batch_size=batch_size, num_workers=8,  shuffle=True)
+            batch_size=batch_size, num_workers=num_workers,  shuffle=True)
 
         test_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=True, transform=trans),
-            batch_size=batch_size, num_workers=8, shuffle=False)
+            batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         for epoch in range(num_epochs):
@@ -397,7 +398,7 @@ def main(options, args):
     else:  # prediction
         prediction_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans),
-            batch_size=1, num_workers=8, shuffle=True)
+            batch_size=1, num_workers=num_workers, shuffle=True)
         load_model_path = 'siamese_020.pt'
 
         model.load_state_dict(torch.load(load_model_path))
@@ -444,6 +445,10 @@ if __name__ == "__main__":
     parser.add_option('-e', '--num_epochs', type = int, default = 20,
                       action="store", dest='num_epochs',
                       help='the number of epochs for training')
+
+    parser.add_option('-w', '--num_workers', type = int, default = 4,
+                      action="store", dest='num_workers',
+                      help='the number of workers for loading images')
 
     parser.add_option('-s', '--save_frequency', type = int, default = 5,
                       action="store", dest = 'save_frequency',
