@@ -375,11 +375,11 @@ def main(options, args):
     if do_learn:  # training mode
         train_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=True, transform=trans),
-            batch_size=batch_size, shuffle=True)
+            batch_size=batch_size, num_workers=8,  shuffle=True)
 
         test_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=True, transform=trans),
-            batch_size=batch_size, shuffle=False)
+            batch_size=batch_size, num_workers=8, shuffle=False)
 
         optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         for epoch in range(num_epochs):
@@ -396,7 +396,8 @@ def main(options, args):
                            'siamese_{:03}.pt'.format(epoch))  # save only the state dict, i.e. the weight
     else:  # prediction
         prediction_loader = torch.utils.data.DataLoader(
-            two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans), batch_size=1, shuffle=True)
+            two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans),
+            batch_size=1, num_workers=8, shuffle=True)
         load_model_path = 'siamese_020.pt'
 
         model.load_state_dict(torch.load(load_model_path))

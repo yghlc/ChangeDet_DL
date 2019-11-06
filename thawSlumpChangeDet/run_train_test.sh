@@ -13,7 +13,7 @@ co_dir=~/codes/PycharmProjects/ChangeDet_DL
 root=~/Data/experiment/Onera_S2_Change_Detection_dataset
 img_pair_txt=${root}/changeDet_test.txt
 
-batch_size=32
+batch_size=128
 learning_rate=0.001
 weight_decay=0.0001
 num_epochs=20
