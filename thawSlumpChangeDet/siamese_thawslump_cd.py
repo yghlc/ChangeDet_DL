@@ -54,7 +54,7 @@ def check_image_pairs(image_pair):
         if height != src.height or width != src.width:
             raise ValueError('error, %s and %s do not have the same size')
         if band_count != src.count:
-            raise ValueError('error, %s and %s do not have the band counts')
+            raise ValueError('error, %s and %s do not have the same band count')
     if len(image_pair) > 2:
         label_path = image_pair[2]
         with rasterio.open(label_path) as src:
@@ -143,7 +143,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             pass
         else:
             # read all pixels, and be ready for testing
-            for idx, image_pair in enumerate(self.img_pair_list):
+            for pair_id, image_pair in enumerate(self.img_pair_list):
 
                 check_image_pairs(image_pair)
                 old_img_path = image_pair[0]  # an old image
@@ -155,7 +155,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                     height, width = label_data.shape
                     for row in range(height):
                         for col in range(width):
-                            self.pixel_index_pairs.append((idx, row, col, None))   #label_data[row, col]
+                            self.pixel_index_pairs.append((pair_id, row, col, None))   #label_data[row, col]
 
             pass
 
@@ -190,7 +190,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         old_img_path, new_img_path = self.img_pair_list[pair_id][:2]
 
         # read old image
-        with rasterio.open(old_img_path) as old_src:       # every time, read image from disk is very time consuming
+        with rasterio.open(old_img_path) as old_src:       # every pixel, read image from disk is very time consuming
             indexes = old_src.indexes
             height = old_src.height
             width = old_src.width
@@ -214,15 +214,18 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
 
         if label == 1: # no change
             label_target = torch.tensor([0])    #torch.tensor([1, 0])
-        else:   # change
+        elif label == 2:   # change
             label_target = torch.tensor([1])    #torch.tensor([0, 1])
-
-        if self.train:
-            return [old_img_patch, new_img_patch], label_target
-
         else:
-            # only read old and new image, no label (None)
-            return [old_img_patch, new_img_patch], None
+            label_target = None
+
+        return [old_img_patch, new_img_patch], label_target
+        # if self.train:
+        #     return [old_img_patch, new_img_patch], label_target
+        #
+        # else:
+        #     # only read old and new image, no label (None)
+        #     return [old_img_patch, new_img_patch], label_target
 
 
     def __len__(self):
@@ -398,21 +401,21 @@ def main(options, args):
     else:  # prediction
         prediction_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans),
-            batch_size=1, num_workers=num_workers, shuffle=False)
-        load_model_path = 'siamese_017.pt'
+            batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
+        # loading data
+        for batch_idx, (data, _) in enumerate(prediction_loader):
+            for i in range(len(data)):
+                data[i] = data[i].to(device)
+
+            out_target = model(data[:2])
+
+
+
+        # loading model
+        load_model_path = 'siamese_017.pt'
         model.load_state_dict(torch.load(load_model_path))
-        data = []
-        data.extend(next(iter(prediction_loader))[0][:3:2])
-        target = []
-        target.extend(next(iter(prediction_loader))[1][:3:2])
-        for i in range(random.randint(1, 100)):
-            print(i)
-            print(next(iter(prediction_loader))[1])
-            # data = next(iter(prediction_loader))[0][:3:2]
-            # target = next(iter(prediction_loader))[1][:3:2]
-            # print(data)
-            # print(target)
+
         same = oneshot(model, device, data)
         if same > 0:
             print('These two pixels the same')
