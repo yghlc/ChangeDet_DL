@@ -59,6 +59,16 @@ def check_image_pairs(image_pair):
             if height != src.height or width != src.width:
                 raise ValueError('error, %s and %s do not have the same size')
 
+def read_image_to_array(img_path):
+    # read  image
+    with rasterio.open(img_path) as src:
+        indexes = src.indexes
+        # height = old_src.height
+        # width = old_src.width
+        image_array = src.read(indexes)  # shape (ncount, height, width)
+        return image_array
+
+
 class two_images_pixel_pair(torch.utils.data.Dataset):
 
     def __init__(self, root, changedet_pair_txt, win_size, train=True, transform=None, target_transform=None):
@@ -77,7 +87,8 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         self.transform = transform
         self.imgs_path_txt = changedet_pair_txt
         self.win_size = win_size
-        self.img_pair_list = [] # image list, each one is (old_image, new_image, label_path)
+        self.img_pair_list = []         # image list, each one is (old_image, new_image, label_path)
+        self.img_array_pair_list = []   # image array list, each one is (old_image array, new_image array, label array)
         self.target_transform = target_transform
         self.train = train  # True for training and validation (also need label), False for prediction
 
@@ -95,28 +106,32 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             for pair_id, image_pair in enumerate(self.img_pair_list):
 
                 check_image_pairs(image_pair)
-                # old_img_path = image_pair[0]  # an old image
-                # new_img_path = image_pair[1]  # a new image
+                old_img_path = image_pair[0]  # an old image
+                new_img_path = image_pair[1]  # a new image
                 change_map_path = image_pair[2] # label
-                with rasterio.open(change_map_path) as src:
-                    indexes = src.indexes
-                    if len(indexes) != 1:
-                        raise ValueError('error, the label should only have one band')
-                    label_data = src.read(indexes)
-                    label_data = np.squeeze(label_data)
-                    height, width = label_data.shape # nband, height, width
-                    for row in range(height):
-                        for col in range(width):
-                            self.pixel_index_pairs.append((pair_id, row, col, label_data[row, col]))
-                            if label_data[row, col] == 2:       # change pixel
-                                change_idx.append(idx)
-                            elif label_data[row, col] == 1:     # no-change pixel
-                                no_change_idx.append(idx)
-                            else:
-                                raise ValueError('Error: unknow label: %d at row: %d, col: %d'
-                                                 %(label_data[row, col],row, col))
 
-                            idx += 1
+                # read image to memory
+                old_image_array = read_image_to_array(old_img_path)
+                new_image_array = read_image_to_array(new_img_path)
+                change_map_array = read_image_to_array(change_map_path)
+
+                if change_map_array.shape[0] != 1:
+                    raise ValueError('error, the label should only have one band')
+                self.img_array_pair_list.append([old_image_array, new_image_array, change_map_array])
+
+                label_data = np.squeeze(change_map_array)
+                height, width = label_data.shape # nband, height, width
+                for row in range(height):
+                    for col in range(width):
+                        self.pixel_index_pairs.append((pair_id, row, col, label_data[row, col]))
+                        if label_data[row, col] == 2:       # change pixel
+                            change_idx.append(idx)
+                        elif label_data[row, col] == 1:     # no-change pixel
+                            no_change_idx.append(idx)
+                        else:
+                            raise ValueError('Error: unknow label: %d at row: %d, col: %d'
+                                             %(label_data[row, col],row, col))
+                        idx += 1
 
             #remove some no-change pixel because the number of them is too large
             # or maybe we manually selected some non-change areas
@@ -135,15 +150,18 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
 
                 check_image_pairs(image_pair)
                 old_img_path = image_pair[0]  # an old image
-                # new_img_path = image_pair[1]  # a new image
-                # change_map_path = image_pair[2] # label
-                with rasterio.open(old_img_path) as src:
-                    label_data = src.read([1]) # read the first band
-                    label_data = np.squeeze(label_data)
-                    height, width = label_data.shape
-                    for row in range(height):
-                        for col in range(width):
-                            self.pixel_index_pairs.append((pair_id, row, col, None))   #label_data[row, col]
+                new_img_path = image_pair[1]  # a new image
+
+                # read image to memory
+                old_image_array = read_image_to_array(old_img_path)
+                new_image_array = read_image_to_array(new_img_path)
+
+                self.img_array_pair_list.append([old_image_array, new_image_array])
+
+                # ncount, height, width = old_image_array.shape
+                # for row in range(height):
+                #     for col in range(width):
+                #         self.pixel_index_pairs.append((pair_id, row, col, None))   #label_data[row, col]
 
             pass
 
@@ -171,30 +189,70 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
 
         return new_image
 
+    def _get_sub_image(self,row_index, col_index, image_array):
+        '''
+        get a subset from a image array, padding if the window be is out of the image
+        :param row_index:
+        :param col_index:
+        :param image_array:
+        :return:
+        '''
+        nband, height,width = image_array.shape
+
+        # set window (row_start, row_stop), (col_start, col_stop)
+        row_start = row_index - int(self.win_size[0] / 2)  # win_size: (height, width)
+        row_stop = row_index + int(self.win_size[0] / 2)
+        col_start = col_index - int(self.win_size[1] / 2)
+        col_stop = col_index + int(self.win_size[1] / 2)
+
+        # adjust the boundary
+        adj_row_start = 0 if row_start < 0 else row_start
+        adj_row_stop = height if row_stop > height else row_stop
+        adj_col_start = 0 if col_start < 0 else  col_start
+        adj_col_stop = width if col_stop > width else col_stop
+
+        if (adj_row_stop - adj_row_start ) != self.win_size[0] or (adj_col_stop - adj_col_start ) != self.win_size[1]:
+            new_image = np.zeros((image_array.shape[0], self.win_size[0], self.win_size[1]),
+                                 dtype=image_array.dtype)
+
+            new_image[:, (adj_row_start-row_start):(self.win_size[0]-(row_stop-adj_row_stop)),
+            (adj_col_start - col_start):(self.win_size[1] - (col_stop - adj_col_stop))] = \
+                image_array[:, adj_row_start:adj_row_stop, adj_col_start: adj_col_stop]
+
+        else:
+            new_image = image_array[:, row_start:row_stop, col_start: col_stop]
+
+        return new_image
+
     def __getitem__(self, index):
 
         # read old and new image, as well as label
         pair_id, row_index, col_index, label = self.pixel_index_pairs[index]
-        old_img_path, new_img_path = self.img_pair_list[pair_id][:2]
+        # old_img_path, new_img_path = self.img_pair_list[pair_id][:2]
+        old_img_array, new_img_array = self.img_array_pair_list[pair_id][:2]
 
-        # read old image
-        with rasterio.open(old_img_path) as old_src:       # every pixel, read image from disk is very time consuming
-            indexes = old_src.indexes
-            height = old_src.height
-            width = old_src.width
+        # # read old image
+        # with rasterio.open(old_img_path) as old_src:       # every pixel, read image from disk is very time consuming
+        #     indexes = old_src.indexes
+        #     height = old_src.height
+        #     width = old_src.width
+        #
+        #     window  = self._get_window(row_index, col_index, width, height)
+        #     old_img_patch = old_src.read(indexes, window=window)    # shape (ncount, height, width)
+        #
+        #     ####################################################
+        #     # then, red a patch in new image
+        #     with rasterio.open(new_img_path) as new_src:
+        #         new_img_patch = new_src.read(indexes, window=window)
 
-            window  = self._get_window(row_index, col_index, width, height)
-            old_img_patch = old_src.read(indexes, window=window)    # shape (ncount, height, width)
+        # # crop and padding to win_size
+        # if old_img_patch.shape[1] != self.win_size[0] or old_img_patch.shape[2] != self.win_size[1]:
+        #     old_img_patch = self._crop_padding(old_img_patch)
+        #     new_img_patch = self._crop_padding(new_img_patch)
 
-            ####################################################
-            # then, red a patch in new image
-            with rasterio.open(new_img_path) as new_src:
-                new_img_patch = new_src.read(indexes, window=window)
-
-        # crop and padding to win_size
-        if old_img_patch.shape[1] != self.win_size[0] or old_img_patch.shape[2] != self.win_size[1]:
-            old_img_patch = self._crop_padding(old_img_patch)
-            new_img_patch = self._crop_padding(new_img_patch)
+        # ncount, height, width = old_img_array.shape
+        old_img_patch = self._get_sub_image(row_index,col_index,old_img_array)
+        new_img_patch = self._get_sub_image(row_index,col_index,new_img_array)
 
         if self.transform is not None:
             old_img_patch = self.transform(old_img_patch)
