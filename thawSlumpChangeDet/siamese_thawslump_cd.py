@@ -22,7 +22,7 @@ import random
 import rasterio
 import numpy as np
 
-# add the update lever path for importing dataTools model
+# add the update level path for importing dataTools model
 script_folder = os.path.dirname(sys.argv[0])
 upper_folder = os.path.dirname(script_folder)
 sys.path.insert(0, upper_folder)
