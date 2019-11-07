@@ -206,32 +206,34 @@ def main(options, args):
 
         img_pair_list = read_img_pair_paths(data_root, image_paths_txt)
 
-        # loading model
-        load_model_path = 'siamese_017.pt'
-        model.load_state_dict(torch.load(load_model_path))
+        with torch.no_grad():
+            # loading model
+            load_model_path = 'siamese_017.pt'
+            model.load_state_dict(torch.load(load_model_path))
+            model.eval()
 
-        for pair_id, image_pair in enumerate(img_pair_list):
-            prediction_loader = torch.utils.data.DataLoader(
-                two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans),
-                batch_size=batch_size, num_workers=num_workers, shuffle=False, predict_pair_id=pair_id)
+            for pair_id, image_pair in enumerate(img_pair_list):
+                prediction_loader = torch.utils.data.DataLoader(
+                    two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans,predict_pair_id=pair_id),
+                    batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
-            height, width = img_pairs.get_image_height_width(image_pair[0])
-            predicted_change_2d = np.zeros((height,width ),dtype=np.uint8)
+                height, width = img_pairs.get_image_height_width(image_pair[0])
+                predicted_change_2d = np.zeros((height,width ),dtype=np.uint8)
 
-            # loading data
-            for batch_idx, (data, pos) in enumerate(prediction_loader):
-                for i in range(len(data)):
-                    data[i] = data[i].to(device)
+                # loading data
+                for batch_idx, (data, pos) in enumerate(prediction_loader):
+                    for i in range(len(data)):
+                        data[i] = data[i].to(device)
 
-                out_prop = model(data[:2])
-                predicted_target = torch.argmax(out_prop, dim=1).cpu()
+                    out_prop = model(data)
+                    predicted_target = torch.argmax(out_prop, dim=1).cpu()
 
-                for out_label, (_, row, col) in zip(predicted_target,pos):
-                    predicted_change_2d[row, col] = out_label
+                    for out_label, _, row, col in zip(predicted_target,pos[0], pos[1], pos[2]):
+                        predicted_change_2d[row, col] = out_label
 
-            # save
-            save_path = "predict_change_map_%d.tif"%pair_id
-            img_pairs.save_image_oneband_8bit(image_pair[0], predicted_change_2d, save_path)
+                # save
+                save_path = "predict_change_map_%d.tif"%pair_id
+                img_pairs.save_image_oneband_8bit(image_pair[0], predicted_change_2d, save_path)
 
 
 if __name__ == "__main__":
