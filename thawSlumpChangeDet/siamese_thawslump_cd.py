@@ -17,16 +17,16 @@ import torch.nn.functional as F
 from torchvision import transforms
 from torch import optim
 
-
-import random
-import rasterio
 import numpy as np
 
 # add the upper level path for importing dataTools model
 script_folder = os.path.dirname(sys.argv[0])
 upper_folder = os.path.dirname(script_folder)
 sys.path.insert(0, upper_folder)
+import dataTools.img_pairs as img_pairs
 from dataTools.img_pairs import two_images_pixel_pair
+from dataTools.img_pairs import read_img_pair_paths
+from dataTools.img_pairs import save_image_oneband_8bit
 
 class ToTensor(object):
     """Convert ndarrays read by rasterio to Tensors."""
@@ -203,29 +203,35 @@ def main(options, args):
                 torch.save(model.state_dict(),
                            'siamese_{:03}.pt'.format(epoch))  # save only the state dict, i.e. the weight
     else:  # prediction
-        prediction_loader = torch.utils.data.DataLoader(
-            two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans),
-            batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
-        # loading data
-        for batch_idx, (data, _) in enumerate(prediction_loader):
-            for i in range(len(data)):
-                data[i] = data[i].to(device)
-
-            out_target = model(data[:2])
-
-
+        img_pair_list = read_img_pair_paths(data_root, image_paths_txt)
 
         # loading model
         load_model_path = 'siamese_017.pt'
         model.load_state_dict(torch.load(load_model_path))
 
-        same = oneshot(model, device, data)
-        if same > 0:
-            print('These two pixels the same')
-        else:
-            print('These two pixels are not the same')
+        for pair_id, image_pair in enumerate(img_pair_list):
+            prediction_loader = torch.utils.data.DataLoader(
+                two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans),
+                batch_size=batch_size, num_workers=num_workers, shuffle=False, predict_pair_id=pair_id)
 
+            height, width = img_pairs.get_image_height_width(image_pair[0])
+            predicted_change_2d = np.zeros((height,width ),dtype=np.uint8)
+
+            # loading data
+            for batch_idx, (data, pos) in enumerate(prediction_loader):
+                for i in range(len(data)):
+                    data[i] = data[i].to(device)
+
+                out_prop = model(data[:2])
+                predicted_target = torch.argmax(out_prop, dim=1).cpu()
+
+                for out_label, (_, row, col) in zip(predicted_target,pos):
+                    predicted_change_2d[row, col] = out_label
+
+            # save
+            save_path = "predict_change_map_%d.tif"%pair_id
+            img_pairs.save_image_oneband_8bit(image_pair[0], predicted_change_2d, save_path)
 
 
 if __name__ == "__main__":

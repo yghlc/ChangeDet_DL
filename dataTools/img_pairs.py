@@ -68,10 +68,29 @@ def read_image_to_array(img_path):
         image_array = src.read(indexes)  # shape (ncount, height, width)
         return image_array
 
+def save_image_oneband_8bit(ref_image_path,img_data,save_path):
+    """
+    save image: oneband with 8bit
+    :param ref_image: the image, have the same extent
+    :param img_data: numpy array of a new image, could be one band or multi band
+    :param save_path: Save file path
+    :return: True if sucessufully, False otherwise
+    """
+    # reference image path
+    with rasterio.open(ref_image_path) as src:
+        profile = src.profile
+        profile.update(dtype=rasterio.uint8, count=1)
+        with rasterio.open(save_path, "w", **profile) as dst:
+            dst.write(img_data, 1)
+    return True
+
+def get_image_height_width(image_path):
+    with rasterio.open(image_path) as src:
+        return src.height, src.width
 
 class two_images_pixel_pair(torch.utils.data.Dataset):
 
-    def __init__(self, root, changedet_pair_txt, win_size, train=True, transform=None, target_transform=None):
+    def __init__(self, root, changedet_pair_txt, win_size, train=True, transform=None, target_transform=None, predict_pair_id=0):
         # super().__init__() need this one?
         '''
         read images for change detections
@@ -81,6 +100,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         :param train: indicate it is for training
         :param transform: apply training transform to original images
         :param target_transform: apply tarnsform to target images
+        :param predict_pair_id: the pair for predicting (prediction only load data from one pair)
         '''
 
         self.root = os.path.expanduser(root)
@@ -145,23 +165,24 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
 
             pass
         else:
-            # read all pixels, and be ready for testing
-            for pair_id, image_pair in enumerate(self.img_pair_list):
+            # read all pixels, and be ready for prediction
+            image_pair = self.img_pair_list[predict_pair_id]
+            # for pair_id, image_pair in enumerate(self.img_pair_list):
 
-                check_image_pairs(image_pair)
-                old_img_path = image_pair[0]  # an old image
-                new_img_path = image_pair[1]  # a new image
+            check_image_pairs(image_pair)
+            old_img_path = image_pair[0]  # an old image
+            new_img_path = image_pair[1]  # a new image
 
-                # read image to memory
-                old_image_array = read_image_to_array(old_img_path)
-                new_image_array = read_image_to_array(new_img_path)
+            # read image to memory
+            old_image_array = read_image_to_array(old_img_path)
+            new_image_array = read_image_to_array(new_img_path)
 
-                self.img_array_pair_list.append([old_image_array, new_image_array])
+            self.img_array_pair_list.append([old_image_array, new_image_array])
 
-                # ncount, height, width = old_image_array.shape
-                # for row in range(height):
-                #     for col in range(width):
-                #         self.pixel_index_pairs.append((pair_id, row, col, None))   #label_data[row, col]
+            ncount, height, width = old_image_array.shape
+            for row in range(height):
+                for col in range(width):
+                    self.pixel_index_pairs.append((predict_pair_id, row, col, None))   #label_data[row, col]
 
             pass
 
@@ -221,7 +242,9 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
 
         else:
             new_image = image_array[:, row_start:row_stop, col_start: col_stop]
-
+        # print(new_image.shape)
+        # if new_image.shape != (3,28,28):
+        #     raise ValueError('error, it is not (3,28,28)')
         return new_image
 
     def __getitem__(self, index):
@@ -229,7 +252,10 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         # read old and new image, as well as label
         pair_id, row_index, col_index, label = self.pixel_index_pairs[index]
         # old_img_path, new_img_path = self.img_pair_list[pair_id][:2]
-        old_img_array, new_img_array = self.img_array_pair_list[pair_id][:2]
+        if self.train:
+            old_img_array, new_img_array = self.img_array_pair_list[pair_id][:2]
+        else:
+            old_img_array, new_img_array = self.img_array_pair_list[0][:2]      # for prediction, only read one pair
 
         # # read old image
         # with rasterio.open(old_img_path) as old_src:       # every pixel, read image from disk is very time consuming
@@ -265,13 +291,13 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         else:
             label_target = None
 
-        return [old_img_patch, new_img_patch], label_target
-        # if self.train:
-        #     return [old_img_patch, new_img_patch], label_target
-        #
-        # else:
-        #     # only read old and new image, no label (None)
-        #     return [old_img_patch, new_img_patch], label_target
+        # return [old_img_patch, new_img_patch], label_target
+        if self.train:
+            return [old_img_patch, new_img_patch], label_target
+
+        else:
+            # only read old and new image, no label (None)
+            return [old_img_patch, new_img_patch], [pair_id, row_index, col_index]
 
 
     def __len__(self):
