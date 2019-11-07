@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Filename: img_pairs 
 """
-introduction:
+introduction: read pixels for pytorch Dataloader
 
 authors: Huang Lingcao
 email:huanglingcao@gmail.com
