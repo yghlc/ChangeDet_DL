@@ -29,6 +29,6 @@ save_frequency=2
 
 # prediction:
 batch_size=256
-num_workers=1
+num_workers=16
 python ${co_dir}/thawSlumpChangeDet/siamese_thawslump_cd.py ${root} ${img_pair_txt} \
 -b ${batch_size} -n ${num_workers}
