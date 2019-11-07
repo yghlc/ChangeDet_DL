@@ -391,15 +391,15 @@ def main(options, args):
             evl_loss_list.append(eval_acc)
             evl_acc_list.append(eval_loss)
 
-            if epoch & save_frequency == 0:
+            if epoch % save_frequency == 0:
                 # torch.save(model, 'siamese_{:03}.pt'.format(epoch))             # save the entire model
                 torch.save(model.state_dict(),
                            'siamese_{:03}.pt'.format(epoch))  # save only the state dict, i.e. the weight
     else:  # prediction
         prediction_loader = torch.utils.data.DataLoader(
             two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans),
-            batch_size=1, num_workers=num_workers, shuffle=True)
-        load_model_path = 'siamese_020.pt'
+            batch_size=1, num_workers=num_workers, shuffle=False)
+        load_model_path = 'siamese_017.pt'
 
         model.load_state_dict(torch.load(load_model_path))
         data = []
