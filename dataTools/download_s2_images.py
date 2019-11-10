@@ -12,7 +12,7 @@ import sys,os
 from optparse import OptionParser
 from datetime import datetime
 
-import sentinelsat
+from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 
 # path for Landuse_DL
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
@@ -43,10 +43,72 @@ def get_and_set_dhub_key(user_name=None):
         os.environ["DHUS_PASSWORD"] = password
         return True
 
-
-def download_s2_time_lapse_images(start_date,end_date):
+def down_load_through_sentinel_hub():
+    # it seems that through sentinel hub we can download S2 Level 2A images, but need to pay
     pass
 
+def download_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_cover, buffer_size):
+    '''
+    download all s2 images overlap with
+    :param start_date: start date of the time lapse images
+    :param end_date: end date  of the time lapse images
+    :param polygon_json: a polygon in json format
+    :param cloud_cover: cloud cover for inquiring images
+    :param buffer_size: buffer area for crop the image
+    :return:
+    '''
+
+    # connect to sentienl
+
+
+    # inquiry images
+
+
+
+
+    pass
+
+def download_s2_by_tile():
+    # test download
+    # For orthorectified products (Level-1C and Level-2A):
+    # The granules (also called tiles) consist of 100 km by 100 km squared ortho-images in
+    # UTM/WGS84 projection. There is one tile per spectral band.
+    # For Level-1B, a granule covers approximately 25 km AC and 23 km AL
+    # Tiles are approximately 500 MB in size.
+    # Tiles can be fully or partially covered by image data. Partially covered tiles
+    # correspond to those at the edge of the swath.
+
+    # All data acquired by the MSI instrument are systematically processed up to Level-1C by the ground segment,
+    # specifically the Payload Data Ground Segment (PDGS). Level-2A products are
+    # generated on user side through the Sentinel-2 Toolbox.
+
+    #Level-2A products are not systematically generated at the ground segment.
+    # Level-2A generation can be performed by the user through the Sentinel-2 Toolbox using
+    # as input the associated Level-1C product.
+
+    #Level-0 and Level-1A products are PDGS internal products not made available to users.
+
+    # example from https://sentinelsat.readthedocs.io/en/stable/api.html
+
+    from collections import OrderedDict
+
+    api = SentinelAPI(os.environ["DHUS_USER"], os.environ["DHUS_PASSWORD"])
+
+    tiles = ['33VUC', '33UUB']
+
+    query_kwargs = {
+        'platformname': 'Sentinel-2',
+        'producttype': 'S2MSI1C',
+        'date': ('NOW-14DAYS', 'NOW')}
+
+    products = OrderedDict()
+    for tile in tiles:
+        kw = query_kwargs.copy()
+        kw['tileid'] = tile  # products after 2017-03-31
+        pp = api.query(**kw)
+        products.update(pp)
+
+    api.download_all(products)
 
 def main(options, args):
 
@@ -79,11 +141,15 @@ def main(options, args):
     # save to global variable: downloaed_scene_geometry
     read_down_load_geometry(save_folder)
 
+    basic.outputlogMessage("connecting to sentinel API...")
+    # print(os.environ["DHUS_USER"], os.environ["DHUS_PASSWORD"])
+    # api = SentinelAPI(os.environ["DHUS_USER"], os.environ["DHUS_PASSWORD"]) # data["login"], data["password"], 'https://scihub.copernicus.eu/dhus'
 
     # # download images
-    # download_planet_images(polygons_json, start_date, end_date, could_cover_thr, item_types, save_folder)
+    # download_planet_images(polygons_json, start_date, end_date, cloud_cover_thr, item_types, save_folder)
 
-
+    # test
+    # download_s2_by_tile()
 
     pass
 
@@ -101,7 +167,7 @@ if __name__ == "__main__":
                       action="store", dest="end_date",
                       help="the end date for inquiry, with format year-month-day, e.g., 2019-12-31")
     parser.add_option("-c", "--cloud_cover",
-                      action="store", dest="cloud_cover", type=float,
+                      action="store", dest="cloud_cover", type=float, default = 0.1,
                       help="the could cover threshold, only accept images with cloud cover less than the threshold")
     # parser.add_option("-i", "--item_types",
     #                   action="store", dest="item_types",default='PSScene4Band',
