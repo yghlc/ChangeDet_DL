@@ -16,9 +16,28 @@ from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 
 # path for Landuse_DL
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
-#  import functions,
-# also some global variable: downloaed_scene_geometry and manually_excluded_scenes
+
+#  import functions, and variable in download_planet_img (include basic, io_function in DeeplabRS)
 from planetScripts.download_planet_img import *
+
+
+import pandas as pd
+
+downloaded_scenes= [] # already download images
+
+def read_aready_download_scene(folder):
+    global downloaded_scenes
+    zip_list = io_function.get_file_list_by_ext('.zip', folder, bsub_folder=False)
+    safe_list = io_function.get_file_list_by_ext('.SAFE', folder, bsub_folder=False)
+    downloaded_scenes.extend([zip.split('.')[0] for zip in zip_list] )
+    downloaded_scenes.extend([safe.split('.')[0] for safe in safe_list])
+
+def add_download_scene(products):
+    global downloaded_scenes
+    for key, value in products.items():
+        file_name = value['filename'].split('.')[0]
+        downloaded_scenes.append(file_name)
+
 
 def get_and_set_dhub_key(user_name=None):
     '''
@@ -44,12 +63,103 @@ def get_and_set_dhub_key(user_name=None):
         return True
 
 def down_load_through_sentinel_hub():
-    # it seems that through sentinel hub we can download S2 Level 2A images, but need to pay
+    # it seems that through sentinel hub we can download S2 Level-2A images, but need to pay
     pass
 
-def download_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_cover_thr, buffer_size, save_dir):
+def select_products(api, products):
     '''
-    download all s2 images overlap with
+    select products based on cloud and acquired time
+    :param api: sentinelAPI object
+    :param products: products
+    :return: the selected products
+    '''
+
+    # sort product by cloud cover
+
+    # selected by acuqired date? each year should have at least one image?
+    # maybe it is not necessary, just put all the cloudless images together for the further analysis
+
+    # GeoJSON FeatureCollection containing footprints and metadata of the scenes
+    # p(api.to_geojson(products))
+
+    # show metadata of one product
+    # product_ids = [key for key, value in products.items()]
+    # print(products[product_ids[0]])
+    # show metadata of all product in geojson format
+    # p(api.to_geojson(products))
+
+    # print(products)       # test
+    # for item in products:
+    #     print(products[item])
+
+    # Get basic information about the product: its title, file size, MD5 sum, date, footprint and
+    # its download url
+    # print(api.get_product_odata(product_ids[0]))
+    # print(api.get_product_odata(product_ids[0],full=True))
+
+    # # convert to Pandas DataFrame
+    # products_df = api.to_dataframe(products)
+    # # print(products_df)
+    #
+    # # sort and limit to first 5 sorted products
+    # products_df_sorted = products_df.sort_values(['cloudcoverpercentage', 'beginposition'], ascending=[True, True])
+    # products_df_sorted = products_df_sorted.head(5)
+
+    selected_products = {}
+    for key, value in products.items():
+        # print(key, value)
+        # get acquired date, could cover, file name, product id.
+        scene = {}
+        # get id
+        scene['product_id'] = value['uuid']
+
+        # get acquired date
+        summary_str = value['summary']
+        # print(summary_str)
+        date_str = summary_str.split(',')[0].split(' ')[1] #.split('T')[0]      # e.g., 2015-12-19T04:32:12.03Z
+        scene['acquired_date'] = date_str #  datetime.strptime(date_str, '%Y-%m-%d') # use panda for converting
+        # get cloud cover
+        scene['cloudcoverpercentage'] = value['cloudcoverpercentage']
+        scene['filename'] = value['filename']
+
+        selected_products[key] = scene
+
+    # for each year, only download up to 10 images with lowest cloud cover
+    date_cloud_pd = pd.DataFrame.from_dict(selected_products, orient='index') # orient='index',  columns
+
+    # group by year, then sort by cloud cover
+    date_cloud_pd['date'] = pd.to_datetime(date_cloud_pd['acquired_date'])
+    date_cloud_pd = date_cloud_pd.set_index('date')
+    date_cloud_pd['Year'] = date_cloud_pd.index.year
+
+    date_cloud_pd_year_sort = date_cloud_pd.groupby(["Year"]).apply(
+        lambda x: x.sort_values(["cloudcoverpercentage"], ascending=True))
+
+    selected_eachyear = date_cloud_pd_year_sort.groupby(["Year"]).head(5)   #10     # only 5
+
+    # to list [product_id, date, cloud cover, filename, year ]
+    select10_eachyear_list = selected_eachyear.values.tolist()
+
+    # check a scene already exist
+    select10_eachyear_list_new = []
+    for sel_scene in select10_eachyear_list:
+        file_name_noext = sel_scene[3].split('.')[0]
+        if file_name_noext not in downloaded_scenes:
+            select10_eachyear_list_new.append(sel_scene)
+        else:
+            basic.outputlogMessage('warning, skip downloading %s because it already exist'%file_name_noext)
+
+    sel_products =  {}
+    for item in select10_eachyear_list_new:
+        sel_products[item[0]] = products[item[0]]
+
+    return sel_products
+
+
+def download_crop_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_cover_thr, buffer_size, save_dir):
+    '''
+    download all s2 images overlap with a polygon
+    ref: https://sentinelsat.readthedocs.io/en/stable/api.html
     :param start_date: start date of the time lapse images
     :param end_date: end date  of the time lapse images
     :param polygon_json: a polygon in json format
@@ -73,17 +183,22 @@ def download_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_cover
                          cloudcoverpercentage=(0, cloud_cover_thr*100)
                          )
     if len(products) < 1:
-        basic.outputlogMessage('warning, no results, please increase time span or cloud cover')
+        basic.outputlogMessage('warning, no results, please increase time span or cloud cover threshold')
         return False
 
-    # print(products)       # test
-    [print(products[item]) for item in products]
+    selected_products = select_products(api, products)
 
 
-    # check a scene already exist,
+    # download
+    api.download_all(selected_products, save_dir)
 
-    # crop images
+    # add the downloaded file name to "downloaded_scenes"
+    add_download_scene(selected_products)
 
+
+
+
+    # crop images and produce time-lapse images
 
     test = 1
 
@@ -92,6 +207,7 @@ def download_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_cover
 
 def download_s2_by_tile():
     # test download
+
     # For orthorectified products (Level-1C and Level-2A):
     # The granules (also called tiles) consist of 100 km by 100 km squared ortho-images in
     # UTM/WGS84 projection. There is one tile per spectral band.
@@ -156,20 +272,14 @@ def main(options, args):
     # read polygons
     polygons_json = read_polygons_json(polygons_shp)
 
-    # read the excluded_scenes before read download images,
-    # save to global variable: manually_excluded_scenes
-    read_excluded_scenes(save_folder)
 
-    # #read geometry of images already in "save_folder"
-    # save to global variable: downloaed_scene_geometry
-    read_down_load_geometry(save_folder)
 
     # test
     # download_s2_by_tile()
 
     for idx, geom in enumerate(polygons_json):
-        basic.outputlogMessage('downloading and cropping images for %d polygon, total: %d polygons'%(idx+1, len(polygons_json)))
-        download_s2_time_lapse_images(start_date, end_date, geom, cloud_cover_thr, crop_buffer, save_folder)
+        basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%(idx+1, len(polygons_json)))
+        download_crop_s2_time_lapse_images(start_date, end_date, geom, cloud_cover_thr, crop_buffer, save_folder)
 
         break
 
