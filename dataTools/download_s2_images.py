@@ -26,6 +26,8 @@ import pandas as pd
 
 downloaded_scenes= [] # already download images
 
+shp_polygon_projection = None
+
 def read_aready_download_scene(folder):
     global downloaded_scenes
     zip_list = io_function.get_file_list_by_ext('.zip', folder, bsub_folder=False)
@@ -168,6 +170,21 @@ def crop_one_image(input_image, save_path, polygon_json, buffer_size):
     # json format to shapely object
     polygon_shapely = Polygon(polygon_json['coordinates'][0]).buffer(0)
     expansion_polygon = polygon_shapely.buffer(buffer_size)
+
+    # re-projection if necessary
+    img_projection = get_projection_proj4(input_image)
+    if shp_polygon_projection != img_projection:
+        from functools import partial
+        import pyproj
+        from shapely.ops import transform
+
+        project = partial(
+            pyproj.transform,
+            pyproj.Proj(shp_polygon_projection),  # source coordinate system
+            pyproj.Proj(img_projection))  # destination coordinate system
+
+        expansion_polygon = transform(project, expansion_polygon)  # apply projection
+
 
     # polygon_json = mapping(expansion_polygon)
 
@@ -362,7 +379,9 @@ def main(options, args):
     rm_temp = options.remove_tmp
 
     # check these are EPSG:4326 projection
-    if get_projection_proj4(polygons_shp) == '+proj=longlat +datum=WGS84 +no_defs':
+    global shp_polygon_projection
+    shp_polygon_projection = get_projection_proj4(polygons_shp)
+    if shp_polygon_projection == '+proj=longlat +datum=WGS84 +no_defs':
         crop_buffer = meters_to_degress_onEarth(options.buffer_size)
     else:
         crop_buffer = options.buffer_size
