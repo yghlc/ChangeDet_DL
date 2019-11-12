@@ -141,31 +141,54 @@ def select_products(api, products):
     select10_eachyear_list = selected_eachyear.values.tolist()
 
     # check a scene already exist
-    select10_eachyear_list_new = []
+    select10_eachyear_list_download = []
     for sel_scene in select10_eachyear_list:
         file_name_noext = sel_scene[3].split('.')[0]
         if file_name_noext not in downloaded_scenes:
-            select10_eachyear_list_new.append(sel_scene)
+            select10_eachyear_list_download.append(sel_scene)
         else:
             basic.outputlogMessage('warning, skip downloading %s because it already exist'%file_name_noext)
 
-    sel_products =  {}
-    for item in select10_eachyear_list_new:
+    download_products =  {}
+    for item in select10_eachyear_list_download:
+        download_products[item[0]] = products[item[0]]
+
+    sel_products = {}
+    for item in select10_eachyear_list:
         sel_products[item[0]] = products[item[0]]
 
-    return sel_products
+    return download_products, sel_products
+
+def crop_produce_time_lapse_rgb_images(products, polygon_idx, buffer_size, time_lapse_dir):
+    '''
+    create time-lapse images for a polygon
+    :param products: s2 products
+    :param polygon_idx: polygon index in the shape file
+    :param buffer_size: buffer size for cropping
+    :param time_lapse_dir: save dir
+    :return:
+    '''
 
 
-def download_crop_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_cover_thr, buffer_size, save_dir):
+
+
+    test = 1
+
+
+    pass
+
+def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon_json, cloud_cover_thr, buffer_size, download_dir, time_lapse_dir):
     '''
     download all s2 images overlap with a polygon
     ref: https://sentinelsat.readthedocs.io/en/stable/api.html
     :param start_date: start date of the time lapse images
     :param end_date: end date  of the time lapse images
+    :param polygon_idx: the index of polygon in the shape file
     :param polygon_json: a polygon in json format
     :param cloud_cover_thr: cloud cover for inquiring images
     :param buffer_size: buffer area for crop the image
-    :param save_dir: save folder
+    :param download_dir: folder to save download zip files
+    :param time_lapse_dir: folder to save produce time-lapse images
     :return:
     '''
 
@@ -186,22 +209,19 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_
         basic.outputlogMessage('warning, no results, please increase time span or cloud cover threshold')
         return False
 
-    selected_products = select_products(api, products)
+    download_products, selected_products = select_products(api, products)
 
 
     # download
-    api.download_all(selected_products, save_dir)
+    api.download_all(download_products, download_dir)
 
     # add the downloaded file name to "downloaded_scenes"
-    add_download_scene(selected_products)
+    add_download_scene(download_products)
 
-
-    # crop images and produce time-lapse images
-
+    # crop and produce time-lapse images
+    crop_produce_time_lapse_rgb_images(selected_products, polygon_idx, buffer_size, time_lapse_dir)
 
     test = 1
-
-
     pass
 
 def download_s2_by_tile():
@@ -256,6 +276,11 @@ def main(options, args):
     assert io_function.is_file_exist(polygons_shp)
     os.system('mkdir -p ' + save_folder)
 
+    download_save_dir = os.path.join(save_folder, 's2_download')
+    time_lapse_dir = os.path.join(save_folder, 's2_time_lapse_images')
+    os.system('mkdir -p ' + download_save_dir)
+    os.system('mkdir -p ' + time_lapse_dir)
+
     # item_types = options.item_types.split(',') # ["PSScene4Band"]  # , # PSScene4Band , PSOrthoTile
 
     start_date = datetime.strptime(options.start_date, '%Y-%m-%d') #datetime(year=2018, month=5, day=20)
@@ -272,14 +297,16 @@ def main(options, args):
     polygons_json = read_polygons_json(polygons_shp)
 
     #
-    read_aready_download_scene(save_folder)
+    read_aready_download_scene(download_save_dir)
 
     # test
     # download_s2_by_tile()
 
     for idx, geom in enumerate(polygons_json):
-        basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%(idx+1, len(polygons_json)))
-        download_crop_s2_time_lapse_images(start_date, end_date, geom, cloud_cover_thr, crop_buffer, save_folder)
+        basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%
+                               (idx+1, len(polygons_json)))
+        download_crop_s2_time_lapse_images(start_date, end_date, idx, geom,
+                                           cloud_cover_thr, crop_buffer, download_save_dir,time_lapse_dir)
 
         break
 
