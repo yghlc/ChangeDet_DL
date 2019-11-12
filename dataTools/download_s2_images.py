@@ -159,25 +159,47 @@ def select_products(api, products):
 
     return download_products, sel_products
 
-def crop_produce_time_lapse_rgb_images(products, polygon_idx, buffer_size, time_lapse_dir):
+def crop_produce_time_lapse_rgb_images(products, polygon_idx, buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
     '''
     create time-lapse images for a polygon
     :param products: s2 products
     :param polygon_idx: polygon index in the shape file
     :param buffer_size: buffer size for cropping
+    :param download_dir: where save the zip files
     :param time_lapse_dir: save dir
     :return:
     '''
+    from zipfile import ZipFile
+    import shutil
+
+    for key, value in products.items():
+        file_name = value['filename']   # end with *.SAFE
+        zip_name = file_name.split('.')[0]+'.zip'
+
+        safe_folder = os.path.join(download_dir, file_name)
+        # unzip if does not exist
+        if os.path.isdir(safe_folder) is False:
+            with ZipFile(args.archive, 'r') as zip_file:
+                zip_file.extractall(safe_folder)
 
 
+        # find RGB images
+
+        # crop to saved dir
+
+        # remove SAFE folder to save storage
+        if remove_tmp:
+            shutil.rmtree(safe_folder)
 
 
     test = 1
 
 
+
     pass
 
-def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon_json, cloud_cover_thr, buffer_size, download_dir, time_lapse_dir):
+def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon_json, cloud_cover_thr,
+                                       buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
     '''
     download all s2 images overlap with a polygon
     ref: https://sentinelsat.readthedocs.io/en/stable/api.html
@@ -219,7 +241,7 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon
     add_download_scene(download_products)
 
     # crop and produce time-lapse images
-    crop_produce_time_lapse_rgb_images(selected_products, polygon_idx, buffer_size, time_lapse_dir)
+    crop_produce_time_lapse_rgb_images(selected_products, polygon_idx, buffer_size, download_dir, time_lapse_dir, remove_tmp=remove_tmp)
 
     test = 1
     pass
@@ -287,6 +309,7 @@ def main(options, args):
     end_date = datetime.strptime(options.end_date, '%Y-%m-%d')  #end_date
     cloud_cover_thr = options.cloud_cover           # 0.3
     crop_buffer = options.buffer_size
+    rm_temp = options.remove_tmp
 
 
     # set account
@@ -305,8 +328,8 @@ def main(options, args):
     for idx, geom in enumerate(polygons_json):
         basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%
                                (idx+1, len(polygons_json)))
-        download_crop_s2_time_lapse_images(start_date, end_date, idx, geom,
-                                           cloud_cover_thr, crop_buffer, download_save_dir,time_lapse_dir)
+        download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
+                                           crop_buffer, download_save_dir,time_lapse_dir,remove_tmp=rm_temp)
 
         break
 
@@ -331,6 +354,11 @@ if __name__ == "__main__":
     parser.add_option("-b", "--buffer_size",
                       action="store", dest="buffer_size", type=int, default = 500,
                       help="the buffer size to crop image in meters")
+
+    parser.add_option("-r", "--remove_tmp",
+                      action="store_true", dest="remove_tmp", default=False,
+                      help="set this flag to remove temporary files or folders")
+
     # parser.add_option("-i", "--item_types",
     #                   action="store", dest="item_types",default='PSScene4Band',
     #                   help="the item types, e.g., PSScene4Band,PSOrthoTile")
