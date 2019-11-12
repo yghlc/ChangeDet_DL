@@ -2,6 +2,10 @@
 
 ## Introduction:  download and crop s2 images
 
+## note: sometime, has message, Product 68c34c66-6909-4efe-adc7-a56f29e38e83 is not online.
+# Triggering retrieval from long term archive.
+# solution: wait a few hours, then try again.
+
 #authors: Huang Lingcao
 #email:huanglingcao@gmail.com
 #add time: 11 November, 2019
