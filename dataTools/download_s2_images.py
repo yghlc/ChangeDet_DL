@@ -29,8 +29,8 @@ def read_aready_download_scene(folder):
     global downloaded_scenes
     zip_list = io_function.get_file_list_by_ext('.zip', folder, bsub_folder=False)
     safe_list = io_function.get_file_list_by_ext('.SAFE', folder, bsub_folder=False)
-    downloaded_scenes.extend([zip.split('.')[0] for zip in zip_list] )
-    downloaded_scenes.extend([safe.split('.')[0] for safe in safe_list])
+    downloaded_scenes.extend([os.path.basename(zip).split('.')[0] for zip in zip_list] ) #zip.split('.')[0]
+    downloaded_scenes.extend([os.path.basename(safe).split('.')[0] for safe in safe_list])
 
 def add_download_scene(products):
     global downloaded_scenes
@@ -196,9 +196,8 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_json, cloud_
     add_download_scene(selected_products)
 
 
-
-
     # crop images and produce time-lapse images
+
 
     test = 1
 
@@ -272,7 +271,8 @@ def main(options, args):
     # read polygons
     polygons_json = read_polygons_json(polygons_shp)
 
-
+    #
+    read_aready_download_scene(save_folder)
 
     # test
     # download_s2_by_tile()
