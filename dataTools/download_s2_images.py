@@ -19,7 +19,8 @@ sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
 
 #  import functions, and variable in download_planet_img (include basic, io_function in DeeplabRS)
 from planetScripts.download_planet_img import *
-
+from sentinelScripts.get_subImages import get_projection_proj4
+from sentinelScripts.get_subImages import meters_to_degress_onEarth
 
 import pandas as pd
 
@@ -147,7 +148,7 @@ def select_products(api, products):
         if file_name_noext not in downloaded_scenes:
             select10_eachyear_list_download.append(sel_scene)
         else:
-            basic.outputlogMessage('warning, skip downloading %s because it already exist'%file_name_noext)
+            basic.outputlogMessage('warning, skip downloading %s because it already exists'%file_name_noext)
 
     download_products =  {}
     for item in select10_eachyear_list_download:
@@ -159,11 +160,46 @@ def select_products(api, products):
 
     return download_products, sel_products
 
-def crop_produce_time_lapse_rgb_images(products, polygon_idx, buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
+def crop_one_image(input_image, save_path, polygon_json, buffer_size):
+
+    from shapely.geometry import Polygon
+    import rasterio
+    from rasterio.mask import mask
+    # json format to shapely object
+    polygon_shapely = Polygon(polygon_json['coordinates'][0]).buffer(0)
+    expansion_polygon = polygon_shapely.buffer(buffer_size)
+
+    # polygon_json = mapping(expansion_polygon)
+
+    # use the rectangle
+    dstnodata = 0
+    brectangle = True
+    if brectangle:
+        # polygon_box = selected_polygon.bounds
+        polygon_json = mapping(expansion_polygon.envelope)
+
+    with rasterio.open(input_image) as src:
+
+        # crop image and saved to disk
+        out_image, out_transform = mask(src, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
+
+        # test: save it to disk
+        out_meta = src.meta.copy()
+        out_meta.update({"driver": "GTiff",
+                         "height": out_image.shape[1],
+                         "width": out_image.shape[2],
+                         "transform": out_transform})  # note that, the saved image have a small offset compared to the original ones (~0.5 pixel)
+        with rasterio.open(save_path, "w", **out_meta) as dest:
+            dest.write(out_image)
+
+    pass
+
+def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
     '''
     create time-lapse images for a polygon
     :param products: s2 products
     :param polygon_idx: polygon index in the shape file
+    :param polygon_json: polygon in json format
     :param buffer_size: buffer size for cropping
     :param download_dir: where save the zip files
     :param time_lapse_dir: save dir
@@ -172,6 +208,9 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, buffer_size, downl
     from zipfile import ZipFile
     import shutil
 
+    polygon_sub_image_dir = os.path.join(time_lapse_dir,'sub_images_of_%d_polygon'%polygon_idx)
+    os.system('mkdir -p ' + polygon_sub_image_dir)
+
     for key, value in products.items():
         file_name = value['filename']   # end with *.SAFE
         zip_name = file_name.split('.')[0]+'.zip'
@@ -179,22 +218,34 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, buffer_size, downl
         safe_folder = os.path.join(download_dir, file_name)
         # unzip if does not exist
         if os.path.isdir(safe_folder) is False:
-            with ZipFile(args.archive, 'r') as zip_file:
-                zip_file.extractall(safe_folder)
-
+            with ZipFile(os.path.join(download_dir,zip_name) , 'r') as zip_file:
+                zip_file.extractall(download_dir)
+                filelist = zip_file.namelist()
+                print(filelist)
 
         # find RGB images
+        # jp2_list = io_function.get_file_list_by_ext('.jp2', safe_folder, bsub_folder=True)
+        jp2_tci_file = io_function.get_file_list_by_pattern(safe_folder,'GRANULE/*/IMG_DATA/*_TCI.jp2')
+        if len(jp2_tci_file) == 1:
+            # crop to saved dir
+            save_crop_name = os.path.splitext(os.path.basename(jp2_tci_file[0]))[0] + '_%d_poly.tif'%polygon_idx
+            save_crop_path = os.path.join(polygon_sub_image_dir, save_crop_name)
 
-        # crop to saved dir
+            crop_one_image(jp2_tci_file[0], save_crop_path, polygon_json, buffer_size)
+
+        elif len(jp2_tci_file) < 1:
+            basic.outputlogMessage('warning, skip, in %s, the true color image is missing' % file_name)
+        else:
+            basic.outputlogMessage('warning, skip, multiple true color image in %s' % file_name)
 
         # remove SAFE folder to save storage
         if remove_tmp:
             shutil.rmtree(safe_folder)
 
+        # test
+        break
 
     test = 1
-
-
 
     pass
 
@@ -241,7 +292,7 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon
     add_download_scene(download_products)
 
     # crop and produce time-lapse images
-    crop_produce_time_lapse_rgb_images(selected_products, polygon_idx, buffer_size, download_dir, time_lapse_dir, remove_tmp=remove_tmp)
+    crop_produce_time_lapse_rgb_images(selected_products, polygon_idx, polygon_json, buffer_size, download_dir, time_lapse_dir, remove_tmp=remove_tmp)
 
     test = 1
     pass
@@ -308,9 +359,13 @@ def main(options, args):
     start_date = datetime.strptime(options.start_date, '%Y-%m-%d') #datetime(year=2018, month=5, day=20)
     end_date = datetime.strptime(options.end_date, '%Y-%m-%d')  #end_date
     cloud_cover_thr = options.cloud_cover           # 0.3
-    crop_buffer = options.buffer_size
     rm_temp = options.remove_tmp
 
+    # check these are EPSG:4326 projection
+    if get_projection_proj4(polygons_shp) == '+proj=longlat +datum=WGS84 +no_defs':
+        crop_buffer = meters_to_degress_onEarth(options.buffer_size)
+    else:
+        crop_buffer = options.buffer_size
 
     # set account
     if get_and_set_dhub_key() is not True:
