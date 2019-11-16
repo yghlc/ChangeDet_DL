@@ -232,13 +232,21 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
         file_name = value['filename']   # end with *.SAFE
         zip_name = file_name.split('.')[0]+'.zip'
 
-        safe_folder = os.path.join(download_dir, file_name)
-        # unzip if does not exist
-        if os.path.isdir(safe_folder) is False:
-            with ZipFile(os.path.join(download_dir,zip_name) , 'r') as zip_file:
+        with ZipFile(os.path.join(download_dir,zip_name) , 'r') as zip_file:
+            filelist = zip_file.namelist()
+            # print(filelist)
+
+            # sometime, in "filename".SAFE, the "filename" is different from zip file due to
+            # retrieval from long term archive
+            # get new file name of folder in the zip file
+            file_name = filelist[0].split('/')[0]
+
+            safe_folder = os.path.join(download_dir, file_name)
+            # unzip if does not exist
+            if os.path.isdir(safe_folder) is False:
                 zip_file.extractall(download_dir)
-                filelist = zip_file.namelist()
-                print(filelist)
+
+
 
         # find RGB images
         # jp2_list = io_function.get_file_list_by_ext('.jp2', safe_folder, bsub_folder=True)
@@ -260,9 +268,7 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
             shutil.rmtree(safe_folder)
 
         # test
-        break
-
-    test = 1
+        # break
 
     pass
 
