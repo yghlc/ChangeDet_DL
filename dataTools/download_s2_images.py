@@ -137,7 +137,7 @@ def select_products(api, products):
     date_cloud_pd['Year'] = date_cloud_pd.index.year
 
     date_cloud_pd_year_sort = date_cloud_pd.groupby(["Year"]).apply(
-        lambda x: x.sort_values(["cloudcoverpercentage"], ascending=True))
+        lambda x: x.sort_values(["cloudcoverpercentage"], ascending=True)).reset_index(drop=True)
 
     selected_eachyear = date_cloud_pd_year_sort.groupby(["Year"]).head(5)   #10     # only 5
 
@@ -199,7 +199,7 @@ def crop_one_image(input_image, save_path, polygon_idx, polygon_json, buffer_siz
     buffer_polygon_json = mapping(expansion_polygon.envelope)
 
     # check cloud cover, if yes, then abandon this one
-    
+
 
     with rasterio.open(input_image) as src:
 
