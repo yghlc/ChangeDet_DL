@@ -17,7 +17,7 @@ co_dir=~/codes/PycharmProjects/ChangeDet_DL
 
 
 shp=~/Data/Qinghai-Tibet/qtp_thaw_slumps/rts_polygons_s2_2018/qtp_train_polygons_s2_2018_v2.shp
-save_dir=s2_images_autodownload
+save_dir=../s2_images_autodownload
 start_date=2015-01-01
 end_date=2019-11-01
 could_cover=0.7
