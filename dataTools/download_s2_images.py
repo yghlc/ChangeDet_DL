@@ -13,6 +13,7 @@ from optparse import OptionParser
 from datetime import datetime
 
 from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
+import numpy as np
 
 # path for Landuse_DL
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
@@ -162,7 +163,7 @@ def select_products(api, products):
 
     return download_products, sel_products
 
-def crop_one_image(input_image, save_path, polygon_json, buffer_size):
+def crop_one_image(input_image, save_path, polygon_idx, polygon_json, buffer_size):
 
     from shapely.geometry import Polygon
     import rasterio
@@ -184,21 +185,33 @@ def crop_one_image(input_image, save_path, polygon_json, buffer_size):
             pyproj.Proj(img_projection))  # destination coordinate system
 
         expansion_polygon = transform(project, expansion_polygon)  # apply projection
+        polygon_shapely = transform(project, polygon_shapely)
 
 
     # polygon_json = mapping(expansion_polygon)
 
     # use the rectangle
     dstnodata = 0
-    brectangle = True
-    if brectangle:
-        # polygon_box = selected_polygon.bounds
-        polygon_json = mapping(expansion_polygon.envelope)
+    # brectangle = True
+    # if brectangle:
+    #     # polygon_box = selected_polygon.bounds
+    polygon_json = mapping(polygon_shapely.envelope)    # no buffer
+    buffer_polygon_json = mapping(expansion_polygon.envelope)
+
+    # check cloud cover, if yes, then abandon this one
+    
 
     with rasterio.open(input_image) as src:
 
+        # check image pixels, if all are dark or bright, abandon this one
+        out_image_nobuffer, _ = mask(src, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
+        if np.std(out_image_nobuffer) < 0.01:
+            basic.outputlogMessage('Warnig, Subset of Image:%s for %dth polygon is black or white,'
+                                   ' skip' % (os.path.basename(input_image), polygon_idx))
+            return False
+
         # crop image and saved to disk
-        out_image, out_transform = mask(src, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
+        out_image, out_transform = mask(src, [buffer_polygon_json], nodata=dstnodata, all_touched=True, crop=True)
 
         # test: save it to disk
         out_meta = src.meta.copy()
@@ -256,7 +269,7 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
             save_crop_name = os.path.splitext(os.path.basename(jp2_tci_file[0]))[0] + '_%d_poly.tif'%polygon_idx
             save_crop_path = os.path.join(polygon_sub_image_dir, save_crop_name)
 
-            crop_one_image(jp2_tci_file[0], save_crop_path, polygon_json, buffer_size)
+            crop_one_image(jp2_tci_file[0], save_crop_path, polygon_idx ,polygon_json, buffer_size)
 
         elif len(jp2_tci_file) < 1:
             basic.outputlogMessage('warning, skip, in %s, the true color image is missing' % file_name)
