@@ -206,7 +206,7 @@ def crop_one_image(input_image, save_path, polygon_idx, polygon_json, buffer_siz
         # check image pixels, if all are dark or bright, abandon this one
         out_image_nobuffer, _ = mask(src, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
         if np.std(out_image_nobuffer) < 0.01:
-            basic.outputlogMessage('Warnig, Subset of Image:%s for %dth polygon is black or white,'
+            basic.outputlogMessage('Warning, Subset of Image:%s for %dth polygon is black or white,'
                                    ' skip' % (os.path.basename(input_image), polygon_idx))
             return False
 
