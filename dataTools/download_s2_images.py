@@ -233,8 +233,14 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_json
         # shadow_count = (pixels_cloud == 3).sum()
         cloud_percent = 100*cloud_pixel_count/pixels_cloud.size
         if cloud_percent  > 1:
-            basic.outputlogMessage('Warning, Subset of Image:%s for %dth polygon has cloud (%d / %.2lf pixels,  )  ,'
+            basic.outputlogMessage('Warning, Subset of Image:%s for %dth polygon has cloud (%d pixels / %.2lf percent)'
                                    ' skip' % (os.path.basename(input_image), polygon_idx, cloud_pixel_count, cloud_percent))
+            return False
+        shadow_count = (pixels_cloud == 3).sum()
+        shadow_percent = 100 * shadow_count / pixels_cloud.size
+        if shadow_percent  > 50:
+            basic.outputlogMessage('Warning, more than half of the subset of Image:%s for %dth polygon has cloud shadow  (%d pixels / %.2lf percent)'
+                                   ' skip' % (os.path.basename(input_image), polygon_idx, shadow_count, shadow_percent))
             return False
 
     with rasterio.open(input_image) as src:
