@@ -469,7 +469,7 @@ def main(options, args):
         download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
                                            crop_buffer, download_save_dir,time_lapse_dir,remove_tmp=rm_temp)
 
-        break
+        # break
 
     pass
 
