@@ -190,13 +190,13 @@ def fmask_cloud_detection(safe_folder, output):
         return False
     return True
 
-def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_json, buffer_size):
+def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_shapely, buffer_size):
 
     from shapely.geometry import Polygon
     import rasterio
     from rasterio.mask import mask
     # json format to shapely object
-    polygon_shapely = Polygon(polygon_json['coordinates'][0]).buffer(0)
+    # polygon_shapely = Polygon(polygon_json['coordinates'][0]).buffer(0)
     expansion_polygon = polygon_shapely.buffer(buffer_size)
 
     # re-projection if necessary
@@ -272,12 +272,12 @@ def report_not_exist_zip(zip_name, polygon_idx):
         f_obj.writelines(line)
 
 
-def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
+def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_shapely, buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
     '''
     create time-lapse images for a polygon
     :param products: s2 products
     :param polygon_idx: polygon index in the shape file
-    :param polygon_json: polygon in json format
+    :param polygon_shapely: polygon in shapely format
     :param buffer_size: buffer size for cropping
     :param download_dir: where save the zip files
     :param time_lapse_dir: save dir
@@ -325,7 +325,7 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
             save_crop_name = os.path.splitext(os.path.basename(jp2_tci_file[0]))[0] + '_%d_poly.tif'%polygon_idx
             save_crop_path = os.path.join(polygon_sub_image_dir, save_crop_name)
 
-            crop_one_image(jp2_tci_file[0], cloud_mask_tif, save_crop_path, polygon_idx ,polygon_json, buffer_size)
+            crop_one_image(jp2_tci_file[0], cloud_mask_tif, save_crop_path, polygon_idx ,polygon_shapely, buffer_size)
 
         elif len(jp2_tci_file) < 1:
             basic.outputlogMessage('warning, skip, in %s, the true color image is missing' % file_name)
@@ -341,7 +341,7 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
 
     pass
 
-def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon_json, cloud_cover_thr,
+def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon_shapely, cloud_cover_thr,
                                        buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
     '''
     download all s2 images overlap with a polygon
@@ -349,7 +349,7 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon
     :param start_date: start date of the time lapse images
     :param end_date: end date  of the time lapse images
     :param polygon_idx: the index of polygon in the shape file
-    :param polygon_json: a polygon in json format
+    :param polygon_shapely: a polygon in shapely format
     :param cloud_cover_thr: cloud cover for inquiring images
     :param buffer_size: buffer area for crop the image
     :param download_dir: folder to save download zip files
@@ -362,7 +362,12 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon
     # print(os.environ["DHUS_USER"], os.environ["DHUS_PASSWORD"])
     api = SentinelAPI(os.environ["DHUS_USER"], os.environ["DHUS_PASSWORD"]) # data["login"], data["password"], 'https://scihub.copernicus.eu/dhus'
 
-    # inquiry images
+    ### inquiry images
+
+    # if the footprint is too complicate, like a Concave (not convex) polygon, api.query will output error,
+    # in this case, use the box of the polygon
+    # to simply, all use the envelope
+    polygon_json = mapping(polygon_shapely.envelope)
     footprint = geojson_to_wkt(polygon_json)
 
     products = api.query(footprint,
@@ -384,7 +389,7 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon
     add_download_scene(download_products)
 
     # crop and produce time-lapse images
-    crop_produce_time_lapse_rgb_images(selected_products, polygon_idx, polygon_json, buffer_size, download_dir, time_lapse_dir, remove_tmp=remove_tmp)
+    crop_produce_time_lapse_rgb_images(selected_products, polygon_idx, polygon_shapely, buffer_size, download_dir, time_lapse_dir, remove_tmp=remove_tmp)
 
     test = 1
     pass
@@ -466,7 +471,7 @@ def main(options, args):
         return False
 
     # read polygons
-    polygons_json = read_polygons_json(polygons_shp)
+    polygons = read_polygons_json(polygons_shp, no_json=True)
 
     #
     read_aready_download_scene(download_save_dir)
@@ -474,9 +479,9 @@ def main(options, args):
     # test
     # download_s2_by_tile()
 
-    for idx, geom in enumerate(polygons_json):
+    for idx, geom in enumerate(polygons):
         basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%
-                               (idx+1, len(polygons_json)))
+                               (idx+1, len(polygons)))
         download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
                                            crop_buffer, download_save_dir,time_lapse_dir,remove_tmp=rm_temp)
 
