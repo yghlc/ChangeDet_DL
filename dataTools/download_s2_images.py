@@ -266,6 +266,12 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_json
 
     pass
 
+def report_not_exist_zip(zip_name, polygon_idx):
+    with open('need_retry_zip_files.txt','a') as f_obj:
+        line = '%s for %dth polygon does not exist, need to retry after a few hours\n'%(zip_name,polygon_idx)
+        f_obj.writelines(line)
+
+
 def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buffer_size, download_dir, time_lapse_dir, remove_tmp=False):
     '''
     create time-lapse images for a polygon
@@ -287,7 +293,12 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
         file_name = value['filename']   # end with *.SAFE
         zip_name = file_name.split('.')[0]+'.zip'
 
-        with ZipFile(os.path.join(download_dir,zip_name) , 'r') as zip_file:
+        zip_path = os.path.join(download_dir,zip_name)
+        if os.path.isfile(zip_path) is False:
+            report_not_exist_zip(zip_path, polygon_idx)
+            continue
+
+        with ZipFile(zip_path , 'r') as zip_file:
             filelist = zip_file.namelist()
             # print(filelist)
 
