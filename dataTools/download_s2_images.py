@@ -295,7 +295,7 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
 
         zip_path = os.path.join(download_dir,zip_name)
         if os.path.isfile(zip_path) is False:
-            report_not_exist_zip(zip_path, polygon_idx)
+            report_not_exist_zip(zip_name, polygon_idx)
             continue
 
         with ZipFile(zip_path , 'r') as zip_file:
