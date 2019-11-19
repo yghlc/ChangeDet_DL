@@ -143,6 +143,10 @@ def select_products(api, products):
 
     # to list [product_id, date, cloud cover, filename, year ]
     select10_eachyear_list = selected_eachyear.values.tolist()
+    # output to log file
+    basic.outputlogMessage('Selected scenes:')
+    for item in select10_eachyear_list:
+        basic.outputlogMessage('acquired date: %s, SAFE: %s, cloud cover: %.3lf '%(item[1],item[3], item[2]))
 
     # check a scene already exist
     select10_eachyear_list_download = []
