@@ -167,7 +167,30 @@ def select_products(api, products):
 
     return download_products, sel_products
 
-def crop_one_image(input_image, save_path, polygon_idx, polygon_json, buffer_size):
+def fmask_cloud_detection(safe_folder, output):
+    '''
+    using fmask algorthm to detection cloud
+    :param safe_folder:  safe folder
+    :param output: cloud mask
+    :return: True if successful, False otherwise
+    '''
+
+    tmp_dir = 'fmask_tmp_dir'
+    os.system('mkdir -p ' + tmp_dir)
+
+    # perform fmask at resolution of 20 m (default), 10 m is too slow
+    cloud_img = os.path.join(tmp_dir, os.path.splitext(os.path.basename(safe_folder))[0]+'.img')
+    arg_list = ['fmask_sentinel2Stacked.py', '-o', cloud_img,'-e',tmp_dir,'-v','--safedir',safe_folder]
+    if basic.exec_command_args_list_one_file(arg_list, cloud_img) is False:
+        return False
+
+    # re-sample to 10 m
+    arg_list = ['gdal_translate', '-of', 'GTiff', '-tr', '10', '10' ,'-r','nearest',cloud_img, output]
+    if basic.exec_command_args_list_one_file(arg_list, output) is False:
+        return False
+    return True
+
+def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_json, buffer_size):
 
     from shapely.geometry import Polygon
     import rasterio
@@ -203,7 +226,15 @@ def crop_one_image(input_image, save_path, polygon_idx, polygon_json, buffer_siz
     buffer_polygon_json = mapping(expansion_polygon.envelope)
 
     # check cloud cover, if yes, then abandon this one
-
+    with rasterio.open(cloud_mask) as cloud:
+        # check cloud pixels, 2 for cloud pixel, 3 for cloud shadow
+        pixels_cloud, _ = mask(cloud, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
+        cloud_pixel_count = (pixels_cloud == 2).sum()
+        shadow_count = (pixels_cloud == 3).sum()
+        if cloud_pixel_count + shadow_count > 0:
+            basic.outputlogMessage('Warning, Subset of Image:%s for %dth polygon has could (%d pixels) or cloud shadow (%d pixels) ,'
+                                   ' skip' % (os.path.basename(input_image), polygon_idx, cloud_pixel_count, shadow_count))
+            return False
 
     with rasterio.open(input_image) as src:
 
@@ -263,7 +294,10 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
             if os.path.isdir(safe_folder) is False:
                 zip_file.extractall(download_dir)
 
-
+        # perform cloud detection
+        cloud_mask_tif = os.path.splitext(safe_folder)[0]+'_cloud.tif'
+        if os.path.isfile(cloud_mask_tif) is False:
+            fmask_cloud_detection(safe_folder,cloud_mask_tif)
 
         # find RGB images
         # jp2_list = io_function.get_file_list_by_ext('.jp2', safe_folder, bsub_folder=True)
@@ -273,7 +307,7 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_json, buff
             save_crop_name = os.path.splitext(os.path.basename(jp2_tci_file[0]))[0] + '_%d_poly.tif'%polygon_idx
             save_crop_path = os.path.join(polygon_sub_image_dir, save_crop_name)
 
-            crop_one_image(jp2_tci_file[0], save_crop_path, polygon_idx ,polygon_json, buffer_size)
+            crop_one_image(jp2_tci_file[0], cloud_mask_tif, save_crop_path, polygon_idx ,polygon_json, buffer_size)
 
         elif len(jp2_tci_file) < 1:
             basic.outputlogMessage('warning, skip, in %s, the true color image is missing' % file_name)
