@@ -373,6 +373,7 @@ def download_crop_s2_time_lapse_images(start_date,end_date, polygon_idx, polygon
     products = api.query(footprint,
                          date=(start_date, end_date),  # (start, end), e.g. (“NOW-1DAY”, “NOW”)
                          platformname='Sentinel-2',
+                         producttype = 'S2MSI1C',      #Level-2A are only available after 2019, so only get Level-1C
                          cloudcoverpercentage=(0, cloud_cover_thr*100)
                          )
     if len(products) < 1:
