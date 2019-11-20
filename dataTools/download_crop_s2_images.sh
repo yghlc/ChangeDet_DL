@@ -21,8 +21,9 @@ rm need_retry_zip_files.txt || true
 shp=~/Data/Qinghai-Tibet/entire_QTP_images/sentinel-2/autoMapping/QTP_deeplabV3+_3/result_backup/QTP_deeplabV3+_3_exp2_iter30000_prj_post2_chpc_2_latlon.shp
 
 save_dir=../s2_images_autodownload
+time_lapse_dir=s2_qtp_mapped_polygons_time_lapse
 start_date=2015-01-01
 end_date=2019-11-01
 could_cover=0.7
 
-${co_dir}/dataTools/download_s2_images.py ${shp} ${save_dir}  -s ${start_date} -e ${end_date} -c ${could_cover}
+${co_dir}/dataTools/download_s2_images.py ${shp} ${save_dir}  -s ${start_date} -e ${end_date} -c ${could_cover} -t ${time_lapse_dir}

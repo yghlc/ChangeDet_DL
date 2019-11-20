@@ -451,7 +451,11 @@ def main(options, args):
     os.system('mkdir -p ' + save_folder)
 
     download_save_dir = os.path.join(save_folder, 's2_download')
-    time_lapse_dir = os.path.join(save_folder, 's2_time_lapse_images')
+    if options.time_lapse_dir is None:
+        time_lapse_dir = os.path.join(save_folder, 's2_time_lapse_images')
+    else:
+        time_lapse_dir = os.path.join(save_folder, options.time_lapse_dir)
+
     os.system('mkdir -p ' + download_save_dir)
     os.system('mkdir -p ' + time_lapse_dir)
 
@@ -512,6 +516,10 @@ if __name__ == "__main__":
     parser.add_option("-b", "--buffer_size",
                       action="store", dest="buffer_size", type=int, default = 500,
                       help="the buffer size to crop image in meters")
+
+    parser.add_option("-t", "--time_lapse_dir",
+                      action="store", dest="time_lapse_dir",
+                      help="the folder to save time lapse images")
 
     parser.add_option("-r", "--remove_tmp",
                       action="store_true", dest="remove_tmp", default=False,
