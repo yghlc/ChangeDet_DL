@@ -258,7 +258,7 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_shap
 
         # check overlap
         raster_bounds = src.bounds
-        shape_bound = rasterio.src.bounds(polygon_json)
+        shape_bound = rasterio.features.bounds(polygon_json)
         if rasterio.coords.disjoint_bounds(raster_bounds, shape_bound):
             basic.outputlogMessage('Warning, ignored, Subset of Image:%s for %dth polygon '
                                    'because they do not have overlap' % (os.path.basename(input_image), polygon_idx))
