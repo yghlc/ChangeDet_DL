@@ -226,22 +226,25 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_shap
     buffer_polygon_json = mapping(expansion_polygon.envelope)
 
     # check cloud cover, if yes, then abandon this one
-    with rasterio.open(cloud_mask) as cloud:
-        # check cloud pixels, 2 for cloud pixel, 3 for cloud shadow
-        pixels_cloud, _ = mask(cloud, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
-        cloud_pixel_count = (pixels_cloud == 2).sum()
-        # shadow_count = (pixels_cloud == 3).sum()
-        cloud_percent = 100*cloud_pixel_count/pixels_cloud.size
-        if cloud_percent  > 1:
-            basic.outputlogMessage('Warning, Subset of Image:%s for %dth polygon has cloud (%d pixels / %.2lf percent)'
-                                   ' skip' % (os.path.basename(input_image), polygon_idx, cloud_pixel_count, cloud_percent))
-            return False
-        shadow_count = (pixels_cloud == 3).sum()
-        shadow_percent = 100 * shadow_count / pixels_cloud.size
-        if shadow_percent  > 50:
-            basic.outputlogMessage('Warning, more than half of the subset of Image:%s for %dth polygon has cloud shadow  (%d pixels / %.2lf percent)'
-                                   ' skip' % (os.path.basename(input_image), polygon_idx, shadow_count, shadow_percent))
-            return False
+    if os.path.isfile(cloud_mask):
+        with rasterio.open(cloud_mask) as cloud:
+            # check cloud pixels, 2 for cloud pixel, 3 for cloud shadow
+            pixels_cloud, _ = mask(cloud, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
+            cloud_pixel_count = (pixels_cloud == 2).sum()
+            # shadow_count = (pixels_cloud == 3).sum()
+            cloud_percent = 100*cloud_pixel_count/pixels_cloud.size
+            if cloud_percent  > 1:
+                basic.outputlogMessage('Warning, Subset of Image:%s for %dth polygon has cloud (%d pixels / %.2lf percent)'
+                                       ' skip' % (os.path.basename(input_image), polygon_idx, cloud_pixel_count, cloud_percent))
+                return False
+            shadow_count = (pixels_cloud == 3).sum()
+            shadow_percent = 100 * shadow_count / pixels_cloud.size
+            if shadow_percent  > 50:
+                basic.outputlogMessage('Warning, more than half of the subset of Image:%s for %dth polygon has cloud shadow  (%d pixels / %.2lf percent)'
+                                       ' skip' % (os.path.basename(input_image), polygon_idx, shadow_count, shadow_percent))
+                return False
+    else:
+        basic.outputlogMessage('Warning, cloud mask for %s does not exist'%input_image)
 
     with rasterio.open(input_image) as src:
 
