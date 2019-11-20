@@ -228,6 +228,14 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_shap
     # check cloud cover, if yes, then abandon this one
     if os.path.isfile(cloud_mask):
         with rasterio.open(cloud_mask) as cloud:
+            # check overlap
+            raster_bounds = cloud.bounds
+            shape_bound = rasterio.features.bounds(polygon_json)
+            if rasterio.coords.disjoint_bounds(raster_bounds, shape_bound):
+                basic.outputlogMessage('Warning, ignored, Subset of Image:%s for %dth polygon '
+                                       'because the cloud cover do not overlap the polygon'%(os.path.basename(input_image), polygon_idx))
+                return False
+
             # check cloud pixels, 2 for cloud pixel, 3 for cloud shadow
             pixels_cloud, _ = mask(cloud, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
             cloud_pixel_count = (pixels_cloud == 2).sum()
@@ -247,6 +255,14 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_shap
         basic.outputlogMessage('Warning, cloud mask for %s does not exist'%input_image)
 
     with rasterio.open(input_image) as src:
+
+        # check overlap
+        raster_bounds = src.bounds
+        shape_bound = rasterio.src.bounds(polygon_json)
+        if rasterio.coords.disjoint_bounds(raster_bounds, shape_bound):
+            basic.outputlogMessage('Warning, ignored, Subset of Image:%s for %dth polygon '
+                                   'because they do not have overlap' % (os.path.basename(input_image), polygon_idx))
+            return False
 
         # check image pixels, if all are dark or bright, abandon this one
         out_image_nobuffer, _ = mask(src, [polygon_json], nodata=dstnodata, all_touched=True, crop=True)
