@@ -15,8 +15,11 @@ set -eE -o functrace
 
 co_dir=~/codes/PycharmProjects/ChangeDet_DL
 
+rm need_retry_zip_files.txt || true
 
-shp=~/Data/Qinghai-Tibet/qtp_thaw_slumps/rts_polygons_s2_2018/qtp_train_polygons_s2_2018_v2.shp
+#shp=~/Data/Qinghai-Tibet/qtp_thaw_slumps/rts_polygons_s2_2018/qtp_train_polygons_s2_2018_v2.shp
+shp=~/Data/Qinghai-Tibet/entire_QTP_images/sentinel-2/autoMapping/QTP_deeplabV3+_3/result_backup/QTP_deeplabV3+_3_exp2_iter30000_prj_post2_chpc_2_latlon.shp
+
 save_dir=../s2_images_autodownload
 start_date=2015-01-01
 end_date=2019-11-01
