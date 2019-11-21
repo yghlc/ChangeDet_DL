@@ -344,7 +344,11 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_shapely, b
             save_crop_name = os.path.splitext(os.path.basename(jp2_tci_file[0]))[0] + '_%d_poly.tif'%polygon_idx
             save_crop_path = os.path.join(polygon_sub_image_dir, save_crop_name)
 
-            crop_one_image(jp2_tci_file[0], cloud_mask_tif, save_crop_path, polygon_idx ,polygon_shapely, buffer_size)
+            if os.path.isfile(save_crop_path):
+                basic.outputlogMessage('subset: %s already exists, skip'%os.path.basename(save_crop_path))
+                continue
+            else:
+                crop_one_image(jp2_tci_file[0], cloud_mask_tif, save_crop_path, polygon_idx ,polygon_shapely, buffer_size)
 
         elif len(jp2_tci_file) < 1:
             basic.outputlogMessage('warning, skip, in %s, the true color image is missing' % file_name)
