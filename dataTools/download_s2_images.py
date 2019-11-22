@@ -517,7 +517,7 @@ def main(options, args):
         except SentinelAPILTAError:
             basic.outputlogMessage('SentinelAPILTAError, Trying to download an offline product')
         except Exception as e:      # can get all the exception, and the program will not exit
-            basic.outputlogMessage('unknow error: '+str(e))
+            basic.outputlogMessage('unknown error: '+str(e))
 
         # break
 
