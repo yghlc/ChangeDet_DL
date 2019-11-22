@@ -186,7 +186,7 @@ def fmask_cloud_detection(safe_folder, output):
         return False
 
     # re-sample to 10 m
-    arg_list = ['gdal_translate', '-of', 'GTiff', '-tr', '10', '10' ,'-r','nearest',cloud_img, output]
+    arg_list = ['gdal_translate', '-of', 'GTiff', '-tr', '10', '10' ,'-r','nearest','-co','COMPRESS=LZW',cloud_img, output]
     if basic.exec_command_args_list_one_file(arg_list, output) is False:
         return False
     return True
