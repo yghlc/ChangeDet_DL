@@ -140,7 +140,7 @@ def select_products(api, products):
     date_cloud_pd_year_sort = date_cloud_pd.groupby(["Year"]).apply(
         lambda x: x.sort_values(["cloudcoverpercentage"], ascending=True)).reset_index(drop=True)
 
-    selected_eachyear = date_cloud_pd_year_sort.groupby(["Year"]).head(2)   #10     # only 5
+    selected_eachyear = date_cloud_pd_year_sort.groupby(["Year"]).head(5)   #10     # only 5
 
     # to list [product_id, date, cloud cover, filename, year ]
     select10_eachyear_list = selected_eachyear.values.tolist()
