@@ -1,2 +1,5 @@
 sentinelsat
 planet
+shapely
+geopandas
+rasterio
