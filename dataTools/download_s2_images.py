@@ -177,7 +177,8 @@ def fmask_cloud_detection(safe_folder, output):
     '''
 
     tmp_dir = 'fmask_tmp_dir'
-    os.system('mkdir -p ' + tmp_dir)
+    # os.system('mkdir -p ' + tmp_dir)
+    io_function.mkdir(tmp_dir)
 
     # perform fmask at resolution of 20 m (default), 10 m is too slow
     cloud_img = os.path.join(tmp_dir, os.path.splitext(os.path.basename(safe_folder))[0]+'.img')
@@ -307,7 +308,8 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_shapely, b
     import shutil
 
     polygon_sub_image_dir = os.path.join(time_lapse_dir,'sub_images_of_%d_polygon'%polygon_idx)
-    os.system('mkdir -p ' + polygon_sub_image_dir)
+    # os.system('mkdir -p ' + polygon_sub_image_dir)
+    io_function.mkdir(polygon_sub_image_dir)
 
     for key, value in products.items():
         file_name = value['filename']   # end with *.SAFE
@@ -469,7 +471,9 @@ def main(options, args):
 
     # check training polygons
     assert io_function.is_file_exist(polygons_shp)
-    os.system('mkdir -p ' + save_folder)
+    # os.system('mkdir -p ' + save_folder)
+    io_function.mkdir(save_folder)
+
 
     download_save_dir = os.path.join(save_folder, 's2_download')
     if options.time_lapse_dir is None:
@@ -477,8 +481,10 @@ def main(options, args):
     else:
         time_lapse_dir = os.path.join(save_folder, options.time_lapse_dir)
 
-    os.system('mkdir -p ' + download_save_dir)
-    os.system('mkdir -p ' + time_lapse_dir)
+    # os.system('mkdir -p ' + download_save_dir)
+    # os.system('mkdir -p ' + time_lapse_dir)
+    io_function.mkdir(download_save_dir)
+    io_function.mkdir(time_lapse_dir)
 
     # item_types = options.item_types.split(',') # ["PSScene4Band"]  # , # PSScene4Band , PSOrthoTile
 
