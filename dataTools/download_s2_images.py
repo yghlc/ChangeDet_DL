@@ -274,6 +274,7 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_shap
             return False
 
         # crop image and saved to disk
+        basic.outputlogMessage('buffer_polygon_json:'+str(buffer_polygon_json))
         out_image, out_transform = mask(src, [buffer_polygon_json], nodata=dstnodata, all_touched=True, crop=True)
 
         # test: save it to disk
