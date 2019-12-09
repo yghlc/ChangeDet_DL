@@ -343,7 +343,7 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_shapely, b
         # jp2_list = io_function.get_file_list_by_ext('.jp2', safe_folder, bsub_folder=True)
         jp2_tci_file = io_function.get_file_list_by_pattern(safe_folder,'GRANULE/*/IMG_DATA/*_TCI.jp2')
         print('**************')
-        print(jp2_tci_file)
+        basic.outputlogMessage('img_list:'+str(jp2_tci_file))
         print('**************')
         if len(jp2_tci_file) == 1:
             # crop to saved dir
