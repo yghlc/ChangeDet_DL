@@ -342,9 +342,9 @@ def crop_produce_time_lapse_rgb_images(products, polygon_idx, polygon_shapely, b
         # find RGB images
         # jp2_list = io_function.get_file_list_by_ext('.jp2', safe_folder, bsub_folder=True)
         jp2_tci_file = io_function.get_file_list_by_pattern(safe_folder,'GRANULE/*/IMG_DATA/*_TCI.jp2')
-        print('**************')
-        basic.outputlogMessage('img_list:'+str(jp2_tci_file))
-        print('**************')
+        # print('**************')
+        # basic.outputlogMessage('img_list:'+str(jp2_tci_file))
+        # print('**************')
         if len(jp2_tci_file) == 1:
             # crop to saved dir
             save_crop_name = os.path.splitext(os.path.basename(jp2_tci_file[0]))[0] + '_%d_poly.tif'%polygon_idx
@@ -520,13 +520,18 @@ def main(options, args):
     for idx, geom in enumerate(polygons):
         basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%
                                (idx+1, len(polygons)))
-        try:
-            download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
-                                           crop_buffer, download_save_dir,time_lapse_dir,remove_tmp=rm_temp)
-        except SentinelAPILTAError:
-            basic.outputlogMessage('SentinelAPILTAError, Trying to download an offline product')
-        except Exception as e:      # can get all the exception, and the program will not exit
-            basic.outputlogMessage('unknown error: '+str(e))
+        # for debug
+        download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
+                                           crop_buffer, download_save_dir, time_lapse_dir, remove_tmp=rm_temp)
+
+        # for batch running
+        # try:
+        #     download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
+        #                                    crop_buffer, download_save_dir,time_lapse_dir,remove_tmp=rm_temp)
+        # except SentinelAPILTAError:
+        #     basic.outputlogMessage('SentinelAPILTAError, Trying to download an offline product')
+        # except Exception as e:      # can get all the exception, and the program will not exit
+        #     basic.outputlogMessage('unknown error: '+str(e))
 
         # break
 
