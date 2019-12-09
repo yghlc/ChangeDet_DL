@@ -274,8 +274,8 @@ def crop_one_image(input_image, cloud_mask, save_path, polygon_idx, polygon_shap
             return False
 
         # crop image and saved to disk
-        basic.outputlogMessage('polygon_json:' + str(polygon_json))
-        basic.outputlogMessage('buffer_polygon_json:'+str(buffer_polygon_json))
+        # basic.outputlogMessage('polygon_json:' + str(polygon_json))
+        # basic.outputlogMessage('buffer_polygon_json:'+str(buffer_polygon_json))
         out_image, out_transform = mask(src, [buffer_polygon_json], nodata=dstnodata, all_touched=True, crop=True)
 
         # test: save it to disk
@@ -524,18 +524,18 @@ def main(options, args):
     for idx, geom in enumerate(polygons):
         basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%
                                (idx+1, len(polygons)))
-        # for debug
-        download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
-                                           crop_buffer, download_save_dir, time_lapse_dir, remove_tmp=rm_temp)
+        # # for debug
+        # download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
+        #                                    crop_buffer, download_save_dir, time_lapse_dir, remove_tmp=rm_temp)
 
         # for batch running
-        # try:
-        #     download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
-        #                                    crop_buffer, download_save_dir,time_lapse_dir,remove_tmp=rm_temp)
-        # except SentinelAPILTAError:
-        #     basic.outputlogMessage('SentinelAPILTAError, Trying to download an offline product')
-        # except Exception as e:      # can get all the exception, and the program will not exit
-        #     basic.outputlogMessage('unknown error: '+str(e))
+        try:
+            download_crop_s2_time_lapse_images(start_date, end_date, idx, geom, cloud_cover_thr,
+                                           crop_buffer, download_save_dir,time_lapse_dir,remove_tmp=rm_temp)
+        except SentinelAPILTAError:
+            basic.outputlogMessage('SentinelAPILTAError, Trying to download an offline product')
+        except Exception as e:      # can get all the exception, and the program will not exit
+            basic.outputlogMessage('unknown error: '+str(e))
 
         # break
 
