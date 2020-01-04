@@ -503,10 +503,12 @@ def main(options, args):
     shp_polygon_projection = get_projection_proj4(polygons_shp).strip()
     if shp_polygon_projection == '+proj=longlat +datum=WGS84 +no_defs':
         crop_buffer = meters_to_degress_onEarth(options.buffer_size)
+        basic.outputlogMessage('The crop buffer size is %lf degrees ' % crop_buffer)
     else:
         crop_buffer = options.buffer_size
+        basic.outputlogMessage('The crop buffer size is %lf meters' % crop_buffer)
 
-    basic.outputlogMessage('The crop buffer size is %lf in meters or degrees '%crop_buffer)
+
 
     # set account
     if get_and_set_dhub_key() is not True:
