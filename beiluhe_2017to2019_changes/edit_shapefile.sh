@@ -12,7 +12,10 @@ set -eE -o functrace
 
 code_dir=~/codes/PycharmProjects/Landuse_DL
 
-
-## get the count of adjacent polygons for blh_manu_RTS_utm_201707.shp
 ground_truth_201707=~/Data/Qinghai-Tibet/beiluhe/thaw_slumps/train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp
-${code_dir}/resultScript/add_info2Pylygons.py ${ground_truth_201707}  -n "adj_count" -b 600
+
+## get the count of adjacent polygons for blh_manu_RTS_utm_201707.shp, buffer area = 600 meters
+#${code_dir}/resultScript/add_info2Pylygons.py ${ground_truth_201707}  -n "adj_count" -b 600
+
+## get the circularity of polygons, it will also add area and perimeter
+${code_dir}/resultScript/add_info2Pylygons.py ${ground_truth_201707}  -n "circularity"
