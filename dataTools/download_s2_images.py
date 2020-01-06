@@ -524,6 +524,8 @@ def main(options, args):
     # download_s2_by_tile()
 
     for idx, geom in enumerate(polygons):
+        if idx < 14547:
+            continue
         basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%
                                (idx+1, len(polygons)))
         # # for debug
