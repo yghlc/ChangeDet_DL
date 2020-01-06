@@ -17,7 +17,72 @@ import basic_src.io_function as io_function
 import basic_src.basic as basic
 import basic_src.map_projection as map_projection
 
+import vector_gpd
+
+import pandas as pd
+
+# for polygon comparison
+
+
 def polygons_change_detection(old_shp_path, new_shp_path,save_path):
+    '''
+    change detection of polygons, compare their extent changes
+    :param old_shp_path: the path of the old polygons
+    :param new_shp_path: the path of the new polygons
+    :param save_path: save path
+    :return: True if successfully, False otherwise
+    '''
+
+    # check projection of the shape file, should be the same
+    new_shp_proj4 = map_projection.get_raster_or_vector_srs_info_proj4(new_shp_path)
+    old_shp_proj4 = map_projection.get_raster_or_vector_srs_info_proj4(old_shp_path)
+    if new_shp_proj4 != old_shp_proj4:
+        raise ValueError('error, projection insistence between %s and %s'%(new_shp_proj4, old_shp_proj4))
+
+    # read old polygons as shapely objects
+    old_polygons = vector_gpd.read_polygons_gpd(old_shp_path)
+    if len(old_polygons) < 1:
+        raise ValueError('No polygons in %s' % old_shp_path)
+
+    old_polygon_marks = [None] * len(old_polygons)
+    change_type_list = []
+    polygon_diff_list = []
+
+
+    # read new polygons
+    new_polygons = vector_gpd.read_polygons_gpd(new_shp_path)
+    if len(new_polygons) < 1:
+        raise ValueError('No polygons in %s'% new_shp_path)
+
+    # compare these two groups of polygons:
+    # changes include: (1) new , and (3) expanding or shrinking (thaw slumps)
+    for idx_new, a_new_polygon in enumerate(new_polygons):
+        for idx_old, a_old_polygon in enumerate(old_polygons):
+
+            # find expanding or shrinking parts (two polygons must have overlap)
+            intersection = a_old_polygon.intersection(a_new_polygon)
+            if intersection.is_empty is True:
+                continue
+            else:
+                # hwo to decide it is expanding or shrinking?
+                polygon_diff = a_new_polygon.difference(a_old_polygon)
+                polygon_diff_list.append(polygon_diff)
+                change_type_list.append(1)
+
+            # return intersection.area
+
+    # find absent polygons in the old set of polygons
+    # (2) absence
+
+
+    # save the polygon changes
+    changes_df = pd.DataFrame({'ChangeType': change_type_list,
+                       'PolygonDiff': polygon_diff_list
+                      })
+
+    wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(old_shp_path)
+    vector_gpd.save_polygons_to_files(changes_df,'PolygonDiff', wkt_string, save_path)
+
 
     pass
 
@@ -30,12 +95,6 @@ def main(options, args):
     # check files do exist
     assert io_function.is_file_exist(new_shp_path)
     assert io_function.is_file_exist(old_shp_path)
-
-    # check projection of the shape file, should be the same
-    new_shp_proj4 = map_projection.get_raster_or_vector_srs_info_proj4(new_shp_path)
-    old_shp_proj4 = map_projection.get_raster_or_vector_srs_info_proj4(old_shp_path)
-    if new_shp_proj4 != old_shp_proj4:
-        raise ValueError('error, projection insistence between %s and %s'%(new_shp_proj4, old_shp_proj4))
 
     # conduct change detection
     if options.output is None:
