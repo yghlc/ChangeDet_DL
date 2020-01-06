@@ -32,7 +32,6 @@ def polygons_change_detection(old_shp_path, new_shp_path,save_path):
     :param save_path: save path
     :return: True if successfully, False otherwise
     '''
-
     # check projection of the shape file, should be the same
     new_shp_proj4 = map_projection.get_raster_or_vector_srs_info_proj4(new_shp_path)
     old_shp_proj4 = map_projection.get_raster_or_vector_srs_info_proj4(old_shp_path)
@@ -65,11 +64,12 @@ def polygons_change_detection(old_shp_path, new_shp_path,save_path):
                 continue
             else:
                 # hwo to decide it is expanding or shrinking?
+                # for difference operation as follows, only the expanding part of a_new_polygon will be output, that is good.
+                # if want to get the shrinking part, we should use a_old_polygon.difference(a_new_polygon), but thaw slumps cannot shrink
                 polygon_diff = a_new_polygon.difference(a_old_polygon)
                 polygon_diff_list.append(polygon_diff)
                 change_type_list.append(1)
 
-            # return intersection.area
 
     # find absent polygons in the old set of polygons
     # (2) absence
