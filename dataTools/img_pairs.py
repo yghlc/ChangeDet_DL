@@ -50,14 +50,14 @@ def check_image_pairs(image_pair):
 
     with rasterio.open(new_img_path) as src:
         if height != src.height or width != src.width:
-            raise ValueError('error, %s and %s do not have the same size')
+            raise ValueError('error, %s and %s do not have the same size'%(old_img_path, new_img_path))
         if band_count != src.count:
-            raise ValueError('error, %s and %s do not have the same band count')
+            raise ValueError('error, %s and %s do not have the same band count'%(old_img_path, new_img_path))
     if len(image_pair) > 2:
         label_path = image_pair[2]
         with rasterio.open(label_path) as src:
             if height != src.height or width != src.width:
-                raise ValueError('error, %s and %s do not have the same size')
+                raise ValueError('error, %s and %s do not have the same size'%(old_img_path, label_path))
 
 def read_image_to_array(img_path):
     # read  image
