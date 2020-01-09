@@ -152,22 +152,25 @@ def expanding_change_post_processing(expanding_shp_path, save_path):
             attribute_names = attribute_names[:len(attribute_names)-1]
             basic.outputlogMessage("attribute names: "+ str(row.keys().to_list()))
 
-            attribute_names.append("INarea")
-
         multiPolygon = row['geometry']
         polygons = list(multiPolygon)
-        for polyon in polygons:
+        for p_idx, polygon in enumerate(polygons):
             # print(polyon.area)
 
             polygon_attributes = row[:len(row)-1].to_list()
-            polygon_attributes.append(polyon.area)
+
+            # calculate area, circularity, oriented minimum bounding box
+            polygon_shape = vector_gpd.calculate_polygon_shape_info(polygon)
+            if idx == 0 and p_idx==0:
+                [attribute_names.append(item) for item in polygon_shape.keys()]
+
+            [polygon_attributes.append(polygon_shape[item]) for item in polygon_shape.keys()]
             polygon_attributes_list.append(polygon_attributes)
 
             # go through post-processing to decide to keep or remove it
-            # polygon_series = GeoSeries(polyon)
-            # polygon_attributes.append(polyon)
 
-            polygon_list.append(polyon)
+
+            polygon_list.append(polygon)
 
         # break
 
