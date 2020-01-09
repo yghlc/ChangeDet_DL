@@ -20,6 +20,8 @@ import basic_src.map_projection as map_projection
 import vector_gpd
 
 import pandas as pd
+import geopandas as gpd
+from geopandas import GeoSeries
 
 # for polygon comparison
 
@@ -129,6 +131,58 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
 
     return True
 
+def expanding_change_post_processing(expanding_shp_path, save_path):
+    '''
+    convert each multiPolygon to polygons, only keep polygons with large areas and toward upslope
+    :param expanding_shp_path:
+    :param save_path:
+    :return:
+    '''
+
+    # read polygons as shapely objects
+    shapefile = gpd.read_file(expanding_shp_path)
+    attribute_names = None
+    polygon_attributes_list = [] # 2d list
+    polygon_list = []   #
+
+    # go through each MULTIPOLYGON
+    for idx,row in shapefile.iterrows():
+        if idx==0:
+            attribute_names = row.keys().to_list()
+            attribute_names = attribute_names[:len(attribute_names)-1]
+            basic.outputlogMessage("attribute names: "+ str(row.keys().to_list()))
+
+            attribute_names.append("INarea")
+
+        multiPolygon = row['geometry']
+        polygons = list(multiPolygon)
+        for polyon in polygons:
+            # print(polyon.area)
+
+            polygon_attributes = row[:len(row)-1].to_list()
+            polygon_attributes.append(polyon.area)
+            polygon_attributes_list.append(polygon_attributes)
+
+            # go through post-processing to decide to keep or remove it
+            # polygon_series = GeoSeries(polyon)
+            # polygon_attributes.append(polyon)
+
+            polygon_list.append(polyon)
+
+        # break
+
+    # save results
+    save_polyons_attributes = {}
+    for idx, attribute in enumerate(attribute_names):
+        # print(idx, attribute)
+        values = [item[idx] for item in polygon_attributes_list]
+        save_polyons_attributes[attribute] = values
+
+    save_polyons_attributes["Polygons"] = polygon_list
+    polygon_df = pd.DataFrame(save_polyons_attributes)
+
+    wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(expanding_shp_path)
+    return vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', wkt_string, save_path)
 
 
 def main(options, args):
@@ -155,10 +209,10 @@ def main(options, args):
                          + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
     output_path_shrink = 'shrink_' + os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
                          + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
-    polygons_change_detection(old_shp_path, new_shp_path, output_path_expand,output_path_shrink)
+    # polygons_change_detection(old_shp_path, new_shp_path, output_path_expand,output_path_shrink)
 
     # post-processing of the expanding parts, to get the real expanding part (exclude delineation errors)
-
+    expanding_change_post_processing(output_path_expand, output_path)
 
 
 if __name__ == "__main__":
