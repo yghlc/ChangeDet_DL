@@ -43,8 +43,8 @@ def polygons_change_detection(old_shp_path, new_shp_path,save_path):
     if len(old_polygons) < 1:
         raise ValueError('No polygons in %s' % old_shp_path)
 
-    old_polygon_marks = [None] * len(old_polygons)
-    change_type_list = []
+    old_polygon_absent = [True] * len(old_polygons)
+    change_type_list = []       # 1 for expanding or shrinking, 2 for new
     polygon_diff_list = []
 
 
@@ -54,8 +54,11 @@ def polygons_change_detection(old_shp_path, new_shp_path,save_path):
         raise ValueError('No polygons in %s'% new_shp_path)
 
     # compare these two groups of polygons:
-    # changes include: (1) new , and (3) expanding or shrinking (thaw slumps)
+    # changes include: (1) new, (2) absence, and (3) expanding or shrinking (thaw slumps)
     for idx_new, a_new_polygon in enumerate(new_polygons):
+
+        b_is_new = True
+
         for idx_old, a_old_polygon in enumerate(old_polygons):
 
             # find expanding or shrinking parts (two polygons must have overlap)
@@ -68,12 +71,24 @@ def polygons_change_detection(old_shp_path, new_shp_path,save_path):
                 # if want to get the shrinking part, we should use a_old_polygon.difference(a_new_polygon), but thaw slumps cannot shrink
                 polygon_diff = a_new_polygon.difference(a_old_polygon)
                 polygon_diff_list.append(polygon_diff)
-                change_type_list.append(1)
+                b_is_new = False
 
+                # indcate that this polygon is not absent
+                old_polygon_absent[idx_old] = False
+
+            # if it is new
+            if b_is_new is False:
+                change_type_list.append(1) # expanding or shrinking
+            else:
+                change_type_list.append(2)  # new
 
     # find absent polygons in the old set of polygons
-    # (2) absence
-
+    absent_indices = [i for i, x in enumerate(old_polygon_absent) if x == True]
+    if len(absent_indices) < 1:
+        basic.outputlogMessage('No polygon disappear in %s' % old_shp_path)
+    else:
+        absent_indices = [ value+1 for value in  absent_indices]
+        basic.outputlogMessage('Disappeared Polygons in %s: (index from 1) %s' % (old_shp_path, str(absent_indices)))
 
     # save the polygon changes
     changes_df = pd.DataFrame({'ChangeType': change_type_list,
