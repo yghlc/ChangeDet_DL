@@ -131,16 +131,16 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
 
     return True
 
-def expanding_change_post_processing(expanding_shp_path, save_path):
+def Multipolygon_to_Polygons(input_shp, ouptput_shp):
     '''
-    convert each multiPolygon to polygons, only keep polygons with large areas and toward upslope
-    :param expanding_shp_path:
-    :param save_path:
+    convert each multiPolygon to polygons
+    :param input_shp:
+    :param ouptput_shp:
     :return:
     '''
 
     # read polygons as shapely objects
-    shapefile = gpd.read_file(expanding_shp_path)
+    shapefile = gpd.read_file(input_shp)
     attribute_names = None
     polygon_attributes_list = [] # 2d list
     polygon_list = []   #
@@ -156,7 +156,6 @@ def expanding_change_post_processing(expanding_shp_path, save_path):
         polygons = list(multiPolygon)
         for p_idx, polygon in enumerate(polygons):
             # print(polyon.area)
-
             polygon_attributes = row[:len(row)-1].to_list()
 
             # calculate area, circularity, oriented minimum bounding box
@@ -166,13 +165,7 @@ def expanding_change_post_processing(expanding_shp_path, save_path):
 
             [polygon_attributes.append(polygon_shape[item]) for item in polygon_shape.keys()]
             polygon_attributes_list.append(polygon_attributes)
-
-            # go through post-processing to decide to keep or remove it
-
-
             polygon_list.append(polygon)
-
-        # break
 
     # save results
     save_polyons_attributes = {}
@@ -184,9 +177,36 @@ def expanding_change_post_processing(expanding_shp_path, save_path):
     save_polyons_attributes["Polygons"] = polygon_list
     polygon_df = pd.DataFrame(save_polyons_attributes)
 
-    wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(expanding_shp_path)
-    return vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', wkt_string, save_path)
+    wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(input_shp)
+    return vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', wkt_string, ouptput_shp)
 
+def expanding_change_post_processing(input_shp, save_path):
+    '''
+    post-processing for expanding changes (polygons)
+    :param input_shp: a shape file containing the polygons (derived from multiPolygons)
+    :param save_path: save path
+    :return:
+    '''
+    # read polygons as shapely objects
+    shapefile = gpd.read_file(input_shp)
+
+    keep_polygon_list = []  #
+
+    # go through each polygon
+    for idx,row in shapefile.iterrows():
+
+        polygon = row['geometry']
+        # go through post-processing to decide to keep or remove it
+        # only keep polygons with large areas and toward up slope
+        if polygon.area < 30 or row['circularit']< 0.1:
+            shapefile.drop(idx, inplace=True)
+            continue
+        keep_polygon_list.append(row)
+
+    # save results
+    shapefile.to_file(save_path, driver='ESRI Shapefile')
+
+    pass
 
 def main(options, args):
 
@@ -207,15 +227,19 @@ def main(options, args):
     basic.outputlogMessage('Conduct change detection on %s and %s, and the results will be saved to %s'%
                            (old_shp_path, new_shp_path, output_path))
 
+    main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
+                         + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
     # get expanding and shrinking parts
-    output_path_expand = 'expand_' + os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
-                         + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
-    output_path_shrink = 'shrink_' + os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
-                         + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
-    # polygons_change_detection(old_shp_path, new_shp_path, output_path_expand,output_path_shrink)
+    output_path_expand = 'expand_' + main_shp_name
+    output_path_shrink = 'shrink_' + main_shp_name
+    polygons_change_detection(old_shp_path, new_shp_path, output_path_expand,output_path_shrink)
+
+    # multi polygons to polygons, then add some information on the polygons
+    all_change_polygons = 'all_changes_' + main_shp_name
+    Multipolygon_to_Polygons(output_path_expand, all_change_polygons)
 
     # post-processing of the expanding parts, to get the real expanding part (exclude delineation errors)
-    expanding_change_post_processing(output_path_expand, output_path)
+    expanding_change_post_processing(all_change_polygons, output_path)
 
 
 if __name__ == "__main__":
