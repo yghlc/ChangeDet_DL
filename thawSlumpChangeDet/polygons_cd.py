@@ -16,12 +16,13 @@ sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 import basic_src.io_function as io_function
 import basic_src.basic as basic
 import basic_src.map_projection as map_projection
+import parameters
 
 import vector_gpd
 
 import pandas as pd
 import geopandas as gpd
-from geopandas import GeoSeries
+# from geopandas import GeoSeries
 
 # for polygon comparison
 
@@ -150,7 +151,7 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
         if idx==0:
             attribute_names = row.keys().to_list()
             attribute_names = attribute_names[:len(attribute_names)-1]
-            basic.outputlogMessage("attribute names: "+ str(row.keys().to_list()))
+            # basic.outputlogMessage("attribute names: "+ str(row.keys().to_list()))
 
         multiPolygon = row['geometry']
         polygons = list(multiPolygon)
@@ -180,7 +181,7 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
     wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(input_shp)
     return vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', wkt_string, ouptput_shp)
 
-def expanding_change_post_processing(input_shp, save_path):
+def expanding_change_post_processing(input_shp, save_path, min_area_thr, min_circularity_thr):
     '''
     post-processing for expanding changes (polygons)
     :param input_shp: a shape file containing the polygons (derived from multiPolygons)
@@ -190,18 +191,15 @@ def expanding_change_post_processing(input_shp, save_path):
     # read polygons as shapely objects
     shapefile = gpd.read_file(input_shp)
 
-    keep_polygon_list = []  #
-
     # go through each polygon
     for idx,row in shapefile.iterrows():
 
         polygon = row['geometry']
         # go through post-processing to decide to keep or remove it
-        # only keep polygons with large areas and toward up slope
-        if polygon.area < 30 or row['circularit']< 0.1:
+        # only keep polygons with large areas and move toward upslope
+        if polygon.area < min_area_thr or row['circularit'] < min_circularity_thr:
             shapefile.drop(idx, inplace=True)
-            continue
-        keep_polygon_list.append(row)
+            # continue
 
     # save results
     shapefile.to_file(save_path, driver='ESRI Shapefile')
@@ -216,6 +214,8 @@ def main(options, args):
     # check files do exist
     assert io_function.is_file_exist(new_shp_path)
     assert io_function.is_file_exist(old_shp_path)
+
+    para_file = options.para_file
 
     # conduct change detection
     if options.output is None:
@@ -239,7 +239,9 @@ def main(options, args):
     Multipolygon_to_Polygons(output_path_expand, all_change_polygons)
 
     # post-processing of the expanding parts, to get the real expanding part (exclude delineation errors)
-    expanding_change_post_processing(all_change_polygons, output_path)
+    min_area_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_change_area', 'float')
+    min_circularity_thr = parameters.get_digit_parameters_None_if_absence(para_file,'minimum_change_circularity', 'float')
+    expanding_change_post_processing(all_change_polygons, output_path, min_area_thr, min_circularity_thr)
 
 
 if __name__ == "__main__":
@@ -247,10 +249,10 @@ if __name__ == "__main__":
     parser = OptionParser(usage=usage, version="1.0 2020-01-05")
     parser.description = 'Introduction: conduct change detection for two groups of polygons '
 
-    # parser.add_option("-p", "--para",
+    parser.add_option("-p", "--para",
+                      action="store", dest="para_file",
+                      help="the parameters file")
 
-    #                   action="store", dest="para_file",
-    #                   help="the parameters file")
     parser.add_option('-o', '--output',
                       action="store", dest = 'output',
                       help='the path to save the change detection results')
@@ -260,13 +262,14 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit(2)
 
-    ## set parameters files
-    # if options.para_file is None:
-    #     print('error, no parameters file')
-    #     parser.print_help()
-    #     sys.exit(2)
-    # else:
-    #     parameters.set_saved_parafile_path(options.para_file)
+    # set parameters files
+    if options.para_file is None:
+        print('error, no parameters file')
+        parser.print_help()
+        sys.exit(2)
+    else:
+        parameters.set_saved_parafile_path(options.para_file)
+
     basic.setlogfile('polygons_changeDetection.log')
 
     main(options, args)
