@@ -48,14 +48,20 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
         raise ValueError('No polygons in %s' % old_shp_path)
 
     old_polygon_absent = [True] * len(old_polygons)
-    change_type_list = []       # 1 for expanding or shrinking, 2 for new
-    polygon_expand_list = []
-    polygon_shrink_list = []
 
+    change_type_list = []  # 1 for expanding and 2 for new
+    polygon_expand_list = []
     old_file_name = []
     old_polygon_idx = []
     new_file_name = []
     new_polygon_idx = []
+
+    polygon_shrink_list = []
+    shrink_change_type_list = []    # 3 for shrinking 4 for disappear
+    shrink_old_file_name = []
+    shrink_old_polygon_idx = []
+    shrink_new_file_name = []
+    shrink_new_polygon_idx = []
 
 
     # read new polygons
@@ -69,46 +75,71 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
 
         b_is_new = True
 
-        new_file_name.append(os.path.basename(new_shp_path))
-        new_polygon_idx.append(idx_new)
-
+        # find expanding or shrinking parts (two polygons must have overlap)
+        intersec_poly_index_list = []        # a new polygon may intersect more than one old polygons
         for idx_old, a_old_polygon in enumerate(old_polygons):
-
-            # find expanding or shrinking parts (two polygons must have overlap)
             intersection = a_old_polygon.intersection(a_new_polygon)
             if intersection.is_empty is True:
                 continue
             else:
-                # hwo to decide it is expanding or shrinking?
-                # for difference operation as follows, only the expanding part of a_new_polygon will be output, that is good.
-                # if want to get the shrinking part, we should use a_old_polygon.difference(a_new_polygon), but thaw slumps cannot shrink
-                polygon_expand = a_new_polygon.difference(a_old_polygon)
-                polygon_expand_list.append(polygon_expand)
+                intersec_poly_index_list.append(idx_old)
 
-                polygon_shrink = a_old_polygon.difference(a_new_polygon)
-                polygon_shrink_list.append(polygon_shrink)
-
-                b_is_new = False
-
-                # indcate that this polygon is not absent
+                # indicate that this polygon is not absent
                 old_polygon_absent[idx_old] = False
 
-                old_file_name.append(os.path.basename(old_shp_path))
-                old_polygon_idx.append(idx_old)
+        if len(intersec_poly_index_list) > 1:
+            basic.outputlogMessage('Warning, the %dth new polygon intersect %d old polygon'%(idx_new, len(intersec_poly_index_list)))
+
+        # calculate the expanding or shrinking
+        for intersec_old_index in intersec_poly_index_list:
+
+            # for difference operation as follows, only the expanding part of a_new_polygon will be output, that is good.
+            # if want to get the shrinking part, we should use a_old_polygon.difference(a_new_polygon), but thaw slumps cannot shrink
+            a_old_polygon = old_polygons[intersec_old_index]
+            polygon_expand = a_new_polygon.difference(a_old_polygon)
+            polygon_expand_list.append(polygon_expand)
+
+            polygon_shrink = a_old_polygon.difference(a_new_polygon)
+            polygon_shrink_list.append(polygon_shrink)
+
+            b_is_new = False
+            new_file_name.append(os.path.basename(new_shp_path))
+            new_polygon_idx.append(idx_new)
+
+            old_file_name.append(os.path.basename(old_shp_path))
+            old_polygon_idx.append(intersec_old_index)
+
+            change_type_list.append(1)  # expanding
+
+            shrink_change_type_list.append(3)   # shrinking
+            shrink_old_file_name.append(os.path.basename(old_shp_path))
+            shrink_old_polygon_idx.append(intersec_old_index)
+            shrink_new_file_name.append(os.path.basename(new_shp_path))
+            shrink_new_polygon_idx.append(idx_new)
 
         # if it is new
-        if b_is_new is False:
-            change_type_list.append(1) # expanding or shrinking
-        else:
+        if b_is_new:
             change_type_list.append(2)  # new
+            new_file_name.append(os.path.basename(new_shp_path))
+            new_polygon_idx.append(idx_new)
+            old_file_name.append('None')
+            old_polygon_idx.append(-9999)
+            polygon_expand_list.append(a_new_polygon)
 
     # find absent polygons in the old set of polygons
     absent_indices = [i for i, x in enumerate(old_polygon_absent) if x == True]
     if len(absent_indices) < 1:
         basic.outputlogMessage('No polygon disappear in %s' % old_shp_path)
     else:
-        absent_indices = [ value+1 for value in  absent_indices]
-        basic.outputlogMessage('Disappeared Polygons in %s: (index from 1) %s' % (old_shp_path, str(absent_indices)))
+        absent_indices = [ value for value in absent_indices]     # value+1
+        # basic.outputlogMessage('Disappeared Polygons in %s: (index from 1) %s' % (old_shp_path, str(absent_indices)))
+        for absent_index in absent_indices:
+            shrink_change_type_list.append(4)  # absence (disappear)
+            polygon_shrink_list.append(old_polygons[absent_index])
+            shrink_old_file_name.append(os.path.basename(old_shp_path))
+            shrink_old_polygon_idx.append(absent_index)
+            shrink_new_file_name.append('None')
+            shrink_new_polygon_idx.append(-9999)
 
     # save the polygon changes
     expanding_df = pd.DataFrame({'ChangeType': change_type_list,
@@ -118,11 +149,11 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
                                  'new_index': new_polygon_idx,
                                  'PolygonExpand': polygon_expand_list
                                 })
-    shrinking_df = pd.DataFrame({'ChangeType': change_type_list,
-                                 'old_file': old_file_name,
-                                 'old_index': old_polygon_idx,
-                                 'new_file': new_file_name,
-                                 'new_index': new_polygon_idx,
+    shrinking_df = pd.DataFrame({'ChangeType': shrink_change_type_list,
+                                 'old_file': shrink_old_file_name,
+                                 'old_index': shrink_old_polygon_idx,
+                                 'new_file': shrink_new_file_name,
+                                 'new_index': shrink_new_polygon_idx,
                                  'PolygonShrink': polygon_shrink_list
                                 })
 
@@ -154,7 +185,13 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
             # basic.outputlogMessage("attribute names: "+ str(row.keys().to_list()))
 
         multiPolygon = row['geometry']
-        polygons = list(multiPolygon)
+        if multiPolygon.geom_type == 'MultiPolygon':
+            polygons = list(multiPolygon)
+        elif multiPolygon.geom_type == 'Polygon':
+            polygons = [multiPolygon]
+        else:
+            raise ValueError('Currently, only support Polygon and MultiPolygon, but input is %s' % multiPolygon.geom_type)
+
         for p_idx, polygon in enumerate(polygons):
             # print(polyon.area)
             polygon_attributes = row[:len(row)-1].to_list()
