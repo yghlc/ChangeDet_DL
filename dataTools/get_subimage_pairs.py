@@ -16,6 +16,7 @@ from optparse import OptionParser
 sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 import basic_src.io_function as io_function
 import basic_src.basic as basic
+import basic_src.RSImageProcess as RSImageProcess
 
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
 from sentinelScripts.get_subImages import get_sub_image
@@ -30,6 +31,7 @@ import shapely
 import shapely.geometry
 
 import geopandas as gpd
+import rasterio
 
 def get_file_prename(ref_file_name):
 
@@ -40,6 +42,38 @@ def get_file_prename(ref_file_name):
         pre_name = os.path.splitext(os.path.basename(ref_file_name))[0]
 
     return pre_name
+
+def crop_image_to_theSame_size(input_image_path, ref_image_path,replace=True):
+    '''
+    check the input image has the same width and height with the reference images, if not, crop to the same size
+    :param input_image_path:
+    :param ref_image_path:
+    :param replace: if True, replace the original input images
+    :return:
+    '''
+    with rasterio.open(ref_image_path) as src:
+        height = src.height
+        width = src.width
+        band_count = src.count
+
+    with rasterio.open(input_image_path) as src:
+        if band_count != src.count:
+            raise ValueError('error, %s and %s do not have the same band count'%(input_image_path, ref_image_path))
+
+        if height != src.height or width != src.width:
+            basic.outputlogMessage('Warning, %s and %s do not have the same size'%(input_image_path, ref_image_path))
+
+            # crop the intput image
+            save_path = io_function.get_name_by_adding_tail(input_image_path,'crop')
+
+            if RSImageProcess.subset_image_baseimage(save_path,input_image_path,ref_image_path,same_res=True) is False:
+                return False
+
+            if replace:
+                io_function.delete_file_or_dir(input_image_path)
+                io_function.move_file_to_dst(save_path,input_image_path)
+
+    return True
 
 def get_image_pair_and_change_map(t_polygons_shp, t_polygons_shp_all, bufferSize, old_image_tile_list, new_image_tile_list, saved_dir, dstnodata, brectangle = True):
     '''
@@ -104,6 +138,11 @@ def get_image_pair_and_change_map(t_polygons_shp, t_polygons_shp_all, bufferSize
         if get_sub_label(idx,new_subimg_saved_path, c_polygon, c_class_int, polygons_all, class_labels_all, bufferSize, brectangle, sublabel_saved_path) is False:
             basic.outputlogMessage('Warning, get the label raster for %dth polygon failed' % idx)
             continue
+
+        # sublabel_saved_path will have the same width and height with new_subimg_saved_path
+        # check old_subimg_saved_path has the same width and height with the new one
+        # we replace the original file, or we need to change the file name
+        crop_image_to_theSame_size(old_subimg_saved_path, new_subimg_saved_path, replace=True)
 
         list_txt_obj.writelines(old_subimg_shortName+":"+new_subimg_shortName + ":"+sublabel_shortName+'\n')
 
