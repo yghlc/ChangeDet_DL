@@ -233,7 +233,11 @@ def main(options, args):
 
                 # save
                 save_path = "predict_change_map_%d.tif"%pair_id
-                img_pairs.save_image_oneband_8bit(image_pair[0], predicted_change_2d, save_path)
+                # default, the second image is the new image, when preparing the training image
+                # the new image has the same size with the change map (label), but the old image may have offset, then the old image was cropped
+                # so when save the prediction result, use the new image as projection reference
+                new_image_path = image_pair[1]
+                img_pairs.save_image_oneband_8bit(new_image_path, predicted_change_2d, save_path)
 
 
 if __name__ == "__main__":
