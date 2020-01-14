@@ -208,7 +208,7 @@ def main(options, args):
 
         with torch.no_grad():
             # loading model
-            load_model_path = 'siamese_017.pt'
+            load_model_path = 'siamese_018.pt'
             model.load_state_dict(torch.load(load_model_path))
             model.eval()
 
