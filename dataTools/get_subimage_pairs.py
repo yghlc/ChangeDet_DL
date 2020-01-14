@@ -108,7 +108,7 @@ def get_image_pair_and_change_map(t_polygons_shp, t_polygons_shp_all, bufferSize
     pre_name_newImg = get_file_prename(new_image_tile_list[0])
     pre_name_for_label = os.path.splitext(os.path.basename(t_polygons_shp))[0]
 
-    list_txt_obj = open('pair_images_chnagemap_list.txt','a')
+    list_txt_obj = open('pair_images_changemap_list.txt','a')
     # go through each polygon
     for idx, (c_polygon, c_class_int) in enumerate(zip(center_polygons,class_labels)):
 
