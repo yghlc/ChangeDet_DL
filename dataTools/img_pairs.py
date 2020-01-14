@@ -15,6 +15,10 @@ import torch
 import numpy as np
 import random
 
+# indicate in the change map, what value indicate changes
+label_change_value = 1
+label_no_change_value = 0
+
 def read_img_pair_paths(dir, imgs_path_txt):
     '''
     get path list for image pair
@@ -144,9 +148,9 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                 for row in range(height):
                     for col in range(width):
                         self.pixel_index_pairs.append((pair_id, row, col, label_data[row, col]))
-                        if label_data[row, col] == 1:       # change pixel 2
+                        if label_data[row, col] == label_change_value:       # change pixel 2
                             change_idx.append(idx)
-                        elif label_data[row, col] == 0:     # no-change pixel 1
+                        elif label_data[row, col] == label_no_change_value:     # no-change pixel 1
                             no_change_idx.append(idx)
                         else:
                             raise ValueError('Error: unknow label: %d at row: %d, col: %d'
@@ -284,9 +288,9 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             old_img_patch = self.transform(old_img_patch)
             new_img_patch = self.transform(new_img_patch)
 
-        if label == 1: # no change
+        if label == label_no_change_value: # no change
             label_target = torch.tensor([0])    #torch.tensor([1, 0])
-        elif label == 2:   # change
+        elif label == label_change_value:   # change
             label_target = torch.tensor([1])    #torch.tensor([0, 1])
         else:
             label_target = None
