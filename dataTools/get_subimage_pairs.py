@@ -23,6 +23,94 @@ from sentinelScripts.get_subImages import get_sub_label
 from sentinelScripts.get_subImages import get_projection_proj4
 from sentinelScripts.get_subImages import check_projection_rasters
 from sentinelScripts.get_subImages import meters_to_degress_onEarth
+from sentinelScripts.get_subImages import get_image_tile_bound_boxes
+
+# import thest two to make sure load GEOS dll before using shapely
+import shapely
+import shapely.geometry
+
+import geopandas as gpd
+
+def get_file_prename(ref_file_name):
+
+    if 'qtb_sentinel2' in ref_file_name:
+        # for qtb_sentinel-2 mosaic
+        pre_name = '_'.join(os.path.splitext(os.path.basename(ref_file_name))[0].split('_')[:4])
+    else:
+        pre_name = os.path.splitext(os.path.basename(ref_file_name))[0]
+
+    return pre_name
+
+def get_image_pair_and_change_map(t_polygons_shp, t_polygons_shp_all, bufferSize, old_image_tile_list, new_image_tile_list, saved_dir, dstnodata, brectangle = True):
+    '''
+    get sub image pairs (and labels, as know as change map ) from training polygons
+    :param t_polygons_shp: training polygon
+    :param t_polygons_shp_all: the full set of training polygon, t_polygons_shp is a subset or equal to this one.
+    :param bufferSize: buffer size of a center polygon to create a sub images
+    :param old_image_tile_list: old image tiles
+    :param new_image_tile_list: new image tiles
+    :param saved_dir: output dir
+    :param dstnodata: nodata when save for the output images
+    :param brectangle: True: get the rectangle extent of a images.
+    :return:
+    '''
+
+    # read polygons
+    t_shapefile = gpd.read_file(t_polygons_shp)
+    class_labels = t_shapefile['ChangeType'].tolist()
+    center_polygons = t_shapefile.geometry.values
+    # check_polygons_invalidity(center_polygons,t_polygons_shp)
+
+    # read the full set of training polygons, used this one to produce the label images
+    t_shapefile_all = gpd.read_file(t_polygons_shp_all)
+    class_labels_all = t_shapefile_all['ChangeType'].tolist()
+    polygons_all = t_shapefile_all.geometry.values
+    # check_polygons_invalidity(polygons_all,t_polygons_shp_all)
+
+    old_img_tile_boxes = get_image_tile_bound_boxes(old_image_tile_list)
+    new_img_tile_boxes = get_image_tile_bound_boxes(new_image_tile_list)
+
+    pre_name_oldImg = get_file_prename(old_image_tile_list[0])
+    pre_name_newImg = get_file_prename(new_image_tile_list[0])
+    pre_name_for_label = os.path.splitext(os.path.basename(t_polygons_shp))[0]
+
+    list_txt_obj = open('pair_images_chnagemap_list.txt','a')
+    # go through each polygon
+    for idx, (c_polygon, c_class_int) in enumerate(zip(center_polygons,class_labels)):
+
+        # output message
+        basic.outputlogMessage('obtaining %dth sub-image and the change map raster'%idx)
+
+        # get buffer area
+        expansion_polygon = c_polygon.buffer(bufferSize)
+
+        # get one old sub-image based on the buffer areas
+        old_subimg_shortName = os.path.join('img_pairs' , pre_name_oldImg+'_%d_ChangeType_%d.tif'%(idx,c_class_int))
+        old_subimg_saved_path = os.path.join(saved_dir, old_subimg_shortName)
+        if get_sub_image(idx,expansion_polygon,old_image_tile_list,old_img_tile_boxes, old_subimg_saved_path, dstnodata, brectangle) is False:
+            basic.outputlogMessage('Warning, skip the %dth polygon for generating the old sub-image'%idx)
+            continue
+
+        # get one old sub-image based on the buffer areas
+        new_subimg_shortName = os.path.join('img_pairs' , pre_name_newImg+'_%d_ChangeType_%d.tif'%(idx,c_class_int))
+        new_subimg_saved_path = os.path.join(saved_dir, new_subimg_shortName)
+        if get_sub_image(idx,expansion_polygon,new_image_tile_list,new_img_tile_boxes, new_subimg_saved_path, dstnodata, brectangle) is False:
+            basic.outputlogMessage('Warning, skip the %dth polygon for generating the new sub-image'%idx)
+            continue
+
+        # based on the sub-image, create the corresponding vectors
+        sublabel_shortName = os.path.join('change_maps', pre_name_for_label + '_%d_ChangeType_%d.tif' % (idx, c_class_int))
+        sublabel_saved_path = os.path.join(saved_dir, sublabel_shortName)
+        if get_sub_label(idx,new_subimg_saved_path, c_polygon, c_class_int, polygons_all, class_labels_all, bufferSize, brectangle, sublabel_saved_path) is False:
+            basic.outputlogMessage('Warning, get the label raster for %dth polygon failed' % idx)
+            continue
+
+        list_txt_obj.writelines(old_subimg_shortName+":"+new_subimg_shortName + ":"+sublabel_shortName+'\n')
+
+
+    list_txt_obj.close()
+
+    pass
 
 
 def main(options, args):
@@ -70,18 +158,13 @@ def main(options, args):
     else:
         bufferSize = options.bufferSize
 
-
     saved_dir = options.out_dir
-    os.system('mkdir -p ' + os.path.join(saved_dir, 'subImages'))
-    os.system('mkdir -p ' + os.path.join(saved_dir, 'subLabels'))
+    os.system('mkdir -p ' + os.path.join(saved_dir, 'img_pairs'))
+    os.system('mkdir -p ' + os.path.join(saved_dir, 'change_maps'))
     dstnodata = options.dstnodata
-    if 'qtb_sentinel2' in image_tile_list[0]:
-        # for qtb_sentinel-2 mosaic
-        pre_name = '_'.join(os.path.splitext(os.path.basename(image_tile_list[0]))[0].split('_')[:4])
-    else:
-        pre_name = os.path.splitext(os.path.basename(image_tile_list[0]))[0]
-    get_sub_images_and_labels(t_polygons_shp, t_polygons_shp_all, bufferSize, image_tile_list,
-                              saved_dir, pre_name, dstnodata, brectangle=options.rectangle)
+
+    get_image_pair_and_change_map(change_poly_path, t_polygons_shp_all, bufferSize, old_images_list, new_images_list,
+                              saved_dir, dstnodata, brectangle=options.rectangle)
 
 
     pass
