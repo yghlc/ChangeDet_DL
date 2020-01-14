@@ -144,9 +144,9 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                 for row in range(height):
                     for col in range(width):
                         self.pixel_index_pairs.append((pair_id, row, col, label_data[row, col]))
-                        if label_data[row, col] == 2:       # change pixel
+                        if label_data[row, col] == 1:       # change pixel 2
                             change_idx.append(idx)
-                        elif label_data[row, col] == 1:     # no-change pixel
+                        elif label_data[row, col] == 0:     # no-change pixel 1
                             no_change_idx.append(idx)
                         else:
                             raise ValueError('Error: unknow label: %d at row: %d, col: %d'
