@@ -235,8 +235,10 @@ def main(options, args):
                 height, width = img_pairs.get_image_height_width(image_pair[0])
                 predicted_change_2d = np.zeros((height,width ),dtype=np.uint8)
 
+                print('Size of DataLoader: %d'%len(prediction_loader))
                 # loading data
                 for batch_idx, (data, pos) in enumerate(prediction_loader):
+
                     for i in range(len(data)):
                         data[i] = data[i].to(device)
 
