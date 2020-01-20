@@ -56,10 +56,12 @@ SECONDS=0
 
 ################################################
 ## inference and post processing, including output "time_cost.txt"
-${eo_dir}/thawslumpScripts/inf.sh ${para_file}
-${eo_dir}/thawslumpScripts/postProc.sh ${para_file}
+${cd_dir}/thawSlumpChangeDet/bash_prediction_cd.py ${para_file}
 
-${eo_dir}/thawslumpScripts/accuracies_assess.sh ${para_file}
+
+#${eo_dir}/thawslumpScripts/postProc.sh ${para_file}
+#
+#${eo_dir}/thawslumpScripts/accuracies_assess.sh ${para_file}
 
 ################################################
 ## backup results
