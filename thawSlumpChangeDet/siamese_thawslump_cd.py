@@ -176,6 +176,11 @@ def main(options, args):
     save_frequency = options.save_frequency
     num_workers = options.num_workers
 
+    if options.save_model_dir is not None:
+        save_model_folder = options.save_model_dir
+    else:
+        save_model_folder = os.getcwd()
+
     train_loss_list = []
     evl_loss_list = []
     evl_acc_list = []
@@ -200,15 +205,22 @@ def main(options, args):
 
             if epoch % save_frequency == 0:
                 # torch.save(model, 'siamese_{:03}.pt'.format(epoch))             # save the entire model
+                model_save_path = os.path.join(save_model_folder,'siamese_{:03}.pt'.format(epoch))
                 torch.save(model.state_dict(),
-                           'siamese_{:03}.pt'.format(epoch))  # save only the state dict, i.e. the weight
+                           model_save_path)  # save only the state dict, i.e. the weight
     else:  # prediction
 
         img_pair_list = read_img_pair_paths(data_root, image_paths_txt)
+        if options.predict_result_dir is None:
+            save_predict_dir = options.predict_result_dir
+        else:
+            save_predict_dir = os.getcwd()
 
         with torch.no_grad():
             # loading model
-            load_model_path = 'siamese_018.pt'
+            load_model_path = options.load_model_path # 'siamese_018.pt'
+            if os.path.isfile(load_model_path) is False:
+                raise IOError('trained model: %s does not exist'%load_model_path)
             model.load_state_dict(torch.load(load_model_path))
             model.eval()
 
@@ -231,8 +243,8 @@ def main(options, args):
                     for out_label, _, row, col in zip(predicted_target,pos[0], pos[1], pos[2]):
                         predicted_change_2d[row, col] = out_label
 
-                # save
-                save_path = "predict_change_map_%d.tif"%pair_id
+
+                save_path = os.path.join(save_predict_dir, "predict_change_map_%d.tif"%pair_id)
                 # default, the second image is the new image, when preparing the training image
                 # the new image has the same size with the change map (label), but the old image may have offset, then the old image was cropped
                 # so when save the prediction result, use the new image as projection reference
@@ -272,6 +284,19 @@ if __name__ == "__main__":
     parser.add_option('-s', '--save_frequency', type = int, default = 5,
                       action="store", dest = 'save_frequency',
                       help='the frequency for saving traned model')
+
+    parser.add_option('-m', '--load_model_path',
+                      action="store", dest = 'load_model_path',
+                      help='the trained model for prediction')
+
+    parser.add_option('-d', '--save_model_dir',
+                      action="store", dest = 'save_model_dir',
+                      help='the folder for saving model during training')
+
+    parser.add_option('-p', '--predict_result_dir',
+                      action="store", dest = 'predict_result_dir',
+                      help='the folder for saving prediction results')
+
 
     # parser.add_option("-p", "--para",
 
