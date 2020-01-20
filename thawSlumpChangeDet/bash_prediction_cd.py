@@ -47,6 +47,7 @@ if os.path.isfile(inf_model_path) is False:
     sys.exit(1)
 
 if os.path.isdir(inf_result_dir):
+    print('%s exists, will remove it'%inf_result_dir)
     io_function.delete_file_or_dir(inf_result_dir)
 
 command_string = train_scrpt + ' ' + root + ' ' + img_pair_txt + ' ' + \
