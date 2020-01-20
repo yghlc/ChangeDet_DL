@@ -187,6 +187,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             for row in range(height):
                 for col in range(width):
                     # print(ncount, height, width, row, col)  # output for testing
+                    # for a large image, the following will use a lot of computer memory.
                     self.pixel_index_pairs.append((predict_pair_id, row, col, None))   #label_data[row, col]
 
             pass
