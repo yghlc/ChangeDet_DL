@@ -50,6 +50,9 @@ if os.path.isdir(inf_result_dir):
     print('%s exists, will remove it'%inf_result_dir)
     io_function.delete_file_or_dir(inf_result_dir)
 
+# due to the large file size, it's necessary to split them before prediction
+
+
 command_string = train_scrpt + ' ' + root + ' ' + img_pair_txt + ' ' + \
 ' -b ' +  batch_size + ' -n '  +  inf_num_workers + ' -d ' + expr_name + \
 ' -m ' + inf_model_path + ' -p ' + inf_result_dir
