@@ -12,9 +12,8 @@
 # Exit immediately if a command exits with a non-zero status. E: error trace
 set -eE -o functrace
 
-eo_dir=~/codes/PycharmProjects/Landuse_DL
 cd_dir=~/codes/PycharmProjects/ChangeDet_DL
-cd ${eo_dir}
+cd ${cd_dir}
 git pull
 cd -
 
