@@ -41,11 +41,11 @@ weight_decay = parameters.get_string_parameters(para_file, 'weight_decay')
 if os.path.isdir(expr_name):
     print('%s already exist, backup it'%expr_name)
     import glob
-    backups = glob.glob(expr_name + '_[0_9]*')
+    backups = glob.glob(expr_name + '_[0-9]*')
     if len(backups) < 1:
         os.rename(expr_name, expr_name +'_1')
     else:
-        os.rename(expr_name, expr_name + '%d'%len(backups))
+        os.rename(expr_name, expr_name + '_%d'%(len(backups) + 1))
 
 os.mkdir(expr_name)
 
