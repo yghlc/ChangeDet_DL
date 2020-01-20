@@ -212,10 +212,11 @@ def main(options, args):
 
         img_pair_list = read_img_pair_paths(data_root, image_paths_txt)
         if options.predict_result_dir is None:
+            save_predict_dir = os.getcwd()
+        else:
             save_predict_dir = options.predict_result_dir
             os.mkdir(save_predict_dir)
-        else:
-            save_predict_dir = os.getcwd()
+
 
         with torch.no_grad():
             # loading model
