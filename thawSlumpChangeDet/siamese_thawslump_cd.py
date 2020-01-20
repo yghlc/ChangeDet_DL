@@ -227,7 +227,7 @@ def main(options, args):
             model.eval()
 
             for pair_id, image_pair in enumerate(img_pair_list):
-                print('Predict the %d th image')
+                print('Predict the %d th image'%pair_id)
                 prediction_loader = torch.utils.data.DataLoader(
                     two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans,predict_pair_id=pair_id),
                     batch_size=batch_size, num_workers=num_workers, shuffle=False)
