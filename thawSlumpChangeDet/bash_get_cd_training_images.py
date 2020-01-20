@@ -41,7 +41,10 @@ def get_subImg_pair_one_shp(buffersize, dstnodata, rectangle_ext, train_shp, old
 
     # status, result = basic.exec_command_string(command_string)  # this will wait command finished
     # os.system(command_string + "&")  # don't know when it finished
-    os.system(command_string )      # this work
+    output = os.system(command_string )      # this work
+    # print(output)
+    if output != 0:
+        sys.exit(1)  # this can help exit the bash script
 
 
 with open(multi_training_files, 'r') as f_obj:

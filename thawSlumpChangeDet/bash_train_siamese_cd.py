@@ -58,7 +58,9 @@ command_string = train_scrpt + ' ' + root + ' ' + img_pair_txt + ' ' + '--dotrai
 ' -s ' + save_frequency + ' -n '  +  num_workers + ' -d ' + expr_name
 
 
-os.system(command_string )
+output = os.system(command_string )
+if output != 0:
+    sys.exit(1)  # this can help exit the bash script
 
 #
 # # prediction:
