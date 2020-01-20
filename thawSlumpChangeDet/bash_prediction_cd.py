@@ -45,7 +45,7 @@ if os.path.isfile(inf_model_path) is False:
     print('trained model %s does not exist'%inf_model_path)
     sys.exit(1)
 
-if os.path.isdir(inf_result_dir) is False:
+if os.path.isdir(inf_result_dir):
     os.rmdir(inf_result_dir)
 
 command_string = train_scrpt + ' ' + root + ' ' + img_pair_txt + ' ' + \
