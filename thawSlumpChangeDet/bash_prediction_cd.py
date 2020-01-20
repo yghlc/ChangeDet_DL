@@ -52,13 +52,6 @@ command_string = train_scrpt + ' ' + root + ' ' + img_pair_txt + ' ' + \
 ' -b ' +  batch_size + ' -n '  +  inf_num_workers + ' -d ' + expr_name + \
 ' -m ' + inf_model_path + ' -p ' + inf_result_dir
 
-#
-# # prediction:
-# batch_size=256
-# num_workers=16
-# python ${co_dir}/thawSlumpChangeDet/siamese_thawslump_cd.py ${root} ${img_pair_txt} \
-# -b ${batch_size} -n ${num_workers}
-
 
 output = os.system(command_string )
 if output != 0:

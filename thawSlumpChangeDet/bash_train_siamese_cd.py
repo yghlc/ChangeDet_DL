@@ -49,10 +49,6 @@ if os.path.isdir(expr_name):
 
 os.mkdir(expr_name)
 
-# trianing and validation
-#python ${co_dir}/thawSlumpChangeDet/siamese_thawslump_cd.py ${root} ${img_pair_txt} --dotrain \
-#-b ${batch_size} -l ${learning_rate} -w ${weight_decay} -e ${num_epochs} -s ${save_frequency} -n ${num_workers}
-
 command_string = train_scrpt + ' ' + root + ' ' + img_pair_txt + ' ' + '--dotrain'  + \
 ' -b ' +  batch_size + ' -l ' + learning_rate + ' -w ' +  weight_decay + ' -e '  + num_epochs + \
 ' -s ' + save_frequency + ' -n '  +  num_workers + ' -d ' + expr_name
@@ -62,12 +58,7 @@ output = os.system(command_string )
 if output != 0:
     sys.exit(1)  # this can help exit the bash script
 
-#
-# # prediction:
-# batch_size=256
-# num_workers=16
-# python ${co_dir}/thawSlumpChangeDet/siamese_thawslump_cd.py ${root} ${img_pair_txt} \
-# -b ${batch_size} -n ${num_workers}
+
 
 
 
