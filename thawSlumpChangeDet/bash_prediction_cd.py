@@ -12,6 +12,7 @@ import os,sys
 sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 
 import parameters
+import basic_src.io_function as io_function
 
 # get parameter
 para_file=sys.argv[1]
@@ -46,7 +47,7 @@ if os.path.isfile(inf_model_path) is False:
     sys.exit(1)
 
 if os.path.isdir(inf_result_dir):
-    os.rmdir(inf_result_dir)
+    io_function.delete_file_or_dir(inf_result_dir)
 
 command_string = train_scrpt + ' ' + root + ' ' + img_pair_txt + ' ' + \
 ' -b ' +  batch_size + ' -n '  +  inf_num_workers + ' -d ' + expr_name + \

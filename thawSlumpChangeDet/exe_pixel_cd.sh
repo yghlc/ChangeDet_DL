@@ -65,4 +65,4 @@ ${cd_dir}/thawSlumpChangeDet/bash_prediction_cd.py ${para_file}
 
 ################################################
 ## backup results
-${eo_dir}/thawslumpScripts/backup_results.sh ${para_file} 1
+#${eo_dir}/thawslumpScripts/backup_results.sh ${para_file} 1
