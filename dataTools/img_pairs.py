@@ -19,6 +19,9 @@ import random
 label_change_value = 1
 label_no_change_value = 0
 
+from datasets.build_RS_data import patchclass
+from datasets.build_RS_data import read_patch
+
 def read_img_pair_paths(dir, imgs_path_txt):
     '''
     get path list for image pair
@@ -94,7 +97,7 @@ def get_image_height_width(image_path):
 
 class two_images_pixel_pair(torch.utils.data.Dataset):
 
-    def __init__(self, root, changedet_pair_txt, win_size, train=True, transform=None, target_transform=None, predict_pair_id=0):
+    def __init__(self, root, changedet_pair_txt, win_size, train=True, transform=None, target_transform=None, predict_pair_id=0, subset_boundary=None):
         # super().__init__() need this one?
         '''
         read images for change detections
@@ -105,6 +108,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
         :param transform: apply training transform to original images
         :param target_transform: apply tarnsform to target images
         :param predict_pair_id: the pair for predicting (prediction only load data from one pair)
+        :param subset_boundary: the subset boundary of image  (xoff,yoff ,xsize, ysize) in pixel coordinate
         '''
 
         self.root = os.path.expanduser(root)
@@ -178,8 +182,17 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
             new_img_path = image_pair[1]  # a new image
 
             # read image to memory
-            old_image_array = read_image_to_array(old_img_path)
-            new_image_array = read_image_to_array(new_img_path)
+            if subset_boundary is None:
+                # read the entire image
+                old_image_array = read_image_to_array(old_img_path)
+                new_image_array = read_image_to_array(new_img_path)
+            else:
+                # only read the subset
+                old_subset = patchclass(old_img_path,subset_boundary)
+                new_subset = patchclass(new_img_path,subset_boundary)
+
+                old_image_array = read_patch(old_subset)
+                new_image_array = read_patch(new_subset)
 
             self.img_array_pair_list.append([old_image_array, new_image_array])
 
