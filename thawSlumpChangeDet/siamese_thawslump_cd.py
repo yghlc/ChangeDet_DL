@@ -28,6 +28,9 @@ from dataTools.img_pairs import two_images_pixel_pair
 from dataTools.img_pairs import read_img_pair_paths
 from dataTools.img_pairs import save_image_oneband_8bit
 
+sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
+import split_image
+
 class ToTensor(object):
     """Convert ndarrays read by rasterio to Tensors."""
 
@@ -228,14 +231,36 @@ def main(options, args):
 
             for pair_id, image_pair in enumerate(img_pair_list):
                 print('Predict the %d th image'%pair_id)
+
+                # handle images with large size (> 1000 by 1000 pixels)
+                height, width = img_pairs.get_image_height_width(image_pair[0])
+                if height*width > 1000*1000:
+                    subset_w = options.sub_width
+                    subset_h = options.sub_height
+                    adj_overlay_x = options.extend_dis_x
+                    adj_overlay_y = options.extend_dis_y
+                    subset_boundaries = split_image.sliding_window(width, height, subset_w, subset_h, adj_overlay_x, adj_overlay_y)
+
+                    if len(subset_boundaries) > 1:
+                        # go through each subset,then merge them
+                        for s_idx, subset in enumerate(subset_boundaries):
+                            prediction_loader = torch.utils.data.DataLoader(
+                                two_images_pixel_pair(data_root, image_paths_txt, (28, 28), train=False, transform=trans,
+                                                      predict_pair_id=pair_id, subset_boundary=subset),
+                                batch_size=batch_size, num_workers=num_workers, shuffle=False)
+
+
+                    # skip the remaining codes
+                    continue
+
+                ####################################################################################
                 prediction_loader = torch.utils.data.DataLoader(
                     two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans,predict_pair_id=pair_id),
                     batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
-                height, width = img_pairs.get_image_height_width(image_pair[0])
                 predicted_change_2d = np.zeros((height,width ),dtype=np.uint8)
 
-                print('Size of DataLoader: %d'%len(prediction_loader))
+                # print('Size of DataLoader: %d'%len(prediction_loader))
                 # loading data
                 for batch_idx, (data, pos) in enumerate(prediction_loader):
 
@@ -303,6 +328,18 @@ if __name__ == "__main__":
                       action="store", dest = 'predict_result_dir',
                       help='the folder for saving prediction results')
 
+    parser.add_option("-W", "--sub_width",type = int, default = 1024,
+                      action="store", dest="s_width",
+                      help="the width of wanted subsets")
+    parser.add_option("-H", "--sub_height", type = int, default = 1024,
+                      action="store", dest="s_height",
+                      help="the height of wanted subsets")
+    parser.add_option("-X", "--extend_dis_x",type=int,default = 14,
+                      action="store", dest="extend",
+                      help="extend distance in x direction (pixels) of the subset to adjacent subset, make subsets overlay each other")
+    parser.add_option("-Y", "--extend_dis_y", type=int, default=14,
+                      action="store", dest="extend",
+                      help="extend distance in y direction (pixels) of the subset to adjacent subset, make subsets overlay each other")
 
     # parser.add_option("-p", "--para",
 
