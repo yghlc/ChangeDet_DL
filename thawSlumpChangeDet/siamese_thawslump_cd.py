@@ -368,16 +368,16 @@ if __name__ == "__main__":
                       help='the folder for saving prediction results')
 
     parser.add_option("-W", "--sub_width",type = int, default = 1024,
-                      action="store", dest="s_width",
+                      action="store", dest="sub_width",
                       help="the width of wanted subsets")
     parser.add_option("-H", "--sub_height", type = int, default = 1024,
-                      action="store", dest="s_height",
+                      action="store", dest="sub_height",
                       help="the height of wanted subsets")
     parser.add_option("-X", "--extend_dis_x",type=int,default = 14,
-                      action="store", dest="extend",
+                      action="store", dest="extend_dis_x",
                       help="extend distance in x direction (pixels) of the subset to adjacent subset, make subsets overlay each other")
     parser.add_option("-Y", "--extend_dis_y", type=int, default=14,
-                      action="store", dest="extend",
+                      action="store", dest="extend_dis_y",
                       help="extend distance in y direction (pixels) of the subset to adjacent subset, make subsets overlay each other")
 
     # parser.add_option("-p", "--para",
