@@ -9,7 +9,7 @@ add time: 07 November, 2019
 """
 
 import rasterio
-import os
+import os,sys
 
 import torch
 import numpy as np
@@ -19,6 +19,7 @@ import random
 label_change_value = 1
 label_no_change_value = 0
 
+sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
 from datasets.build_RS_data import patchclass
 from datasets.build_RS_data import read_patch
 
