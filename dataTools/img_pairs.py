@@ -22,6 +22,7 @@ label_no_change_value = 0
 sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
 from datasets.build_RS_data import patchclass
 from datasets.build_RS_data import read_patch
+from datasets.build_RS_data import save_patch_oneband_8bit
 
 def read_img_pair_paths(dir, imgs_path_txt):
     '''
@@ -76,20 +77,26 @@ def read_image_to_array(img_path):
         image_array = src.read(indexes)  # shape (ncount, height, width)
         return image_array
 
-def save_image_oneband_8bit(ref_image_path,img_data,save_path):
+def save_image_oneband_8bit(ref_image_path,img_data,save_path, boundary=None):
     """
     save image: oneband with 8bit
     :param ref_image: the image, have the same extent
     :param img_data: numpy array of a new image, could be one band or multi band
     :param save_path: Save file path
+    :param boundary: the boundary of the subset  (xoff,yoff ,xsize, ysize) in pixel coordinate
     :return: True if sucessufully, False otherwise
     """
     # reference image path
-    with rasterio.open(ref_image_path) as src:
-        profile = src.profile
-        profile.update(dtype=rasterio.uint8, count=1)
-        with rasterio.open(save_path, "w", **profile) as dst:
-            dst.write(img_data, 1)
+    if boundary is None:
+        with rasterio.open(ref_image_path) as src:
+            profile = src.profile
+            profile.update(dtype=rasterio.uint8, count=1)
+            with rasterio.open(save_path, "w", **profile) as dst:
+                dst.write(img_data, 1)
+    else:
+        save_subset = patchclass(ref_image_path, boundary)
+        save_patch_oneband_8bit(save_subset,img_data,save_path)
+
     return True
 
 def get_image_height_width(image_path):

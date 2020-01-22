@@ -207,7 +207,7 @@ def predict_small_image_or_subset(model,device,save_path, win_size,data_root,ima
     # the new image has the same size with the change map (label), but the old image may have offset, then the old image was cropped
     # so when save the prediction result, use the new image as projection reference
     new_image_path = image_pair[1]
-    img_pairs.save_image_oneband_8bit(new_image_path, predicted_change_2d, save_path)
+    img_pairs.save_image_oneband_8bit(new_image_path, predicted_change_2d, save_path,subset)
 
     return True
 
