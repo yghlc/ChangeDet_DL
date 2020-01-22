@@ -300,10 +300,13 @@ def main(options, args):
                         os.mkdir(save_folder)
                         for s_idx, subset in enumerate(subset_boundaries):
 
+                            # subset:  (xoff, yoff, xsize, ysize)
+                            xsize, ysize = subset[2], subset[3]  # new width and height
+
                             save_path = os.path.join(save_folder,'%d.tif'%s_idx)
                             predict_small_image_or_subset(model, device, save_path, 28, data_root, image_paths_txt,
                                                           image_pair, pair_id,
-                                                          height, width, trans, batch_size, num_workers, subset)
+                                                          ysize, xsize, trans, batch_size, num_workers, subset)
                             subset_file_list.append(save_path)
                             pass
 
