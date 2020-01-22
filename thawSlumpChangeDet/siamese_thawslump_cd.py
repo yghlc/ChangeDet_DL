@@ -30,6 +30,7 @@ from dataTools.img_pairs import save_image_oneband_8bit
 
 sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 import split_image
+import basic_src.RSImageProcess as RSImageProcess
 
 class ToTensor(object):
     """Convert ndarrays read by rasterio to Tensors."""
@@ -159,6 +160,57 @@ def oneshot(model, device, data):
         output = model(data)
         return torch.squeeze(torch.argmax(output, dim=1)).cpu().item()
 
+def predict_small_image_or_subset(model,device,save_path, win_size,data_root,image_paths_txt,
+                                  image_pair,pair_id, height, width, trans, batch_size,num_workers, subset):
+    '''
+    predict a small image (< 1000 by 1000 pixels) or a image subset
+    :param model:
+    :param device:
+    :param save_path:
+    :param win_size:
+    :param data_root:
+    :param image_paths_txt:
+    :param image_pair:
+    :param pair_id:
+    :param height:
+    :param width:
+    :param trans:
+    :param batch_size:
+    :param num_workers:
+    :param subset:
+    :return:
+    '''
+
+    prediction_loader = torch.utils.data.DataLoader(
+        two_images_pixel_pair(data_root, image_paths_txt, (win_size, win_size), train=False, transform=trans,
+                              predict_pair_id=pair_id, subset_boundary=subset),
+        batch_size=batch_size, num_workers=num_workers, shuffle=False)
+
+    predicted_change_2d = np.zeros((height, width), dtype=np.uint8)
+
+    # print('Size of DataLoader: %d'%len(prediction_loader))
+    # loading data
+    for batch_idx, (data, pos) in enumerate(prediction_loader):
+
+        for i in range(len(data)):
+            data[i] = data[i].to(device)
+
+        out_prop = model(data)
+        predicted_target = torch.argmax(out_prop, dim=1).cpu()
+
+        for out_label, _, row, col in zip(predicted_target, pos[0], pos[1], pos[2]):
+            predicted_change_2d[row, col] = out_label
+
+    # save_path = os.path.join(save_predict_dir, "predict_change_map_%d.tif" % pair_id)
+    print('Save prediction result to %s' % save_path)
+    # default, the second image is the new image, when preparing the training image
+    # the new image has the same size with the change map (label), but the old image may have offset, then the old image was cropped
+    # so when save the prediction result, use the new image as projection reference
+    new_image_path = image_pair[1]
+    img_pairs.save_image_oneband_8bit(new_image_path, predicted_change_2d, save_path)
+
+    return True
+
 
 def main(options, args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -243,44 +295,31 @@ def main(options, args):
 
                     if len(subset_boundaries) > 1:
                         # go through each subset,then merge them
+                        subset_file_list = []
+                        save_folder = os.path.join(save_predict_dir, "predict_change_map_%d" % pair_id)
+                        os.mkdir(save_folder)
                         for s_idx, subset in enumerate(subset_boundaries):
-                            prediction_loader = torch.utils.data.DataLoader(
-                                two_images_pixel_pair(data_root, image_paths_txt, (28, 28), train=False, transform=trans,
-                                                      predict_pair_id=pair_id, subset_boundary=subset),
-                                batch_size=batch_size, num_workers=num_workers, shuffle=False)
 
+                            save_path = os.path.join(save_folder,'%d.tif'%s_idx)
+                            predict_small_image_or_subset(model, device, save_path, 28, data_root, image_paths_txt,
+                                                          image_pair, pair_id,
+                                                          height, width, trans, batch_size, num_workers, subset)
+                            subset_file_list.append(save_path)
+                            pass
+
+                        # mosaic
+                        save_path = os.path.join(save_predict_dir, "predict_change_map_%d.tif" % pair_id)
+                        RSImageProcess.mosaics_images(subset_file_list,save_path,0)
 
                     # skip the remaining codes
                     continue
 
                 ####################################################################################
-                prediction_loader = torch.utils.data.DataLoader(
-                    two_images_pixel_pair(data_root, image_paths_txt, (28,28), train=False, transform=trans,predict_pair_id=pair_id),
-                    batch_size=batch_size, num_workers=num_workers, shuffle=False)
+                # predict a small image
+                save_path = os.path.join(save_predict_dir, "predict_change_map_%d.tif" % pair_id)
+                predict_small_image_or_subset(model,device,save_path,28,data_root,image_paths_txt,image_pair,pair_id,
+                                              height,width,trans,batch_size,num_workers,None)
 
-                predicted_change_2d = np.zeros((height,width ),dtype=np.uint8)
-
-                # print('Size of DataLoader: %d'%len(prediction_loader))
-                # loading data
-                for batch_idx, (data, pos) in enumerate(prediction_loader):
-
-                    for i in range(len(data)):
-                        data[i] = data[i].to(device)
-
-                    out_prop = model(data)
-                    predicted_target = torch.argmax(out_prop, dim=1).cpu()
-
-                    for out_label, _, row, col in zip(predicted_target,pos[0], pos[1], pos[2]):
-                        predicted_change_2d[row, col] = out_label
-
-
-                save_path = os.path.join(save_predict_dir, "predict_change_map_%d.tif"%pair_id)
-                print('Save prediction result to %s'%save_path)
-                # default, the second image is the new image, when preparing the training image
-                # the new image has the same size with the change map (label), but the old image may have offset, then the old image was cropped
-                # so when save the prediction result, use the new image as projection reference
-                new_image_path = image_pair[1]
-                img_pairs.save_image_oneband_8bit(new_image_path, predicted_change_2d, save_path)
 
 
 if __name__ == "__main__":
