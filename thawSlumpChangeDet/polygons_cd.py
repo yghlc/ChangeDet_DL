@@ -97,25 +97,35 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
             # if want to get the shrinking part, we should use a_old_polygon.difference(a_new_polygon), but thaw slumps cannot shrink
             a_old_polygon = old_polygons[intersec_old_index]
             polygon_expand = a_new_polygon.difference(a_old_polygon)
-            polygon_expand_list.append(polygon_expand)
+            if polygon_expand.is_empty is True:
+                basic.outputlogMessage('info, no expanding found between %dth (old) and %dth (new, 0 index) in %s and %s'%
+                                 (intersec_old_index, idx_new, os.path.basename(old_shp_path),os.path.basename(new_shp_path) ))
+            else:
+                polygon_expand_list.append(polygon_expand)
+                change_type_list.append(1)  # expanding
+                old_file_name.append(os.path.basename(old_shp_path))
+                old_polygon_idx.append(intersec_old_index)
+                new_file_name.append(os.path.basename(new_shp_path))
+                new_polygon_idx.append(idx_new)
 
             polygon_shrink = a_old_polygon.difference(a_new_polygon)
-            polygon_shrink_list.append(polygon_shrink)
+            if polygon_shrink.is_empty is True:
+                basic.outputlogMessage('info, no shrinking found between %dth (old) and %dth (new, 0 index) in %s and %s' %
+                    (intersec_old_index, idx_new, os.path.basename(old_shp_path), os.path.basename(new_shp_path)))
+            else:
+                polygon_shrink_list.append(polygon_shrink)
+                shrink_change_type_list.append(3)  # shrinking
+                shrink_old_file_name.append(os.path.basename(old_shp_path))
+                shrink_old_polygon_idx.append(intersec_old_index)
+                shrink_new_file_name.append(os.path.basename(new_shp_path))
+                shrink_new_polygon_idx.append(idx_new)
+
+            if polygon_expand.is_empty is True and polygon_shrink.is_empty is True:
+                basic.outputlogMessage('info, %dth (old) and %dth (new, 0 index) in %s and %s is identical' %
+                    (intersec_old_index, idx_new, os.path.basename(old_shp_path), os.path.basename(new_shp_path)))
 
             b_is_new = False
-            new_file_name.append(os.path.basename(new_shp_path))
-            new_polygon_idx.append(idx_new)
 
-            old_file_name.append(os.path.basename(old_shp_path))
-            old_polygon_idx.append(intersec_old_index)
-
-            change_type_list.append(1)  # expanding
-
-            shrink_change_type_list.append(3)   # shrinking
-            shrink_old_file_name.append(os.path.basename(old_shp_path))
-            shrink_old_polygon_idx.append(intersec_old_index)
-            shrink_new_file_name.append(os.path.basename(new_shp_path))
-            shrink_new_polygon_idx.append(idx_new)
 
         # if it is new
         if b_is_new:
@@ -185,6 +195,8 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
             # basic.outputlogMessage("attribute names: "+ str(row.keys().to_list()))
 
         multiPolygon = row['geometry']
+        if multiPolygon is None:
+            raise ValueError('The %d th (0 index) record in %s does not has a geometry'%(idx, input_shp))
         if multiPolygon.geom_type == 'MultiPolygon':
             polygons = list(multiPolygon)
         elif multiPolygon.geom_type == 'Polygon':
