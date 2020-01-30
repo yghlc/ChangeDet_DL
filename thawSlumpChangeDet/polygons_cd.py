@@ -254,18 +254,22 @@ def main(options, args):
 
     para_file = options.para_file
 
+    main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
+                         + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
+    # short the file name if too long
+    if len(main_shp_name) > 60:
+        main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0][:30] + '_' \
+                         + os.path.splitext(os.path.basename(new_shp_path))[0][:30] + '.shp'
+
     # conduct change detection
     if options.output is None:
-        output_path = 'change_'+ os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
-                      + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
+        output_path = 'change_'+ main_shp_name
     else:
         output_path = options.output
 
     basic.outputlogMessage('Conduct change detection on %s and %s, and the results will be saved to %s'%
                            (old_shp_path, new_shp_path, output_path))
 
-    main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
-                         + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
     # get expanding and shrinking parts
     output_path_expand = 'expand_' + main_shp_name
     output_path_shrink = 'shrink_' + main_shp_name
