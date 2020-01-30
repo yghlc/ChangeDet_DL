@@ -122,7 +122,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
             change_type_list.append(2)  # new
             new_file_name.append(os.path.basename(new_shp_path))
             new_polygon_idx.append(idx_new)
-            old_file_name.append('None')
+            old_file_name.append(os.path.basename(old_shp_path))    # should not be "None", it should be original file name which for comparing
             old_polygon_idx.append(-9999)
             polygon_expand_list.append(a_new_polygon)
 
@@ -138,7 +138,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
             polygon_shrink_list.append(old_polygons[absent_index])
             shrink_old_file_name.append(os.path.basename(old_shp_path))
             shrink_old_polygon_idx.append(absent_index)
-            shrink_new_file_name.append('None')
+            shrink_new_file_name.append(os.path.basename(new_shp_path))     # should not be "None", it should be original file name which for comparing
             shrink_new_polygon_idx.append(-9999)
 
     # save the polygon changes
