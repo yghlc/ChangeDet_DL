@@ -65,7 +65,8 @@ def get_medial_axis_of_one_polygon(vertices, h=0.5):
     script = os.path.expanduser('~/codes/PycharmProjects/yghlc_Computational-Geometry/HW/project/code/medial_axis_outRadius.py')
     args_list = [script, tmp_polygon_txt, str(h) ]
     if basic.exec_command_args_list_one_file(args_list, tmp_medial_axis_txt) is False:
-        return None, None
+        raise ValueError('failed to get medial axis and radius')
+        # return None, None
 
     # read result from file
     medial_axis_radiuses = np.loadtxt(tmp_medial_axis_txt)
