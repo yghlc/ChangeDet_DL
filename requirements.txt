@@ -3,3 +3,4 @@ planet
 shapely
 geopandas
 rasterio
+triangle
