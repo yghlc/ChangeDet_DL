@@ -16,6 +16,7 @@ from optparse import OptionParser
 # added path of DeeplabforRS
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 import basic_src.basic as basic
+import basic_src.io_function as io_function
 import vector_gpd
 from vector_features import shape_opeation
 import parameters
@@ -30,6 +31,51 @@ from polygon_medial_axis import compute_polygon_medial_axis, plot_polygon_medial
 import numpy as np
 import matplotlib.pyplot as plt
 
+class get_medial_axis_class(object):
+    def __init__(self):
+        pass
+
+    def __del__(self):
+        pass
+
+    def ref_compute_polygon_medial_axis(self, vertices, h=0.5):
+        return compute_polygon_medial_axis(vertices, h=h)
+
+def get_medial_axis_of_one_polygon(vertices, h=0.5):
+    '''
+    due to the unstable codes (error of interrupted by signal 11: SIGSEGV)
+    we try to call the script to get result
+    :param vertices:
+    :param h:
+    :return:
+    '''
+
+    # save the vertices to files
+    tmp_polygon_txt = 'out_polygon_vertices.txt'
+    tmp_medial_axis_txt = 'save_medial_axis_radius.txt'
+    if os.path.isfile(tmp_polygon_txt):
+        io_function.delete_file_or_dir(tmp_polygon_txt)
+    if os.path.isfile(tmp_medial_axis_txt):
+        io_function.delete_file_or_dir(tmp_medial_axis_txt)
+
+    res = np.savetxt(tmp_polygon_txt,vertices)
+    # print(res)
+
+    # call the script to
+    script = os.path.expanduser('~/codes/PycharmProjects/yghlc_Computational-Geometry/HW/project/code/medial_axis_outRadius.py')
+    args_list = [script, tmp_polygon_txt, str(h) ]
+    if basic.exec_command_args_list_one_file(args_list, tmp_medial_axis_txt) is False:
+        return None, None
+
+    # read result from file
+    medial_axis_radiuses = np.loadtxt(tmp_medial_axis_txt)
+    medial_axis = []
+    radiuses = []
+    for row in medial_axis_radiuses:
+        x1, y1, x2, y2, r1, r2 = row
+        medial_axis.append(((x1,y1),(x2,y2)))
+        radiuses.append((r1,r2))
+    return medial_axis, radiuses
 
 def cal_expand_area_distance(expand_shp):
     '''
@@ -53,14 +99,14 @@ def cal_expand_area_distance(expand_shp):
     # go through each polygon, get its medial axis, then calculate distance.
     for idx, exp_polygon in enumerate(expand_polygons):
 
-        basic.outputlogMessage('Calculating expanding distance of %dth (0 index) polygon'%idx)
+        basic.outputlogMessage('Calculating expanding distance of %dth (0 index) polygon, total: %d'%(idx,len(expand_polygons)))
         # if idx == 13:
         #     test = 1
 
         # for test
         # print(idx, exp_polygon)
         # print(exp_polygon)
-        # if idx != 13:
+        # if idx < 13 or idx==55:
         #     continue
         x_list, y_list = exp_polygon.exterior.coords.xy
         # xy = exp_polygon.exterior.coords
@@ -68,10 +114,23 @@ def cal_expand_area_distance(expand_shp):
         vertices = np.array(vertices)
         # polygon_dis.append(idx*0.1)
 
+        ############################ This way to call compute_polygon_medial_axis is unstale, sometime, it has error of:
+        ### Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)
+        # medial_axis_obj = get_medial_axis_class()
         # h is used to sample points on bundary low h value, to reduce the number of points
-        medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
+        # medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
+        # medial_axis, radiuses = medial_axis_obj.ref_compute_polygon_medial_axis(vertices, h=0.5)
+        # medial_axis_obj = None
+        # try:
+        #     medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
+        # except Exception as e:  # can get all the exception, and the program will not exit
+        #     basic.outputlogMessage('unknown error: ' + str(e))
+        ####################################################################################
 
-        # for test
+        medial_axis, radiuses = get_medial_axis_of_one_polygon(vertices, h=0.5)
+
+
+        ## for test
         # fig, ax = plt.subplots(figsize=(8, 8))
         # # plot_polygon_medial_axis(vertices, medial_axis, ax=ax)
         # plot_polygon_medial_axis(vertices, medial_axis, circ_radius=radiuses, draw_circle_idx=310, ax=ax)
@@ -90,13 +149,14 @@ def cal_expand_area_distance(expand_shp):
         mean_medAxis_width = np.mean(np_rad_nored)
         median_medAxis_width = np.median(np_rad_nored)      # np median will take the average of the middle two if necessary
 
-        poly_min_Ws.append(min_medAxis_width)
-        poly_max_Ws.append(max_medAxis_width)
-        poly_mean_Ws.append(mean_medAxis_width)
-        poly_median_Ws.append(median_medAxis_width)
+        poly_min_Ws.append(min_medAxis_width*2) # multiply by 2, then it is diameter
+        poly_max_Ws.append(max_medAxis_width*2)
+        poly_mean_Ws.append(mean_medAxis_width*2)
+        poly_median_Ws.append(median_medAxis_width*2)
 
+        # break
 
-    # save the distance to shapefile
+    ## save the distance to shapefile
     shp_obj = shape_opeation()
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_min_Ws, 'e_min_dis')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_max_Ws, 'e_max_dis')
