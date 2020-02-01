@@ -128,7 +128,8 @@ def cal_expand_area_distance(expand_shp):
         #     basic.outputlogMessage('unknown error: ' + str(e))
         ####################################################################################
 
-        medial_axis, radiuses = get_medial_axis_of_one_polygon(vertices, h=0.5)
+        # interrupted by signal 11: SIGSEGV or segmentation fault may be avoid if change the h value
+        medial_axis, radiuses = get_medial_axis_of_one_polygon(vertices, h=0.3)
 
 
         ## for test
