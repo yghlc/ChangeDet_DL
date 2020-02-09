@@ -175,7 +175,8 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
 
 def Multipolygon_to_Polygons(input_shp, ouptput_shp):
     '''
-    convert each multiPolygon to polygons
+    convert each multiPolygon to polygons, and also calculate polygon shapeinfo:
+    INarea, INperimete, circularit, WIDTH, HEIGHT, ratio_w_h
     :param input_shp:
     :param ouptput_shp:
     :return:
