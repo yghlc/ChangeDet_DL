@@ -86,8 +86,12 @@ def cal_relative_dem(expand_shp, old_shp, dem_path, nodata = 0):
     old_polygon_dem = get_mean_elevation_of_polygons(old_shp, dem_path, nodata)
 
     relative_dem_list = []
-    for dem_value, old_poly_idx in zip(expand_polygons_dem, old_index_list):
-        dem_diff =  dem_value - old_polygon_dem[old_poly_idx]
+    for idx, (dem_value, old_poly_idx) in enumerate(zip(expand_polygons_dem, old_index_list)):
+        if old_poly_idx < 0:
+            dem_diff = 0
+            basic.outputlogMessage('Warning, no corresponding old polygon for %dth (0 index) record '%idx)
+        else:
+            dem_diff =  dem_value - old_polygon_dem[old_poly_idx]
         relative_dem_list.append(dem_diff)
 
     ## save the distance to shapefile
