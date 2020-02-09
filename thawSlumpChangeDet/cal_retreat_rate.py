@@ -21,6 +21,8 @@ import vector_gpd
 from vector_features import shape_opeation
 import parameters
 
+import random
+import math
 
 # local modules
 # sys.path.insert(0, '../../lib/')
@@ -58,6 +60,19 @@ def get_medial_axis_of_one_polygon(vertices, h=0.5):
     if os.path.isfile(tmp_medial_axis_txt):
         io_function.delete_file_or_dir(tmp_medial_axis_txt)
 
+    ## not necessary, previously, the error is due to its small area, not the triangular shape
+    # new_vertices = []
+    # if len(vertices) < 5: # for a triangle
+    #     basic.outputlogMessage('Warning, insert some points for a triangle')
+    #     # manually added some points
+    #     for idx in range(len(vertices)-1):
+    #         new_vertices.append(vertices[idx])
+    #         a_new_point = ((vertices[idx][0] + vertices[idx+1][0])/2.0,
+    #                        (vertices[idx][1] + vertices[idx + 1][1]) / 2.0)
+    #         new_vertices.append(a_new_point)
+    #     new_vertices.append(vertices[-1])
+    #     vertices = np.array(new_vertices)
+
     res = np.savetxt(tmp_polygon_txt,vertices)
     # print(res)
 
@@ -70,12 +85,21 @@ def get_medial_axis_of_one_polygon(vertices, h=0.5):
         if basic.exec_command_args_list_one_file(args_list, tmp_medial_axis_txt) is False:
             basic.outputlogMessage('failed to get medial axis and radius, change h value, then try again')
             h = h - 0.05
+        if os.path.isfile(tmp_medial_axis_txt) and os.path.getsize(tmp_medial_axis_txt) < 1:
+            print('fileSize:',os.path.getsize(tmp_medial_axis_txt))
+            io_function.delete_file_or_dir(tmp_medial_axis_txt)
+            h = h - 0.05
+        if h < 0.1:
+            h = random.uniform(0.01, 0.1)
 
     if os.path.isfile(tmp_medial_axis_txt) is False:
         raise ValueError('error, failed to get medial axis and radius')
 
     # read result from file
     medial_axis_radiuses = np.loadtxt(tmp_medial_axis_txt)
+    if medial_axis_radiuses.ndim == 1:      # if the result has only one row, change to 2 dimision
+        medial_axis_radiuses = medial_axis_radiuses.reshape(1,medial_axis_radiuses.shape[0])
+    print(medial_axis_radiuses.shape)
     medial_axis = []
     radiuses = []
     for row in medial_axis_radiuses:
@@ -110,42 +134,48 @@ def cal_expand_area_distance(expand_shp):
         # if idx == 13:
         #     test = 1
 
-        # for test
-        # print(idx, exp_polygon)
-        # print(exp_polygon)
-        # if idx < 13 or idx==55:
-        #     continue
-        x_list, y_list = exp_polygon.exterior.coords.xy
-        # xy = exp_polygon.exterior.coords
-        vertices = [ (x,y) for (x,y) in zip(x_list,y_list)]
-        vertices = np.array(vertices)
-        # polygon_dis.append(idx*0.1)
+        if exp_polygon.area < 1:
+            # for a small polygon, it may failed to calculate its radiues, so get a approximation values
+            basic.outputlogMessage('The polygon is very small (area < 1), use sqrt(area/pi) as its radius')
+            radiuses = np.array([[math.sqrt(exp_polygon.area/math.pi)]])
+        else:
 
-        ############################ This way to call compute_polygon_medial_axis is unstale, sometime, it has error of:
-        ### Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)
-        # medial_axis_obj = get_medial_axis_class()
-        # h is used to sample points on bundary low h value, to reduce the number of points
-        # medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
-        # medial_axis, radiuses = medial_axis_obj.ref_compute_polygon_medial_axis(vertices, h=0.5)
-        # medial_axis_obj = None
-        # try:
-        #     medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
-        # except Exception as e:  # can get all the exception, and the program will not exit
-        #     basic.outputlogMessage('unknown error: ' + str(e))
-        ####################################################################################
+            # for test
+            # print(idx, exp_polygon)
+            # print(exp_polygon)
+            # if idx < 13 or idx==55:
+            #     continue
+            x_list, y_list = exp_polygon.exterior.coords.xy
+            # xy = exp_polygon.exterior.coords
+            vertices = [ (x,y) for (x,y) in zip(x_list,y_list)]
+            vertices = np.array(vertices)
+            # polygon_dis.append(idx*0.1)
 
-        # interrupted by signal 11: SIGSEGV or segmentation fault may be avoid if change the h value
-        medial_axis, radiuses = get_medial_axis_of_one_polygon(vertices, h=0.3)
+            ############################ This way to call compute_polygon_medial_axis is unstale, sometime, it has error of:
+            ### Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)
+            # medial_axis_obj = get_medial_axis_class()
+            # h is used to sample points on bundary low h value, to reduce the number of points
+            # medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
+            # medial_axis, radiuses = medial_axis_obj.ref_compute_polygon_medial_axis(vertices, h=0.5)
+            # medial_axis_obj = None
+            # try:
+            #     medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
+            # except Exception as e:  # can get all the exception, and the program will not exit
+            #     basic.outputlogMessage('unknown error: ' + str(e))
+            ####################################################################################
+
+            # interrupted by signal 11: SIGSEGV or segmentation fault may be avoid if change the h value
+            medial_axis, radiuses = get_medial_axis_of_one_polygon(vertices, h=0.3)
 
 
-        ## for test
-        # fig, ax = plt.subplots(figsize=(8, 8))
-        # # plot_polygon_medial_axis(vertices, medial_axis, ax=ax)
-        # plot_polygon_medial_axis(vertices, medial_axis, circ_radius=radiuses, draw_circle_idx=310, ax=ax)
-        # ax.axis('equal')
-        # ax.set_title('Medial Axis')
-        # plt.show()
-        # break
+            ## for test
+            # fig, ax = plt.subplots(figsize=(8, 8))
+            # # plot_polygon_medial_axis(vertices, medial_axis, ax=ax)
+            # plot_polygon_medial_axis(vertices, medial_axis, circ_radius=radiuses, draw_circle_idx=310, ax=ax)
+            # ax.axis('equal')
+            # ax.set_title('Medial Axis')
+            # plt.show()
+            # break
 
         # to 1d
         radiuses_1d = [value for item in radiuses for value in item]
