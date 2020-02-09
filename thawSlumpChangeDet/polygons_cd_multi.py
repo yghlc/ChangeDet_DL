@@ -46,17 +46,21 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
 
     # multi polygons to polygons, then add some information on the polygons
     all_change_polygons = 'all_changes_' + main_shp_name
-    polygons_cd.Multipolygon_to_Polygons(output_path_expand, all_change_polygons)
-
-    # added retreat distance (from medial axis)
-    cal_expand_area_distance(all_change_polygons)
-
-    # added relative elevation
-    dem_file = parameters.get_string_parameters_None_if_absence(para_file, 'dem_file')
-    if dem_file is None:
-        basic.outputlogMessage('Warning, dem_file is None, skip calculating relative dem')
+    if os.path.isfile(all_change_polygons):
+        basic.outputlogMessage('Warning, % s alreay exist, skip creating it again'%all_change_polygons)
+        pass
     else:
-        cal_relative_dem(all_change_polygons, old_shp_path, dem_file, nodata=0)
+        polygons_cd.Multipolygon_to_Polygons(output_path_expand, all_change_polygons)
+
+        # added retreat distance (from medial axis)  # very time-consuming
+        cal_expand_area_distance(all_change_polygons)
+
+        # added relative elevation
+        dem_file = parameters.get_string_parameters_None_if_absence(para_file, 'dem_file')
+        if dem_file is None:
+            basic.outputlogMessage('Warning, dem_file is None, skip calculating relative dem')
+        else:
+            cal_relative_dem(all_change_polygons, old_shp_path, dem_file, nodata=0)
 
     # # post-processing of the expanding parts, to get the real expanding part (exclude delineation errors)
     min_area_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_change_area', 'float')

@@ -270,7 +270,7 @@ def expanding_change_post_processing(input_shp, save_path, min_area_thr, min_cir
     basic.outputlogMessage('remove %d polytons based on resteat rates ' % count_rm_based_retreat_dis)
     basic.outputlogMessage('remove %d polytons based on relative elevation ' % count_rm_based_relative_dem)
     basic.outputlogMessage('remove %d polytons based on areas ' % count_rm_based_retreat_dis)
-    basic.outputlogMessage('remove %d polytons based on relative elevation ' % count_rm_based_relative_dem)
+    basic.outputlogMessage('remove %d polytons based on circularity' % count_rm_based_circu)
 
     # save results
     shapefile.to_file(save_path, driver='ESRI Shapefile')
