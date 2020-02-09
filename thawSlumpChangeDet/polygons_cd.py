@@ -231,7 +231,8 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
     wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(input_shp)
     return vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', wkt_string, ouptput_shp)
 
-def expanding_change_post_processing(input_shp, save_path, min_area_thr, min_circularity_thr):
+def expanding_change_post_processing(input_shp, save_path, min_area_thr, min_circularity_thr,
+                                     e_max_dis_thr=0, relative_dem_thr = -9999):
     '''
     post-processing for expanding changes (polygons)
     :param input_shp: a shape file containing the polygons (derived from multiPolygons)
@@ -242,14 +243,34 @@ def expanding_change_post_processing(input_shp, save_path, min_area_thr, min_cir
     shapefile = gpd.read_file(input_shp)
 
     # go through each polygon
+    count_rm_based_area = 0
+    count_rm_based_circu = 0
+    count_rm_based_retreat_dis = 0
+    count_rm_based_relative_dem = 0
+
     for idx,row in shapefile.iterrows():
 
         polygon = row['geometry']
         # go through post-processing to decide to keep or remove it
         # only keep polygons with large areas and move toward upslope
-        if polygon.area < min_area_thr or row['circularit'] < min_circularity_thr:
+        if row['e_max_dis'] < e_max_dis_thr:
             shapefile.drop(idx, inplace=True)
+            count_rm_based_retreat_dis += 1
+        elif row['diff_dem'] < relative_dem_thr:
+            count_rm_based_relative_dem += 1
+
+        elif polygon.area < min_area_thr:
+            shapefile.drop(idx, inplace=True)
+            count_rm_based_area += 1
             # continue
+        elif row['circularit'] < min_circularity_thr:
+            shapefile.drop(idx, inplace=True)
+            count_rm_based_circu += 1
+    #
+    basic.outputlogMessage('remove %d polytons based on resteat rates ' % count_rm_based_retreat_dis)
+    basic.outputlogMessage('remove %d polytons based on relative elevation ' % count_rm_based_relative_dem)
+    basic.outputlogMessage('remove %d polytons based on areas ' % count_rm_based_retreat_dis)
+    basic.outputlogMessage('remove %d polytons based on relative elevation ' % count_rm_based_relative_dem)
 
     # save results
     shapefile.to_file(save_path, driver='ESRI Shapefile')
