@@ -31,7 +31,7 @@ from polygon_medial_axis import compute_polygon_medial_axis, plot_polygon_medial
 
 
 import numpy as np
-import matplotlib.pyplot as plt
+
 
 class get_medial_axis_class(object):
     def __init__(self):
@@ -169,6 +169,8 @@ def cal_expand_area_distance(expand_shp):
 
 
             ## for test
+            # avoid import matplotlib if don't need it, or it will ask for graphic environment, and make window loses focus
+            # import matplotlib.pyplot as plt
             # fig, ax = plt.subplots(figsize=(8, 8))
             # # plot_polygon_medial_axis(vertices, medial_axis, ax=ax)
             # plot_polygon_medial_axis(vertices, medial_axis, circ_radius=radiuses, draw_circle_idx=310, ax=ax)
