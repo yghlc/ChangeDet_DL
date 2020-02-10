@@ -24,14 +24,41 @@ import polygons_cd
 from cal_relative_dem import cal_relative_dem
 from cal_retreat_rate import cal_expand_area_distance
 
-def get_expanding_change(old_shp_path,new_shp_path,para_file):
 
+def get_main_shp_name(old_shp_path,new_shp_path):
+
+    curr_dir = os.getcwd()
+    folder_name = os.path.dirname(curr_dir)
+
+    import re
+    # for the cases of manual delineation
+    year_month_old = re.findall('\d{6}',os.path.basename(old_shp_path))
+    year_month_new = re.findall('\d{6}', os.path.basename(new_shp_path))
+    if len(year_month_old) == 1 and len(year_month_new) == 1:
+        main_shp_name = folder_name + '_T_'+ year_month_old[0]+'_vs_'+year_month_new[0]
+        return main_shp_name
+
+    # for the cases of auto mapping results
+    I_num_old = re.findall('I\d+', os.path.basename(old_shp_path))
+    I_num_new = re.findall('I\d+', os.path.basename(new_shp_path))
+    if len(I_num_old) == 1 and len(I_num_new) == 1:
+        main_shp_name = folder_name + '_T_'+ I_num_old[0]+'_vs_'+I_num_new[0]
+        return main_shp_name
+
+    # for other case
     main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
                     + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
     # short the file name if too long
     if len(main_shp_name) > 30:
         main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0][:15] + '_' \
                         + os.path.splitext(os.path.basename(new_shp_path))[0][:15] + '.shp'
+
+    return main_shp_name
+
+def get_expanding_change(old_shp_path,new_shp_path,para_file):
+
+
+    main_shp_name = get_main_shp_name(old_shp_path, new_shp_path)
 
     # conduct change detection
     output_path = 'change_' + main_shp_name
