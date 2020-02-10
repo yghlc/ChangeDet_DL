@@ -88,7 +88,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
                 old_polygon_absent[idx_old] = False
 
         if len(intersec_poly_index_list) > 1:
-            basic.outputlogMessage('Warning, the %dth new polygon intersect %d old polygon'%(idx_new, len(intersec_poly_index_list)))
+            basic.outputlogMessage('Warning, the %dth new polygon intersect %d old polygons'%(idx_new, len(intersec_poly_index_list)))
 
         # calculate the expanding or shrinking
         for intersec_old_index in intersec_poly_index_list:
