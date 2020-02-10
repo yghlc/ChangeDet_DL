@@ -265,7 +265,8 @@ def remove_polygons(shapefile,field_name, threshold, bsmaller,output):
                 shapefile.drop(idx, inplace=True)
                 remove_count += 1
 
-    basic.outputlogMessage('remove %d polygons based on %s, save to %s' % (remove_count, field_name, output))
+    basic.outputlogMessage('remove %d polygons based on %s, remain %d ones save to %s' %
+                           (remove_count, field_name, len(shapefile.geometry.values), output))
     # save results
     shapefile.to_file(output, driver='ESRI Shapefile')
 
