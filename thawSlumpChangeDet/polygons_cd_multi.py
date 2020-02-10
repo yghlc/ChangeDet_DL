@@ -103,6 +103,9 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
         basic.outputlogMessage(
             'warning, minimum_retreat_distance is absent in the para file, skip removing polygons based on the maximum retreat distance')
 
+    # copy to output_path
+    io_function.copy_shape_file(all_change_polygons,output_path)
+
     return True
 
 def main(options, args):
