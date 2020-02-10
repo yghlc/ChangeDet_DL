@@ -28,7 +28,7 @@ from cal_retreat_rate import cal_expand_area_distance
 def get_main_shp_name(old_shp_path,new_shp_path):
 
     curr_dir = os.getcwd()
-    folder_name = os.path.dirname(curr_dir)
+    folder_name = os.path.basename(curr_dir)
 
     import re
     # for the cases of manual delineation
