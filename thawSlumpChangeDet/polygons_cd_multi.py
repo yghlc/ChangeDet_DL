@@ -44,32 +44,64 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     output_path_shrink = 'shrink_' + main_shp_name
     polygons_cd.polygons_change_detection(old_shp_path, new_shp_path, output_path_expand, output_path_shrink)
 
-    # multi polygons to polygons, then add some information on the polygons
+    # multi polygons to polygons, then add some information of the polygons:
+    # INarea, INperimete, circularit, WIDTH, HEIGHT, ratio_w_h
     all_change_polygons = 'all_changes_' + main_shp_name
-    if os.path.isfile(all_change_polygons):
-        basic.outputlogMessage('Warning, % s alreay exist, skip creating it again'%all_change_polygons)
-        pass
-    else:
-        polygons_cd.Multipolygon_to_Polygons(output_path_expand, all_change_polygons)
+    polygons_cd.Multipolygon_to_Polygons(output_path_expand, all_change_polygons)
 
-        # added retreat distance (from medial axis)  # very time-consuming
-        cal_expand_area_distance(all_change_polygons)
+    all_change_polygons_backup = all_change_polygons
+    ##################################################################
+    # post-processing for the expanding parts, to get the real expanding part (exclude delineation errors)
+    #  calcuating some more information: retreat distance, relative dem
 
-        # added relative elevation
-        dem_file = parameters.get_string_parameters_None_if_absence(para_file, 'dem_file')
-        if dem_file is None:
-            basic.outputlogMessage('Warning, dem_file is None, skip calculating relative dem')
-        else:
-            cal_relative_dem(all_change_polygons, old_shp_path, dem_file, nodata=0)
-
-    # # post-processing of the expanding parts, to get the real expanding part (exclude delineation errors)
+    # remove some small polygons first, to reduce the burden of calcuating retreat distance
     min_area_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_change_area', 'float')
-    min_circularity_thr = parameters.get_digit_parameters_None_if_absence(para_file,'minimum_change_circularity', 'float')
-    min_retreat_dis_thr = parameters.get_digit_parameters_None_if_absence(para_file,'minimum_retreat_distance', 'float')
-    min_relative_ele_thr = parameters.get_digit_parameters_None_if_absence(para_file,'minimum_relative_elevation', 'float')
+    b_smaller = True
+    if min_area_thr is not None:
+        rm_area_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup, 'rmArea')
+        polygons_cd.remove_polygons(all_change_polygons, 'INarea', min_area_thr, b_smaller, rm_area_save_shp)
+        all_change_polygons = rm_area_save_shp
+    else:
+        basic.outputlogMessage('warning, minimum_change_area is absent in the para file, skip removing polygons based on INarea')
 
-    polygons_cd.expanding_change_post_processing(all_change_polygons, output_path, min_area_thr, min_circularity_thr,
-                                                 e_max_dis_thr=min_retreat_dis_thr, relative_dem_thr=min_relative_ele_thr)
+    # remove based on circularity
+    min_circularity_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_change_circularity', 'float')
+    if min_circularity_thr is not None:
+        rm_circularity_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup, 'rmCirc')
+        polygons_cd.remove_polygons(all_change_polygons, 'circularit', min_circularity_thr, True, rm_circularity_save_shp)
+        all_change_polygons = rm_circularity_save_shp
+    else:
+        basic.outputlogMessage('warning, minimum_change_circularity is absent in the para file, skip removing polygons based on circularity')
+
+    # added relative elevation
+    dem_file = parameters.get_string_parameters_None_if_absence(para_file, 'dem_file')
+    if dem_file is None:
+        basic.outputlogMessage('Warning, dem_file is None, skip calculating relative dem')
+    else:
+        cal_relative_dem(all_change_polygons, old_shp_path, dem_file, nodata=0)
+
+    # remove based on relative elevation
+    min_relative_ele_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_relative_elevation','float')
+    if min_relative_ele_thr is not None:
+        rm_rela_dem_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup, 'rmRelDEM')
+        polygons_cd.remove_polygons(all_change_polygons, 'diff_dem', min_relative_ele_thr, True, rm_rela_dem_save_shp)
+        all_change_polygons = rm_rela_dem_save_shp
+    else:
+        basic.outputlogMessage(
+            'warning, minimum_relative_elevation is absent in the para file, skip removing polygons based on relative DEM')
+
+    # added retreat distance (from medial axis)  # very time-consuming
+    cal_expand_area_distance(all_change_polygons)
+
+
+    min_retreat_dis_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_retreat_distance', 'float')
+    if min_retreat_dis_thr is not None:
+        rm_retreat_dis_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup, 'rmretreatDis')
+        polygons_cd.remove_polygons(all_change_polygons, 'e_max_dis', min_retreat_dis_thr, True, rm_retreat_dis_save_shp)
+        all_change_polygons = rm_retreat_dis_save_shp
+    else:
+        basic.outputlogMessage(
+            'warning, minimum_retreat_distance is absent in the para file, skip removing polygons based on the maximum retreat distance')
 
     return True
 
