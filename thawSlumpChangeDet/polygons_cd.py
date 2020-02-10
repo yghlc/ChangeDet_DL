@@ -231,6 +231,46 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
     wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(input_shp)
     return vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', wkt_string, ouptput_shp)
 
+def remove_polygons(shapefile,field_name, threshold, bsmaller,output):
+    '''
+    remove polygons based on attribute values
+    :param shapefile:
+    :param field_name:
+    :param threshold:
+    :param bsmaller:
+    :param output:
+    :return:
+    '''
+    # another version
+    # operation_obj = shape_opeation()
+    # if operation_obj.remove_shape_baseon_field_value(shapefile, output, field_name, threshold, smaller=bsmaller) is False:
+    #     return False
+
+    # read polygons as shapely objects
+    shapefile = gpd.read_file(shapefile)
+
+    remove_count = 0
+
+    for idx,row in shapefile.iterrows():
+
+        # polygon = row['geometry']
+        # go through post-processing to decide to keep or remove it
+        # only keep polygons with large areas and move toward upslope
+        if bsmaller:
+            if row[field_name] < threshold:
+                shapefile.drop(idx, inplace=True)
+                remove_count += 1
+        else:
+            if row[field_name] >= threshold:
+                shapefile.drop(idx, inplace=True)
+                remove_count += 1
+
+    basic.outputlogMessage('remove %d polytons based on %s, save to %s' % (remove_count, field_name, output))
+    # save results
+    shapefile.to_file(output, driver='ESRI Shapefile')
+
+
+
 def expanding_change_post_processing(input_shp, save_path, min_area_thr, min_circularity_thr,
                                      e_max_dis_thr=0, relative_dem_thr = -9999):
     '''
