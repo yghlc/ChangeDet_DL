@@ -35,14 +35,14 @@ def get_main_shp_name(old_shp_path,new_shp_path):
     year_month_old = re.findall('\d{6}',os.path.basename(old_shp_path))
     year_month_new = re.findall('\d{6}', os.path.basename(new_shp_path))
     if len(year_month_old) == 1 and len(year_month_new) == 1:
-        main_shp_name = folder_name + '_T_'+ year_month_old[0]+'_vs_'+year_month_new[0]
+        main_shp_name = folder_name + '_T_'+ year_month_old[0]+'_vs_'+year_month_new[0]  + '.shp'
         return main_shp_name
 
     # for the cases of auto mapping results
     I_num_old = re.findall('I\d+', os.path.basename(old_shp_path))
     I_num_new = re.findall('I\d+', os.path.basename(new_shp_path))
     if len(I_num_old) == 1 and len(I_num_new) == 1:
-        main_shp_name = folder_name + '_T_'+ I_num_old[0]+'_vs_'+I_num_new[0]
+        main_shp_name = folder_name + '_T_'+ I_num_old[0]+'_vs_'+I_num_new[0]  + '.shp'
         return main_shp_name
 
     # for other case
