@@ -29,9 +29,9 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0] + '_' \
                     + os.path.splitext(os.path.basename(new_shp_path))[0] + '.shp'
     # short the file name if too long
-    if len(main_shp_name) > 60:
-        main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0][:30] + '_' \
-                        + os.path.splitext(os.path.basename(new_shp_path))[0][:30] + '.shp'
+    if len(main_shp_name) > 30:
+        main_shp_name = os.path.splitext(os.path.basename(old_shp_path))[0][:15] + '_' \
+                        + os.path.splitext(os.path.basename(new_shp_path))[0][:15] + '.shp'
 
     # conduct change detection
     output_path = 'change_' + main_shp_name
