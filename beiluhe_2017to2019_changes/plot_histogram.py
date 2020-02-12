@@ -201,7 +201,7 @@ def draw_one_value_hist(shp_file,field_name,output,logfile,bin_min,bin_max,bin_w
 
     xlabelrotation = None
     if 'area' in field_name or 'INperimete' in field_name or 'circularit' in field_name or 'aspectLine' in field_name or \
-        'dem' in field_name or 'slo_max' in field_name:
+        'dem' in field_name or 'slo_max' in field_name or 'dis' in field_name:
         xlabelrotation = 90
 
     bins = np.arange(bin_min, bin_max, bin_width)
@@ -219,6 +219,10 @@ def draw_three_hist(shp_2017,shp_2018,shp_2019, field_name, out_pre_name, bin_mi
     draw_one_value_hist(shp_2018,field_name,out_pre_name+'_201807.jpg',out_pre_name+'_201807.txt',bin_min,bin_max,bin_width,ylim)
     draw_one_value_hist(shp_2019,field_name,out_pre_name+'_201907.jpg',out_pre_name+'_201907.txt',bin_min,bin_max,bin_width,ylim)
 
+def draw_two_hist_of_cd(shp_0vs1,shp_1vs2, field_name, out_pre_name, bin_min,bin_max,bin_width,ylim):
+
+    draw_one_value_hist(shp_0vs1,field_name,out_pre_name+'_2017vs2018.jpg',out_pre_name+'_2017vs2018.txt',bin_min,bin_max,bin_width,ylim)
+    draw_one_value_hist(shp_1vs2,field_name,out_pre_name+'_2018vs2019.jpg',out_pre_name+'_2018vs2019.txt',bin_min,bin_max,bin_width,ylim)
 
 
 if __name__ == "__main__":
@@ -232,13 +236,13 @@ if __name__ == "__main__":
     # tpi = HOME+'/Data/Qinghai-Tibet/beiluhe/DEM/srtm_30/dem_derived/beiluhe_srtm30_utm_basinExt_tpi.tif'
 
     ##########################################################################################
-    # plot histogram on the ground truth
-    out_dir=HOME+'/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_2017To2019_manual_delineation'
-
-    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps')
-    ground_truth_201707 = os.path.join(shp_dir, 'train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
-    ground_truth_201807 = os.path.join(shp_dir, 'train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp')
-    ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
+    # # plot histogram on the ground truth of thaw slumps in Beiluhe
+    # out_dir=HOME+'/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_2017To2019_manual_delineation'
+    #
+    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps')
+    # ground_truth_201707 = os.path.join(shp_dir, 'train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
+    # ground_truth_201807 = os.path.join(shp_dir, 'train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp')
+    # ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
 
     # INarea, y lim: we want,[0,160]
     # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'INarea','area_GT',0,31,2,[0,160])
@@ -262,7 +266,33 @@ if __name__ == "__main__":
     # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'slo_std','slope_std_GT',0,5,0.5,[0,85])
 
 
-    ####### use mapping polygons ####
+    ##########################################################################################
+    # plot histogram on the change polygons (based on manual delineation) of thaw slumps in Beiluhe
+    out_dir=os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
+    manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201707_vs_201807.shp')
+    manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201807_vs_201907.shp')
+
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'INarea', 'area_manu_cd', 0, 2.2, 0.1, [0, 235])
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'INperimete', 'perimeter_manu_cd', 0, 1800, 100, [0, 100])
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'circularit', 'circularity_manu_cd', 0, 0.8, 0.05, [0, 80])
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'ratio_w_h', 'ratio_w_h_manu_cd', 0, 1.0, 0.1, [0, 90])
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'diff_dem', 'diff_dem_manu_cd', 0, 45, 4, [0, 100])
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'e_min_dis', 'expand_min_dis_manu_cd', 0, 0.4, 0.04, [0, 300])
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'e_max_dis', 'expand_max_dis_manu_cd', 0, 81, 5, [0, 120])
+
+    # draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'e_mean_dis', 'expand_mean_dis_manu_cd', 0, 40, 4, [0, 200])
+
+    draw_two_hist_of_cd(manu_cd_2017vs2018, manu_cd_2018vs2019, 'e_medi_dis', 'expand_median_dis_manu_cd', 0, 40, 4, [0, 200])
+
+
 
 
     os.system('rm processLog.txt')
