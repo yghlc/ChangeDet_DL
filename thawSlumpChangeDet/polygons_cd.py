@@ -63,6 +63,11 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
     shrink_new_file_name = []
     shrink_new_polygon_idx = []
 
+    # the number of old polygons that a new polygon intersect, 0 for new or disappear, most of the case, it should be 1
+    # it's new polygon based, that is, based on a new polygon, then count how many old polygon it overlaps
+    expand_intersect_num_list = []
+    shrink_intersect_num_list = []
+
 
     # read new polygons
     new_polygons = vector_gpd.read_polygons_gpd(new_shp_path)
@@ -90,6 +95,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
         if len(intersec_poly_index_list) > 1:
             basic.outputlogMessage('Warning, the %dth new polygon intersect %d old polygons'%(idx_new, len(intersec_poly_index_list)))
 
+
         # calculate the expanding or shrinking
         for intersec_old_index in intersec_poly_index_list:
 
@@ -107,6 +113,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
                 old_polygon_idx.append(intersec_old_index)
                 new_file_name.append(os.path.basename(new_shp_path))
                 new_polygon_idx.append(idx_new)
+                expand_intersect_num_list.append(len(intersec_poly_index_list))
 
             polygon_shrink = a_old_polygon.difference(a_new_polygon)
             if polygon_shrink.is_empty is True:
@@ -119,6 +126,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
                 shrink_old_polygon_idx.append(intersec_old_index)
                 shrink_new_file_name.append(os.path.basename(new_shp_path))
                 shrink_new_polygon_idx.append(idx_new)
+                shrink_intersect_num_list.append(len(intersec_poly_index_list))
 
             if polygon_expand.is_empty is True and polygon_shrink.is_empty is True:
                 basic.outputlogMessage('info, %dth (old) and %dth (new, 0 index) in %s and %s is identical' %
@@ -135,6 +143,9 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
             old_file_name.append(os.path.basename(old_shp_path))    # should not be "None", it should be original file name which for comparing
             old_polygon_idx.append(-9999)
             polygon_expand_list.append(a_new_polygon)
+            expand_intersect_num_list.append(0)
+
+
 
     # find absent polygons in the old set of polygons
     absent_indices = [i for i, x in enumerate(old_polygon_absent) if x == True]
@@ -150,6 +161,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
             shrink_old_polygon_idx.append(absent_index)
             shrink_new_file_name.append(os.path.basename(new_shp_path))     # should not be "None", it should be original file name which for comparing
             shrink_new_polygon_idx.append(-9999)
+            shrink_intersect_num_list.append(0)
 
     # save the polygon changes
     expanding_df = pd.DataFrame({'ChangeType': change_type_list,
@@ -157,6 +169,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
                                  'old_index': old_polygon_idx,
                                  'new_file': new_file_name,
                                  'new_index': new_polygon_idx,
+                                 'inters_num': expand_intersect_num_list,
                                  'PolygonExpand': polygon_expand_list
                                 })
     shrinking_df = pd.DataFrame({'ChangeType': shrink_change_type_list,
@@ -164,6 +177,7 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
                                  'old_index': shrink_old_polygon_idx,
                                  'new_file': shrink_new_file_name,
                                  'new_index': shrink_new_polygon_idx,
+                                 'inters_num': shrink_intersect_num_list,
                                  'PolygonShrink': polygon_shrink_list
                                 })
 
