@@ -100,6 +100,26 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     else:
         basic.outputlogMessage('warning, minimum_change_circularity is absent in the para file, skip removing polygons based on circularity')
 
+    # b_remove_zero_intersection
+    b_remove_zero_intersection = parameters.get_bool_parameters_None_if_absence(para_file,'b_remove_zero_intersection')
+    if b_remove_zero_intersection is not None and b_remove_zero_intersection is True:
+        rm_zero_inters_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup, 'rm0inter')
+        polygons_cd.remove_polygons(all_change_polygons, 'inters_num', 1, True, rm_zero_inters_save_shp) # 0 < 1
+        all_change_polygons = rm_zero_inters_save_shp
+    else:
+        basic.outputlogMessage('warning, b_remove_zero_intersection is absent or No in the para file, '
+                               'skip removing polygons if the intersecion number is 0')
+
+    # b_remove_two_or_more_intersection
+    b_remove_two_or_more_intersection = parameters.get_bool_parameters_None_if_absence(para_file, 'b_remove_two_or_more_intersection')
+    if b_remove_two_or_more_intersection is not None and b_remove_two_or_more_intersection is True:
+        rm_twoOrmore_inters_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup, 'rm2MoreInter')
+        polygons_cd.remove_polygons(all_change_polygons, 'inters_num', 2, False, rm_twoOrmore_inters_save_shp)  # number >= 2
+        all_change_polygons = rm_twoOrmore_inters_save_shp
+    else:
+        basic.outputlogMessage('warning, b_remove_two_or_more_intersection is absent or No in the para file, '
+                               'skip removing polygons if the intersecion number >= 2')
+
     # added relative elevation
     dem_file = parameters.get_string_parameters_None_if_absence(para_file, 'dem_file')
     if dem_file is None:
