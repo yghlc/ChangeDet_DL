@@ -201,7 +201,7 @@ def draw_one_value_hist(shp_file,field_name,output,logfile,bin_min,bin_max,bin_w
 
     xlabelrotation = None
     if 'area' in field_name or 'INperimete' in field_name or 'circularit' in field_name or 'aspectLine' in field_name or \
-        'dem' in field_name:
+        'dem' in field_name or 'slo_max' in field_name:
         xlabelrotation = 90
 
     bins = np.arange(bin_min, bin_max, bin_width)
@@ -243,11 +243,24 @@ if __name__ == "__main__":
     # INarea, y lim: we want,[0,160]
     # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'INarea','area_GT',0,31,2,[0,160])
 
+    # perimeter
+    # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'INperimete','perimeter_GT',200,6500,500,[0,150])
+
     # dem_mean, y lim:
     # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'dem_mean','dem_mean_GT',4500,5000,25,[0,75])
 
     # dem_std, y lim:
-    draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'dem_std','dem_std_GT',0,26,1.5,[0,50])
+    # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'dem_std','dem_std_GT',0,26,1.5,[0,50])
+
+    # slo_mean
+    # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'slo_mean','slope_mean_GT',2,15,1,[0,70])
+    # slo_min
+    # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'slo_min','slope_min_GT',0,12,1,[0,100])
+    # slo_max
+    # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'slo_max','slope_max_GT',3,22,1,[0,50])
+    # slo_std
+    # draw_three_hist(ground_truth_201707, ground_truth_201807, ground_truth_201907,'slo_std','slope_std_GT',0,5,0.5,[0,85])
+
 
     ####### use mapping polygons ####
 
