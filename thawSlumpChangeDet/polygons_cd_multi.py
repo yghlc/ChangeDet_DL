@@ -91,6 +91,16 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     else:
         basic.outputlogMessage('warning, minimum_change_area is absent in the para file, skip removing polygons based on INarea')
 
+    # remove polygons based on maximum area
+    max_area_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'maximum_change_area', 'float')
+    if max_area_thr is not None:
+        rm_max_area_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup, 'rmArea_max')
+        polygons_cd.remove_polygons(all_change_polygons, 'INarea', max_area_thr, False, rm_max_area_save_shp)
+        all_change_polygons = rm_max_area_save_shp
+    else:
+        basic.outputlogMessage('warning, maximum_change_area is absent in the para file, skip removing polygons based on max INarea')
+
+
     # remove based on circularity
     min_circularity_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_change_circularity', 'float')
     if min_circularity_thr is not None:
