@@ -18,6 +18,7 @@ import basic_src.io_function as io_function
 import basic_src.map_projection as map_projection
 
 import parameters
+from evaluation_result import evaluation_result
 
 # sys.path.insert(0, os.path.dirname(__file__))
 import polygons_cd
@@ -163,7 +164,9 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     # copy to output_path
     io_function.copy_shape_file(all_change_polygons,output_path)
 
-    return True
+    return output_path
+
+
 
 def main(options, args):
 
@@ -173,9 +176,24 @@ def main(options, args):
 
     para_file = options.para_file
 
+    # read file validation files
+    validate_files = []
+    validate_list_txt = parameters.get_string_parameters_None_if_absence(para_file,'validation_shape_list')
+    if validate_list_txt is not None:
+        with open(validate_list_txt, 'r') as f_obj:
+            validate_files = [ item.strip()  for item in f_obj.readlines()]
+
     for idx in range(len(polyon_shps_list)-1):
         # print(idx)
-        get_expanding_change(polyon_shps_list[idx], polyon_shps_list[idx+1], para_file)
+        output = 'change_' + get_main_shp_name(polyon_shps_list[idx], polyon_shps_list[idx + 1])
+        if os.path.isfile(output) is False:
+            get_expanding_change(polyon_shps_list[idx], polyon_shps_list[idx+1], para_file)
+        else:
+            basic.outputlogMessage('Warning, Polygon-based change detection results already exist')
+        # conduct evaluation
+        report_file = 'evaluation_report_%s.txt'%get_main_shp_name(polyon_shps_list[idx], polyon_shps_list[idx+1])
+        if len(validate_files) > 1:
+            evaluation_result(output,validate_files[idx],evaluation_txt = report_file )
 
 
     pass
