@@ -130,6 +130,15 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     else:
         basic.outputlogMessage('warning, b_remove_two_or_more_intersection is absent or No in the para file, '
                                'skip removing polygons if the intersecion number >= 2')
+    # b_remove_polygons_with_holes
+    b_remove_polygons_with_holes = parameters.get_bool_parameters_None_if_absence(para_file,'b_remove_polygons_with_holes')
+    if b_remove_polygons_with_holes is not None and b_remove_polygons_with_holes is True:
+        rm_polygon_with_holes_save_shp = io_function.get_name_by_adding_tail(all_change_polygons_backup,'rmPolyHoles')
+        polygons_cd.remove_polygons(all_change_polygons, 'hole_count',1, False,rm_polygon_with_holes_save_shp)
+        all_change_polygons = rm_polygon_with_holes_save_shp
+    else:
+        basic.outputlogMessage('warning, b_remove_polygons_with_holes is absent or No in the para file, '
+                               'skip removing polygons if the hole_count >=1 ')
 
     # added relative elevation
     dem_file = parameters.get_string_parameters_None_if_absence(para_file, 'dem_file')
