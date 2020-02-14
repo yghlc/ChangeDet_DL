@@ -70,7 +70,8 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     # get expanding and shrinking parts
     output_path_expand = 'expand_' + main_shp_name
     output_path_shrink = 'shrink_' + main_shp_name
-    polygons_cd.polygons_change_detection(old_shp_path, new_shp_path, output_path_expand, output_path_shrink)
+    polygon_narrow_thr = parameters.get_digit_parameters_None_if_absence(para_file,'polygon_narrow_threshold','float')
+    polygons_cd.polygons_change_detection(old_shp_path, new_shp_path, output_path_expand, output_path_shrink,narrow_thr=polygon_narrow_thr)
 
     # multi polygons to polygons, then add some information of the polygons:
     # INarea, INperimete, circularit, WIDTH, HEIGHT, ratio_w_h
