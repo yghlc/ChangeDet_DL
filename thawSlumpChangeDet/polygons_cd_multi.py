@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 import basic_src.basic as basic
 import basic_src.io_function as io_function
 import basic_src.map_projection as map_projection
+import vector_gpd
 
 import parameters
 from evaluation_result import evaluation_result
@@ -70,8 +71,20 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     # get expanding and shrinking parts
     output_path_expand = 'expand_' + main_shp_name
     output_path_shrink = 'shrink_' + main_shp_name
-    polygon_narrow_thr = parameters.get_digit_parameters_None_if_absence(para_file,'polygon_narrow_threshold','float')
-    polygons_cd.polygons_change_detection(old_shp_path, new_shp_path, output_path_expand, output_path_shrink,narrow_thr=polygon_narrow_thr)
+    polygons_cd.polygons_change_detection(old_shp_path, new_shp_path, output_path_expand, output_path_shrink)
+
+    polygon_narrow_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'polygon_narrow_threshold', 'float')
+    #  if it is not None, then it will try to remove narrow parts of polygons
+    if polygon_narrow_thr is not None:
+        # use the buffer operation to remove narrow parts of polygons
+        expand_bak = io_function.get_name_by_adding_tail(output_path_expand,'rmNarrowParts')
+        io_function.copy_shape_file(output_path_expand, expand_bak)
+        vector_gpd.remove_narrow_parts_of_polygons_shp(expand_bak, output_path_expand, polygon_narrow_thr)
+
+        shrink_bak = io_function.get_name_by_adding_tail(output_path_shrink,'rmNarrowParts')
+        io_function.copy_shape_file(output_path_shrink, shrink_bak)
+        vector_gpd.remove_narrow_parts_of_polygons_shp(shrink_bak, output_path_shrink, polygon_narrow_thr)
+
 
     # multi polygons to polygons, then add some information of the polygons:
     # INarea, INperimete, circularit, WIDTH, HEIGHT, ratio_w_h

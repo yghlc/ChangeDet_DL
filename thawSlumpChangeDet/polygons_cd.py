@@ -27,14 +27,13 @@ import geopandas as gpd
 # for polygon comparison
 
 
-def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink_save_path, narrow_thr=None):
+def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink_save_path):
     '''
     change detection of polygons, compare their extent changes (only get the expanding part)
     :param old_shp_path: the path of the old polygons
     :param new_shp_path: the path of the new polygons
     :param expand_save_path: save path, the expanding area
     :param shrink_save_path: save path, the shrinking part (thaw slumps cannot shrink, the shrinking part is due to delineation error)
-    :param narrow_thr: if it is not None, then it will try to remove narrow parts of polygons
     :return: True if successfully, False otherwise
     '''
     # check projection of the shape file, should be the same
@@ -163,11 +162,6 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
             shrink_new_file_name.append(os.path.basename(new_shp_path))     # should not be "None", it should be original file name which for comparing
             shrink_new_polygon_idx.append(-9999)
             shrink_intersect_num_list.append(0)
-
-    if narrow_thr is not None:
-        # use the buffer operation to remove narrow parts of polygons
-        polygon_expand_list = [vector_gpd.remove_narrow_parts_of_a_polygon(item,narrow_thr) for item in polygon_expand_list ]
-        polygon_shrink_list = [vector_gpd.remove_narrow_parts_of_a_polygon(item,narrow_thr) for item in polygon_shrink_list ]
 
     # save the polygon changes
     expanding_df = pd.DataFrame({'ChangeType': change_type_list,
