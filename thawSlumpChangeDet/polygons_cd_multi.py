@@ -75,7 +75,7 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
 
     polygon_narrow_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'polygon_narrow_threshold', 'float')
     #  if it is not None, then it will try to remove narrow parts of polygons
-    if polygon_narrow_thr is not None:
+    if polygon_narrow_thr is not None and polygon_narrow_thr > 0:
         # use the buffer operation to remove narrow parts of polygons
         expand_bak = io_function.get_name_by_adding_tail(output_path_expand,'rmNarrowParts')
         io_function.copy_shape_file(output_path_expand, expand_bak)
