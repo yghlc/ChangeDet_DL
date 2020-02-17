@@ -27,24 +27,94 @@ from vector_features import shape_opeation
 
 # sys.path.insert(0, os.path.dirname(__file__))
 
-def calculate_overlap(polygon, series_polygons):
+def get_a_polygon_union_occurrence(polygon, polygons_list_2d, b_merged_2d, time_idx, time_num):
+    '''
+    for a input polygon, based on it to get a union and occurences
+    :param polygon: a polygon
+    :param polygons_list_2d: 2D list of polygons, from oldest to newest
+    :param b_merged_2d: indicate a polygon has been merged into union
+    :param time_idx: time index
+    :param time_num: the count of multi-temporal polygons
+    :return:
+    '''
 
-    # get the percent
-    # add IOU to shapefile file
+    union_polygon = polygon
+    occurrence = 1
 
-    pass
+    # from t_0 to t_n, except time_idx, we suppose that the thaw slump change gradually,
+    # the same polygons of thaw slumps at different time cannot jump suddenly
+    for t_idx in range(time_num):
+        # skip time_idx
+        if t_idx == time_idx:
+            continue
 
-def get_polygon_union_same_loc(polygons_list_2d):
+        for idx, t_polygon in enumerate(polygons_list_2d[t_idx]):
+            # if it already be merged to other polygons, then skip it
+            if b_merged_2d[t_idx][idx]:
+                continue
+
+            intersection = union_polygon.intersection(t_polygon)
+            if intersection.is_empty:
+                continue
+            else:
+                union_polygon = union_polygon.union(t_polygon)
+                b_merged_2d[t_idx][idx] = True          # marked it
+                occurrence += 1
+
+                # in one group of polygons (at the same time), only have one intersection polygon,
+                # otherwise, something wrong with the mapping results
+                # break
+
+    return union_polygon, occurrence
+
+def get_polygon_union_occurrence_same_loc(polygons_list_2d):
     '''
     get union of multi-temporal polygons at the same location
     :param polygons_list_2d: 2D list of polygons, from oldest to newest
     :return:
     '''
     union_polygons_list = []
+    # occurrence: each union polygons consist of how many of polygons.
+    occurrence_list = []
 
+    time_num = len(polygons_list_2d)
 
-    return union_polygons_list
+    # indicate a polygon has been merged into union
+    b_merged_2d = []
+    for polygons in polygons_list_2d:
+        b_merged_2d.append([False]*len(polygons))
 
+    for time_idx, (b_merged_1d, polygon_list) in enumerate(zip(b_merged_2d,polygons_list_2d)):
+
+        for idx in range(len(polygon_list)):
+            # if this polygon has been merged to a union, then skip
+            if b_merged_1d[idx]:
+                continue
+
+            # get polygon union
+            based_polygon = polygon_list[idx]
+
+            union_polygon, occurrence_count = get_a_polygon_union_occurrence(based_polygon,polygons_list_2d, b_merged_2d, time_idx, time_num)
+            union_polygons_list.append(union_polygon)
+            occurrence_list.append(occurrence_count)
+
+    return union_polygons_list, occurrence_list
+
+def max_IoU_score(polygon, polygon_list):
+    """
+    get the IoU score of one polygon compare to many polygon (validation polygon)
+    :param polygon: the detected polygon
+    :param polygon_list: a list contains training polygons
+    :return: the max IoU score, False otherwise
+    """
+    max_iou = 0.0
+    max_idx = -1
+    for idx, training_polygon in enumerate(polygon_list):
+        temp_iou = vector_features.IoU(polygon,training_polygon)
+        if temp_iou > max_iou:
+            max_iou = temp_iou
+            max_idx = idx
+    return max_iou, max_idx
 
 def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
     '''
@@ -63,23 +133,24 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
         polygons_list_2d.append(polygons)
 
     # get union of polygons at the same location
-    union_polygons = get_polygon_union_same_loc(polygons_list_2d)
+    union_polygons, occurrence_list = get_polygon_union_occurrence_same_loc(polygons_list_2d)
 
     # calculate IOU values and  the occurrence
     for idx, shp in enumerate(shp_list):
 
         polygons = polygons_list_2d[idx]
         iou_list = []
+        occurrence = []
         for polygon in polygons:
-            iou_value = vector_features.max_IoU_score(polygon, union_polygons)
+            iou_value, max_idx = max_IoU_score(polygon, union_polygons)
             iou_list.append(iou_value)
+            occurrence.append(occurrence_list[max_idx])
 
         shp_obj = shape_opeation()
         shp_obj.add_one_field_records_to_shapefile(shp, iou_list, 'time_iou')
+        shp_obj.add_one_field_records_to_shapefile(shp, occurrence, 'time_occur')
 
-        basic.outputlogMessage('Save IOU values based on multi-temporal polygons to %s' % shp)
-
-
+        basic.outputlogMessage('Save IOU values and occurrence based on multi-temporal polygons to %s' % shp)
 
 
 
