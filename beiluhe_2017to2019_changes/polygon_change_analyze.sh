@@ -20,7 +20,7 @@ cd_code=~/codes/PycharmProjects/ChangeDet_DL
 #shp_dir=~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_change_deeplabV3+_4_exp4_iter30000_2017_2019_tiles
 #shp1=${shp_dir}/I0_BLH_change_deeplabV3+_4_exp4_iter30000_post_2017_2019.shp
 #shp2=${shp_dir}/I1_BLH_change_deeplabV3+_4_exp4_iter30000_post_2017_2019.shp
-#shp3=${shp_dir}/I2_BLH_change_deeplabV3+_4_exp4_iter30000_post_2017_2019.shp
+#shp3=${shp_dir}/I2_BLH_cha nge_deeplabV3+_4_exp4_iter30000_post_2017_2019.shp
 
 
 shp_dir=~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_change_deeplabV3+_4_exp3_iter30000_2017_2019_tiles
