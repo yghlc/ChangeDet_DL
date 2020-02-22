@@ -255,34 +255,8 @@ def remove_polygons(shapefile,field_name, threshold, bsmaller,output):
     :param output:
     :return:
     '''
-    # another version
-    # operation_obj = shape_opeation()
-    # if operation_obj.remove_shape_baseon_field_value(shapefile, output, field_name, threshold, smaller=bsmaller) is False:
-    #     return False
 
-    # read polygons as shapely objects
-    shapefile = gpd.read_file(shapefile)
-
-    remove_count = 0
-
-    for idx,row in shapefile.iterrows():
-
-        # polygon = row['geometry']
-        # go through post-processing to decide to keep or remove it
-        # only keep polygons with large areas and move toward upslope
-        if bsmaller:
-            if row[field_name] < threshold:
-                shapefile.drop(idx, inplace=True)
-                remove_count += 1
-        else:
-            if row[field_name] >= threshold:
-                shapefile.drop(idx, inplace=True)
-                remove_count += 1
-
-    basic.outputlogMessage('remove %d polygons based on %s, remain %d ones saving to %s' %
-                           (remove_count, field_name, len(shapefile.geometry.values), output))
-    # save results
-    shapefile.to_file(output, driver='ESRI Shapefile')
+    return vector_gpd.remove_polygons(shapefile,field_name, threshold, bsmaller,output)
 
 
 
