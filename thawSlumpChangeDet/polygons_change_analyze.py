@@ -168,7 +168,7 @@ def main(options, args):
     for idx in range(len(polyon_shps_list)-1):
         shp_proj4 = map_projection.get_raster_or_vector_srs_info_proj4(polyon_shps_list[ idx+1 ])
         if shp_proj4 != new_shp_proj4:
-            raise ValueError('error, projection insistence between %s and %s'%(new_shp_proj4, old_shp_proj4))
+            raise ValueError('error, projection insistence between %s and %s'%(new_shp_proj4, shp_proj4))
 
     cal_multi_temporal_iou_and_occurrence(polyon_shps_list,para_file)
 
