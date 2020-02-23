@@ -40,6 +40,7 @@ def get_a_polygon_union_occurrence(polygon, polygons_list_2d, b_merged_2d, time_
 
     union_polygon = polygon
     occurrence = 1
+    occur_time = [time_idx]
 
     # # from t_0 to t_n, except time_idx, we suppose that the thaw slump change gradually,
     # # the same polygons of thaw slumps at different time cannot jump suddenly
@@ -84,11 +85,12 @@ def get_a_polygon_union_occurrence(polygon, polygons_list_2d, b_merged_2d, time_
                     union_polygon = union_polygon.union(t_polygon)
                     b_merged_2d[t_idx][idx] = True          # marked it
                     occurrence += 1
+                    occur_time.append(t_idx)
 
                     found_new_polygon = True
 
 
-    return union_polygon, occurrence
+    return union_polygon, occurrence, occur_time
 
 def get_polygon_union_occurrence_same_loc(polygons_list_2d):
     '''
@@ -99,6 +101,7 @@ def get_polygon_union_occurrence_same_loc(polygons_list_2d):
     union_polygons_list = []
     # occurrence: each union polygons consist of how many of polygons.
     occurrence_list = []
+    occurrence_time_list = []   # indicate what time the polygon occur
 
     time_num = len(polygons_list_2d)
 
@@ -118,11 +121,12 @@ def get_polygon_union_occurrence_same_loc(polygons_list_2d):
             based_polygon = polygon_list[idx]
             b_merged_1d[idx] = True         # mark it
 
-            union_polygon, occurrence_count = get_a_polygon_union_occurrence(based_polygon,polygons_list_2d, b_merged_2d, time_idx, time_num)
+            union_polygon, occurrence_count, occurrence_time = get_a_polygon_union_occurrence(based_polygon,polygons_list_2d, b_merged_2d, time_idx, time_num)
             union_polygons_list.append(union_polygon)
             occurrence_list.append(occurrence_count)
+            occurrence_time_list.append(occurrence_time)
 
-    return union_polygons_list, occurrence_list
+    return union_polygons_list, occurrence_list, occurrence_time_list
 
 def max_IoU_score(polygon, polygon_list):
     """
@@ -157,7 +161,7 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
         polygons_list_2d.append(polygons)
 
     # get union of polygons at the same location
-    union_polygons, occurrence_list = get_polygon_union_occurrence_same_loc(polygons_list_2d)
+    union_polygons, occurrence_list, occur_time_list = get_polygon_union_occurrence_same_loc(polygons_list_2d)
 
     # calculate IOU values and  the occurrence
     for idx, shp in enumerate(shp_list):
@@ -165,14 +169,19 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
         polygons = polygons_list_2d[idx]
         iou_list = []
         occurrence = []
+        occurr_time = []
         for polygon in polygons:
             iou_value, max_idx = max_IoU_score(polygon, union_polygons)
             iou_list.append(iou_value)
             occurrence.append(occurrence_list[max_idx])
+            occur_time_str = [str(item) for item in occur_time_list[max_idx]]
+            occurr_time.append('_'.join(occur_time_str))
 
         shp_obj = shape_opeation()
         shp_obj.add_one_field_records_to_shapefile(shp, iou_list, 'time_iou')
         shp_obj.add_one_field_records_to_shapefile(shp, occurrence, 'time_occur')
+        shp_obj.add_one_field_records_to_shapefile(shp, occurr_time, 'time_idx')
+
 
         basic.outputlogMessage('Save IOU values and occurrence based on multi-temporal polygons to %s' % shp)
 
