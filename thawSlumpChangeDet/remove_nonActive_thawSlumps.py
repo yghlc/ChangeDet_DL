@@ -21,6 +21,7 @@ import geopandas as gpd
 import vector_gpd
 import numpy as np
 
+import polygons_change_analyze
 
 def get_polygon_idx_and_time_iou(ref_polygon, shapefile_gpd):
     for idx, row in shapefile_gpd.iterrows():
@@ -28,9 +29,9 @@ def get_polygon_idx_and_time_iou(ref_polygon, shapefile_gpd):
         intersection = ref_polygon.intersection(polygon)
         if intersection.is_empty:
             continue
-        return idx, row['time_iou']
+        return idx, row['time_iou'], polygon
 
-    return None, None
+    return None, None, None
 
 def remove_non_active_thaw_slumps(shp_list,para_file):
     '''
@@ -68,18 +69,24 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     ### remove polygons based on time iou ('time_iou'), as a thaw slump develop, the time_iou should be increase
     # ready time_iou to 2D list
     shapefile_list = []
+    polygons_list_2d = []
     for idx, shp in enumerate(shp_list):
         shapefile = gpd.read_file(shp)
 
         if 'time_iou' not in shapefile.keys():
             raise ValueError('error, %s do not have time_iou, please conduct polygon_change_analyze first'%shp)
         shapefile_list.append(shapefile)
+        polygons_list_2d.append(shapefile.geometry.values)
         # print(shapefile.keys())
         # print(shapefile['time_iou'])
         # print(len(shapefile.geometry.values))
 
     # remove polygons the time_iou are not monotonically increasing
-    # after remove based on time occurrence, the polygon number in all shape file should be the same
+    # after removing polygons based on time occurrence, the polygon number in all shape file should be the same
+
+    # get union of polygons at the same location
+    union_polygons, occurrence_list, occur_time_list = polygons_change_analyze.get_polygon_union_occurrence_same_loc(polygons_list_2d)
+
     time_iou_1st = shapefile_list[0]['time_iou']
     rm_polygon_idx_2d = []
     for idx, t_iou_value_1st in enumerate(time_iou_1st): # shapefile_list[0].geometry.values
@@ -87,9 +94,20 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
         time_iou_values = [t_iou_value_1st]
         idx_list = [idx]
         polygon = shapefile_list[0].geometry.values[idx]
+
+        # find the union polygon
+        cor_union_poly = None
+        for union_poly in union_polygons:
+            intersection = polygon.intersection(union_poly)
+            if intersection.is_empty is False:
+                cor_union_poly = union_poly
+                break
+        if cor_union_poly is None:
+            raise ValueError('Error, The union is None')
+
         # read other polygon and time_iou in other shape file
         for time in range(1, normal_occurrence):
-            t_idx, t_iou = get_polygon_idx_and_time_iou(polygon,shapefile_list[time])
+            t_idx, t_iou, t_polygon = get_polygon_idx_and_time_iou(cor_union_poly,shapefile_list[time])
             time_iou_values.append(t_iou)
             idx_list.append(t_idx)
 
