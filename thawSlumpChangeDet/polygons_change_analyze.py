@@ -41,29 +41,52 @@ def get_a_polygon_union_occurrence(polygon, polygons_list_2d, b_merged_2d, time_
     union_polygon = polygon
     occurrence = 1
 
-    # from t_0 to t_n, except time_idx, we suppose that the thaw slump change gradually,
-    # the same polygons of thaw slumps at different time cannot jump suddenly
-    for t_idx in range(time_num):
-        # skip time_idx
-        if t_idx == time_idx:
-            continue
+    # # from t_0 to t_n, except time_idx, we suppose that the thaw slump change gradually,
+    # # the same polygons of thaw slumps at different time cannot jump suddenly
+    # for t_idx in range(time_num):
+    #     # skip time_idx
+    #     if t_idx == time_idx:
+    #         continue
+    #
+    #     for idx, t_polygon in enumerate(polygons_list_2d[t_idx]):
+    #         # if it already be merged to other polygons, then skip it
+    #         if b_merged_2d[t_idx][idx]:
+    #             continue
+    #
+    #         intersection = union_polygon.intersection(t_polygon)
+    #         if intersection.is_empty:
+    #             continue
+    #         else:
+    #             union_polygon = union_polygon.union(t_polygon)
+    #             b_merged_2d[t_idx][idx] = True          # marked it
+    #             occurrence += 1
+    #
+    #             # in one group of polygons (at the same time), only have one intersection polygon,
+    #             # otherwise, something wrong with the mapping results
+    #             # break
 
-        for idx, t_polygon in enumerate(polygons_list_2d[t_idx]):
-            # if it already be merged to other polygons, then skip it
-            if b_merged_2d[t_idx][idx]:
-                continue
+    # need to get the union polygon in a Recursive Way
+    found_new_polygon = True
+    while found_new_polygon:
 
-            intersection = union_polygon.intersection(t_polygon)
-            if intersection.is_empty:
-                continue
-            else:
-                union_polygon = union_polygon.union(t_polygon)
-                b_merged_2d[t_idx][idx] = True          # marked it
-                occurrence += 1
+        found_new_polygon = False
 
-                # in one group of polygons (at the same time), only have one intersection polygon,
-                # otherwise, something wrong with the mapping results
-                # break
+        for t_idx in range(time_num):
+            for idx, t_polygon in enumerate(polygons_list_2d[t_idx]):
+                # if it already be merged to other polygons, then skip it
+                if b_merged_2d[t_idx][idx]:
+                    continue
+
+                intersection = union_polygon.intersection(t_polygon)
+                if intersection.is_empty:
+                    continue
+                else:
+                    union_polygon = union_polygon.union(t_polygon)
+                    b_merged_2d[t_idx][idx] = True          # marked it
+                    occurrence += 1
+
+                    found_new_polygon = True
+
 
     return union_polygon, occurrence
 
@@ -93,6 +116,7 @@ def get_polygon_union_occurrence_same_loc(polygons_list_2d):
 
             # get polygon union
             based_polygon = polygon_list[idx]
+            b_merged_1d[idx] = True         # mark it
 
             union_polygon, occurrence_count = get_a_polygon_union_occurrence(based_polygon,polygons_list_2d, b_merged_2d, time_idx, time_num)
             union_polygons_list.append(union_polygon)
