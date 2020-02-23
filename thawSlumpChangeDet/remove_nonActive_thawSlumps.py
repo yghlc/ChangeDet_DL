@@ -83,6 +83,11 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
 
     # remove polygons the time_iou are not monotonically increasing
     # after removing polygons based on time occurrence, the polygon number in all shape file should be the same
+    iou_mono_increasing_thr = parameters.get_digit_parameters_None_if_absence(para_file,'iou_mono_increasing_thr','float')
+    if iou_mono_increasing_thr is None:
+        iou_mono_increasing_thr = 0
+    else:
+        basic.outputlogMessage('Warning, iou_mono_increasing_thr not set, it will be set as 0')
 
     # get union of polygons at the same location
     union_polygons, occurrence_list, occur_time_list = polygons_change_analyze.get_polygon_union_occurrence_same_loc(polygons_list_2d)
@@ -116,7 +121,7 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
             continue
 
         # check if time iou is monotonically increasing
-        if np.all(np.diff(time_iou_values) >= -0.1):
+        if np.all(np.diff(time_iou_values) >= iou_mono_increasing_thr):
             pass
         else:
             basic.outputlogMessage('The areas of Polygons %s : iou: %s in temporal shapefile is not monotonically increasing, remove them'%
