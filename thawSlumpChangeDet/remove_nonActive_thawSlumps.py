@@ -30,6 +30,8 @@ def get_polygon_idx_and_time_iou(ref_polygon, shapefile_gpd):
             continue
         return idx, row['time_iou']
 
+    return None, None
+
 def remove_non_active_thaw_slumps(shp_list,para_file):
     '''
     remove polygons based on information from multi-temporal polygons
@@ -74,6 +76,10 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
             t_idx, t_iou = get_polygon_idx_and_time_iou(polygon,shapefile_list[time])
             time_iou_values.append(t_iou)
             idx_list.append(t_idx)
+
+        if None in idx_list:
+            basic.outputlogMessage('Warning, None in the index list: %s '%str(idx_list))
+            continue
 
         # check if time iou is monotonically increasing
         if np.all(np.diff(time_iou_values) >= 0) is False:
