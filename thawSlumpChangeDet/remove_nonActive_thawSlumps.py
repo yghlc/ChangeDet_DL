@@ -40,6 +40,8 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     :return:
     '''
 
+    shp_list_copy = shp_list.copy()
+
     new_shp_list = []
     # remove polygons based on time occurrence ('time_occur')
     normal_occurrence = len(shp_list)       # the expected count
@@ -49,10 +51,24 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
         vector_gpd.remove_polygon_equal(shp_file,'time_occur',normal_occurrence, True,save_shp)
         new_shp_list.append(save_shp)
 
+    shp_list = new_shp_list.copy()
+    new_shp_list = []
+
+    # remove based on time_idx
+    normal_time_idx = '_'.join([str(item) for item in range(normal_occurrence)])
+    for idx, shp_file in enumerate(shp_list):
+        # remove occurance
+        save_shp = io_function.get_name_by_adding_tail(shp_file, 'RmTimeidx')
+        vector_gpd.remove_polygon_equal(shp_file,'time_idx',normal_time_idx, True,save_shp)
+        new_shp_list.append(save_shp)
+
+    shp_list = new_shp_list.copy()
+    # new_shp_list = []
+
     ### remove polygons based on time iou ('time_iou'), as a thaw slump develop, the time_iou should be increase
     # ready time_iou to 2D list
     shapefile_list = []
-    for idx, shp in enumerate(new_shp_list):
+    for idx, shp in enumerate(shp_list):
         shapefile = gpd.read_file(shp)
 
         if 'time_iou' not in shapefile.keys():
@@ -66,9 +82,9 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     # after remove based on time occurrence, the polygon number in all shape file should be the same
     time_iou_1st = shapefile_list[0]['time_iou']
     rm_polygon_idx_2d = []
-    for idx, time_iou_value in enumerate(time_iou_1st): # shapefile_list[0].geometry.values
+    for idx, t_iou_value_1st in enumerate(time_iou_1st): # shapefile_list[0].geometry.values
         # read time iou
-        time_iou_values = [time_iou_value]
+        time_iou_values = [t_iou_value_1st]
         idx_list = [idx]
         polygon = shapefile_list[0].geometry.values[idx]
         # read other polygon and time_iou in other shape file
@@ -82,9 +98,13 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
             continue
 
         # check if time iou is monotonically increasing
-        if np.all(np.diff(time_iou_values) >= 0) is False:
-            basic.outputlogMessage('The areas of Polygons %s in temporal shapefile is not monotonically increasing, remove them'%(str(idx_list)))
+        if np.all(np.diff(time_iou_values) >= -0.1):
+            pass
+        else:
+            basic.outputlogMessage('The areas of Polygons %s : iou: %s in temporal shapefile is not monotonically increasing, remove them'%
+                                   (str(idx_list), str(time_iou_values)))
             rm_polygon_idx_2d.append(idx_list)
+        # print(time_iou_values, rm_polygon_idx_2d)
 
     remove_count = len(rm_polygon_idx_2d)
     for rm_idx_list in rm_polygon_idx_2d:
@@ -92,7 +112,7 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
             shapefile.drop(rm_idx,inplace=True)
 
     # save to files
-    for shapefile, shp_path in zip(shapefile_list,shp_list):
+    for shapefile, shp_path in zip(shapefile_list,shp_list_copy):
         output  = io_function.get_name_by_adding_tail(shp_path,'rmTimeiou')
         basic.outputlogMessage('remove %d polygons based on monotonically increasing time_iou, remain %d ones saving to %s' %
                                                       (remove_count, len(shapefile.geometry.values), output))
