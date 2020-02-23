@@ -32,7 +32,7 @@ shp3=${shp_dir}/I2_BLH_change_deeplabV3+_4_exp4_iter30000_post_2017_2019.shp
 ${cd_code}/thawSlumpChangeDet/polygons_change_analyze.py ${shp1} ${shp2} ${shp3}
 
 
-${cd_code}/thawSlumpChangeDet/remove_nonActive_thawSlumps.py ${shp1} ${shp2} ${shp3}
+${cd_code}/thawSlumpChangeDet/remove_nonActive_thawSlumps.py ${shp1} ${shp2} ${shp3} -p para_mac.ini
 
 
 
