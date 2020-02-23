@@ -201,7 +201,7 @@ def main(options, args):
 
     # read file validation files
     validate_files = []
-    validate_list_txt = parameters.get_string_parameters_None_if_absence(para_file,'validation_shape_list')
+    validate_list_txt = parameters.get_string_parameters_None_if_absence(para_file,'change_validation_shape_list')
     if validate_list_txt is not None:
         with open(validate_list_txt, 'r') as f_obj:
             validate_files = [ item.strip()  for item in f_obj.readlines()]
