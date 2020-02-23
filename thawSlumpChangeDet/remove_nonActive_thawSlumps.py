@@ -17,10 +17,18 @@ import basic_src.map_projection as map_projection
 import basic_src.io_function as io_function
 
 import parameters
+import geopandas as gpd
 import vector_gpd
-import vector_features
-from vector_features import shape_opeation
+import numpy as np
 
+
+def get_polygon_idx_and_time_iou(ref_polygon, shapefile_gpd):
+    for idx, row in shapefile_gpd.iterrows():
+        polygon = row['geometry']
+        intersection = ref_polygon.intersection(polygon)
+        if intersection.is_empty:
+            continue
+        return idx, row['time_iou']
 
 def remove_non_active_thaw_slumps(shp_list,para_file):
     '''
@@ -40,15 +48,49 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
         new_shp_list.append(save_shp)
 
     ### remove polygons based on time iou ('time_iou'), as a thaw slump develop, the time_iou should be increase
-    # ready polygons to 2D list
-    polygons_list_2d = []
-    for idx, shp in enumerate(shp_list):
-        basic.outputlogMessage('read polygons from %dth shape file'%idx)
-        polygons = vector_gpd.read_polygons_gpd(shp)
-        polygons_list_2d.append(polygons)
+    # ready time_iou to 2D list
+    shapefile_list = []
+    for idx, shp in enumerate(new_shp_list):
+        shapefile = gpd.read_file(shp)
 
-    for idx, shp_file in enumerate(new_shp_list):
-        pass
+        if 'time_iou' not in shapefile.keys():
+            raise ValueError('error, %s do not have time_iou, please conduct polygon_change_analyze first'%shp)
+        shapefile_list.append(shapefile)
+        # print(shapefile.keys())
+        # print(shapefile['time_iou'])
+        # print(len(shapefile.geometry.values))
+
+    # remove polygons the time_iou are not monotonically increasing
+    # after remove based on time occurrence, the polygon number in all shape file should be the same
+    time_iou_1st = shapefile_list[0]['time_iou']
+    rm_polygon_idx_2d = []
+    for idx, time_iou_value in enumerate(time_iou_1st): # shapefile_list[0].geometry.values
+        # read time iou
+        time_iou_values = [time_iou_value]
+        idx_list = [idx]
+        polygon = shapefile_list[0].geometry.values[idx]
+        # read other polygon and time_iou in other shape file
+        for time in range(1, normal_occurrence):
+            t_idx, t_iou = get_polygon_idx_and_time_iou(polygon,shapefile_list[time])
+            time_iou_values.append(t_iou)
+            idx_list.append(t_idx)
+
+        # check if time iou is monotonically increasing
+        if np.all(np.diff(time_iou_values) >= 0) is False:
+            basic.outputlogMessage('The areas of Polygons %s in temporal shapefile is not monotonically increasing, remove them'%(str(idx_list)))
+            rm_polygon_idx_2d.append(idx_list)
+
+    remove_count = len(rm_polygon_idx_2d)
+    for rm_idx_list in rm_polygon_idx_2d:
+        for rm_idx, shapefile in zip(rm_idx_list,shapefile_list):
+            shapefile.drop(rm_idx,inplace=True)
+
+    # save to files
+    for shapefile, shp_path in zip(shapefile_list,shp_list):
+        output  = io_function.get_name_by_adding_tail(shp_path,'rmTimeiou')
+        basic.outputlogMessage('remove %d polygons based on monotonically increasing time_iou, remain %d ones saving to %s' %
+                                                      (remove_count, len(shapefile.geometry.values), output))
+        shapefile.to_file(output, driver='ESRI Shapefile')
 
     return True
 
@@ -97,6 +139,6 @@ if __name__ == "__main__":
     # else:
     #     parameters.set_saved_parafile_path(options.para_file)
 
-    basic.setlogfile('polygons_changeAnalysis.log')
+    basic.setlogfile('polygons_remove_nonActiveRTS.log')
 
     main(options, args)
