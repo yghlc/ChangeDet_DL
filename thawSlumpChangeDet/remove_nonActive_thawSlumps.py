@@ -86,7 +86,6 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     iou_mono_increasing_thr = parameters.get_digit_parameters_None_if_absence(para_file,'iou_mono_increasing_thr','float')
     if iou_mono_increasing_thr is None:
         iou_mono_increasing_thr = 0
-    else:
         basic.outputlogMessage('Warning, iou_mono_increasing_thr not set, it will be set as 0')
 
     # get union of polygons at the same location
