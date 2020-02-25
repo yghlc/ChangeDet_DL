@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Filename: polygon_based_ChangeDet 
 """
 introduction: run polygons based change detection for a seires of multi-temporal images
