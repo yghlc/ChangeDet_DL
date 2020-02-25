@@ -56,7 +56,7 @@ if __name__ == "__main__":
         sys.exit(1)
     validate_list_txt = parameters.get_string_parameters_None_if_absence(para_file, 'change_validation_shape_list')
     if validate_list_txt is not None:
-        if io_function.copy_file_to_dst(validate_list_txt,out_dir, overwrite=True) is False:
+        if io_function.copyfiletodir(validate_list_txt,out_dir, overwrite=True) is False:
             sys.exit(1)
 
 
