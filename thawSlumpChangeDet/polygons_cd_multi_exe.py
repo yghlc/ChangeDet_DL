@@ -49,6 +49,7 @@ if __name__ == "__main__":
 
     # change detection folder
     out_dir = os.path.join('result_backup',testid+'_'+test_name+'_PolyChanges')
+    io_function.mkdir(out_dir)
 
     # copy para file
     io_function.copyfiletodir(para_file, out_dir)
