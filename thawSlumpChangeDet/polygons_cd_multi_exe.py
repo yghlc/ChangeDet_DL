@@ -52,10 +52,12 @@ if __name__ == "__main__":
     io_function.mkdir(out_dir)
 
     # copy para file and change_validation_shape_list
-    io_function.copyfiletodir(para_file, out_dir,overwrite=True)
+    if io_function.copyfiletodir(para_file, out_dir,overwrite=True) is False:
+        sys.exit(1)
     validate_list_txt = parameters.get_string_parameters_None_if_absence(para_file, 'change_validation_shape_list')
     if validate_list_txt is not None:
-        io_function.copy_file_to_dst(validate_list_txt,out_dir, overwrite=True)
+        if io_function.copy_file_to_dst(validate_list_txt,out_dir, overwrite=True) is False:
+            sys.exit(1)
 
 
     os.chdir(out_dir)
