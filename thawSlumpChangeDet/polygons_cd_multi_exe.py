@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Filename: polygons_cd_multi_exe
 """
 introduction: run polygons based change detection in the mapping folder
