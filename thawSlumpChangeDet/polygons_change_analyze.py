@@ -98,6 +98,7 @@ def get_polygon_union_occurrence_same_loc(polygons_list_2d):
     :param polygons_list_2d: 2D list of polygons, from oldest to newest
     :return:
     '''
+    basic.outputlogMessage('Get unions of multi-temporal polygons at the same location')
     union_polygons_list = []
     # occurrence: each union polygons consist of how many of polygons.
     occurrence_list = []
@@ -111,7 +112,7 @@ def get_polygon_union_occurrence_same_loc(polygons_list_2d):
         b_merged_2d.append([False]*len(polygons))
 
     for time_idx, (b_merged_1d, polygon_list) in enumerate(zip(b_merged_2d,polygons_list_2d)):
-
+        basic.outputlogMessage('Scan polygons on Time %d'%time_idx)
         for idx in range(len(polygon_list)):
             # if this polygon has been merged to a union, then skip
             if b_merged_1d[idx]:
@@ -152,7 +153,7 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
     :param para_file: para file list
     :return: the result will be saved in the shape files
     '''
-
+    basic.outputlogMessage('Start calculating time_iou and occurrence')
     # ready polygons to 2D list
     polygons_list_2d = []
     for idx, shp in enumerate(shp_list):

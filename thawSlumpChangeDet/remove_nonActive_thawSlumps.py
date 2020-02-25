@@ -40,6 +40,7 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     :param para_file: para file list
     :return:
     '''
+    basic.outputlogMessage('Start removing polygons based on multi-temporal information')
 
     shp_list_copy = shp_list.copy()
 
