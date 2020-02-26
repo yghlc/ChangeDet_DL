@@ -40,13 +40,8 @@ def main(options, args):
     main_shp_name = polygons_cd_multi.get_main_shp_name(old_shp_path,new_shp_path)
 
     # conduct change detection
-    if options.output is None:
-        output_path = 'change_'+ main_shp_name
-    else:
-        output_path = options.output
-
-    basic.outputlogMessage('Conduct change detection on %s and %s, and the results will be saved to %s'%
-                           (old_shp_path, new_shp_path, output_path))
+    if options.output is not None:
+        main_shp_name = options.output
 
     # get expanding and shrinking parts
     output_path_expand = 'expand_' + main_shp_name
