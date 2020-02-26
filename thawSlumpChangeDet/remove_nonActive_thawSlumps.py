@@ -121,7 +121,8 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
             continue
 
         # check if time iou is monotonically increasing
-        if np.all(np.diff(time_iou_values) >= iou_mono_increasing_thr):
+        time_iou_array = np.array(time_iou_values, dtype=np.float64)       # specify the dtype to avoid unexpected error
+        if np.all(np.diff(time_iou_array) >= iou_mono_increasing_thr):
             pass
         else:
             basic.outputlogMessage('The areas of Polygons %s : iou: %s in temporal shapefiles is not monotonically increasing, remove them'%
