@@ -36,7 +36,12 @@ if __name__ == "__main__":
     bak_dir = os.path.join('result_backup',testid+'_'+test_name+'_tiles')
 
     # read shape file list
-    file_pattern = "I*_" + testid + "*post_" + test_name + ".shp"
+    b_remove_multi = parameters.get_bool_parameters_None_if_absence(para_file,'b_remove_polygons_using_multitemporal_results')
+    if b_remove_multi is None or b_remove_multi is False:
+        file_pattern = "I*_" + testid + "*post_" + test_name + ".shp"
+    else:
+        file_pattern = "I*_" + testid + "*post_" + test_name + "_rmTimeiou.shp"
+
     polyon_shps_list = io_function.get_file_list_by_pattern(bak_dir, file_pattern)
     if len(polyon_shps_list) < 2:
         raise ValueError('Error, less than two shapefiles, cannot conduct polygon-based change detection')
