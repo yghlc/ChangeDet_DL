@@ -25,6 +25,8 @@ import vector_gpd
 import vector_features
 from vector_features import shape_opeation
 
+import pandas as pd
+
 # sys.path.insert(0, os.path.dirname(__file__))
 
 def get_a_polygon_union_occurrence(polygon, polygons_list_2d, b_merged_2d, time_idx, time_num):
@@ -163,6 +165,22 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
 
     # get union of polygons at the same location
     union_polygons, occurrence_list, occur_time_list = get_polygon_union_occurrence_same_loc(polygons_list_2d)
+    # save the polygon changes
+    union_id_list = [item+1 for item in range(len(union_polygons))]
+    occur_time_str_list = []
+    for idx_list in occur_time_list:
+        time_str = '_'.join([str(item) for item in idx_list])
+        occur_time_str_list.append(time_str)
+    union_save_path = 'union_of_%s.shp'%'_'.join([str(item) for item in range(len(shp_list))])
+
+    union_df = pd.DataFrame({'id': union_id_list,
+                            'time_occur': occurrence_list,
+                            'time_idx': occur_time_str_list,
+                            'UnionPolygon': union_polygons
+                            })
+    wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(shp_list[0])
+    vector_gpd.save_polygons_to_files(union_df, 'UnionPolygon', wkt_string, union_save_path)
+
 
     # calculate IOU values and  the occurrence
     for idx, shp in enumerate(shp_list):
