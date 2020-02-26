@@ -182,8 +182,14 @@ def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink
                                 })
 
     wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(old_shp_path)
-    vector_gpd.save_polygons_to_files(expanding_df,'PolygonExpand', wkt_string, expand_save_path)
-    vector_gpd.save_polygons_to_files(shrinking_df,'PolygonShrink', wkt_string, shrink_save_path)
+    if len(polygon_expand_list) < 1:
+        basic.outputlogMessage("Warning, NO expanding polygons found, skip saving to %s"%expand_save_path)
+    else:
+        vector_gpd.save_polygons_to_files(expanding_df,'PolygonExpand', wkt_string, expand_save_path)
+    if len(polygon_shrink_list) < 1:
+        basic.outputlogMessage("Warning, NO shrinking polygons found, skip saving to %s" % shrink_save_path)
+    else:
+        vector_gpd.save_polygons_to_files(shrinking_df,'PolygonShrink', wkt_string, shrink_save_path)
 
     return True
 
