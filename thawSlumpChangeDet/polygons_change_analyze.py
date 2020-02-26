@@ -172,6 +172,7 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
         time_str = '_'.join([str(item) for item in idx_list])
         occur_time_str_list.append(time_str)
     union_save_path = 'union_of_%s.shp'%'_'.join([str(item) for item in range(len(shp_list))])
+    union_save_path = os.path.join(os.path.dirname(shp_list[0]), union_save_path)   # put to the same folder of first shapefile
 
     union_df = pd.DataFrame({'id': union_id_list,
                             'time_occur': occurrence_list,
@@ -180,6 +181,7 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
                             })
     wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(shp_list[0])
     vector_gpd.save_polygons_to_files(union_df, 'UnionPolygon', wkt_string, union_save_path)
+    basic.outputlogMessage('Save the union polygons to %s'%union_save_path)
 
 
     # calculate IOU values and  the occurrence
