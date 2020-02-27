@@ -77,11 +77,11 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     #  if it is not None, then it will try to remove narrow parts of polygons
     if polygon_narrow_thr is not None and polygon_narrow_thr > 0:
         # use the buffer operation to remove narrow parts of polygons
-        expand_bak = io_function.get_name_by_adding_tail(output_path_expand,'rmNarrowParts')
+        expand_bak = io_function.get_name_by_adding_tail(output_path_expand,'rmNarrowPartsBak')
         io_function.copy_shape_file(output_path_expand, expand_bak)
         vector_gpd.remove_narrow_parts_of_polygons_shp(expand_bak, output_path_expand, polygon_narrow_thr)
 
-        shrink_bak = io_function.get_name_by_adding_tail(output_path_shrink,'rmNarrowParts')
+        shrink_bak = io_function.get_name_by_adding_tail(output_path_shrink,'rmNarrowPartsBak')
         io_function.copy_shape_file(output_path_shrink, shrink_bak)
         vector_gpd.remove_narrow_parts_of_polygons_shp(shrink_bak, output_path_shrink, polygon_narrow_thr)
 
