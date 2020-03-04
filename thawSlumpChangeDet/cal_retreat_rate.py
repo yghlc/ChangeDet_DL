@@ -173,95 +173,95 @@ def cal_expand_area_distance(expand_shp):
     h_value_list = []
 
 
-    # # parallel getting medial axis of each polygon, then calculate distance.
-    # num_cores = multiprocessing.cpu_count()
-    # print('number of thread %d' % num_cores)
-    # theadPool = Pool(num_cores)  # multi processes
+    # parallel getting medial axis of each polygon, then calculate distance.
+    num_cores = multiprocessing.cpu_count()
+    print('number of thread %d' % num_cores)
+    theadPool = Pool(num_cores)  # multi processes
+
+    parameters_list = [
+        (idx, exp_polygon, len(expand_polygons)) for idx, exp_polygon in enumerate(expand_polygons)]
+    results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
+    for result in results:
+        # it still has the same order as expand_polygons
+        print('get result of %dth polygon'%result[0])
+        poly_min_Ws.append(result[1])    # min_medAxis_width*2
+        poly_max_Ws.append(result[2])    # max_medAxis_width*2
+        poly_mean_Ws.append(result[3])   # mean_medAxis_width*2
+        poly_median_Ws.append(result[4]) # median_medAxis_width*2
+        h_value_list.append(result[5]) # the h value for getting medial axis
+
+
+    # ################################################
+    # # go through each polygon, get its medial axis, then calculate distance.
+    # for idx, exp_polygon in enumerate(expand_polygons):
     #
-    # parameters_list = [
-    #     (idx, exp_polygon, len(expand_polygons)) for idx, exp_polygon in enumerate(expand_polygons)]
-    # results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
-    # for result in results:
-    #     # it still has the same order as expand_polygons
-    #     print('get result of %dth polygon'%result[0])
-    #     poly_min_Ws.append(result[1])    # min_medAxis_width*2
-    #     poly_max_Ws.append(result[2])    # max_medAxis_width*2
-    #     poly_mean_Ws.append(result[3])   # mean_medAxis_width*2
-    #     poly_median_Ws.append(result[4]) # median_medAxis_width*2
-    #     h_value_list.append(result[5]) # the h value for getting medial axis
-
-
-    ################################################
-    # go through each polygon, get its medial axis, then calculate distance.
-    for idx, exp_polygon in enumerate(expand_polygons):
-
-        basic.outputlogMessage('Calculating expanding distance of %dth (0 index) polygon, total: %d'%(idx,len(expand_polygons)))
-        # if idx == 13:
-        #     test = 1
-
-        if exp_polygon.area < 1:
-            # for a small polygon, it may failed to calculate its radiues, so get a approximation values
-            basic.outputlogMessage('The polygon is very small (area < 1), use sqrt(area/pi) as its radius')
-            radiuses = np.array([[math.sqrt(exp_polygon.area/math.pi)]])
-        else:
-
-            # for test
-            # print(idx, exp_polygon)
-            # print(exp_polygon)
-            # if idx < 13 or idx==55:
-            #     continue
-            x_list, y_list = exp_polygon.exterior.coords.xy
-            # xy = exp_polygon.exterior.coords
-            vertices = [ (x,y) for (x,y) in zip(x_list,y_list)]
-            vertices = np.array(vertices)
-            # polygon_dis.append(idx*0.1)
-
-            ############################ This way to call compute_polygon_medial_axis is unstale, sometime, it has error of:
-            ### Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)
-            # medial_axis_obj = get_medial_axis_class()
-            # h is used to sample points on bundary low h value, to reduce the number of points
-            # medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
-            # medial_axis, radiuses = medial_axis_obj.ref_compute_polygon_medial_axis(vertices, h=0.5)
-            # medial_axis_obj = None
-            # try:
-            h_value = 0.3
-            medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=h_value)
-            # except Exception as e:  # can get all the exception, and the program will not exit
-            #     basic.outputlogMessage('unknown error: ' + str(e))
-            ####################################################################################
-
-            # interrupted by signal 11: SIGSEGV or segmentation fault may be avoid if change the h value
-            # medial_axis, radiuses, h_value = get_medial_axis_of_one_polygon(vertices, h=0.3)
-
-
-            ## for test
-            # avoid import matplotlib if don't need it, or it will ask for graphic environment, and make window loses focus
-            # import matplotlib.pyplot as plt
-            # fig, ax = plt.subplots(figsize=(8, 8))
-            # # plot_polygon_medial_axis(vertices, medial_axis, ax=ax)
-            # plot_polygon_medial_axis(vertices, medial_axis, circ_radius=radiuses, draw_circle_idx=310, ax=ax)
-            # ax.axis('equal')
-            # ax.set_title('Medial Axis')
-            # plt.show()
-            # break
-
-        # to 1d
-        radiuses_1d = [value for item in radiuses for value in item]
-        # remove redundant ones, if apply this, it not the mean and median value may change
-        radiuses_noRed = set(radiuses_1d)
-        np_rad_nored = np.array(list(radiuses_noRed))
-        min_medAxis_width = np.min(np_rad_nored)
-        max_medAxis_width = np.max(np_rad_nored)
-        mean_medAxis_width = np.mean(np_rad_nored)
-        median_medAxis_width = np.median(np_rad_nored)      # np median will take the average of the middle two if necessary
-
-        poly_min_Ws.append(min_medAxis_width*2) # multiply by 2, then it is diameter
-        poly_max_Ws.append(max_medAxis_width*2)
-        poly_mean_Ws.append(mean_medAxis_width*2)
-        poly_median_Ws.append(median_medAxis_width*2)
-        h_value_list.append(h_value)
+    #     basic.outputlogMessage('Calculating expanding distance of %dth (0 index) polygon, total: %d'%(idx,len(expand_polygons)))
+    #     # if idx == 13:
+    #     #     test = 1
     #
-        # break
+    #     if exp_polygon.area < 1:
+    #         # for a small polygon, it may failed to calculate its radiues, so get a approximation values
+    #         basic.outputlogMessage('The polygon is very small (area < 1), use sqrt(area/pi) as its radius')
+    #         radiuses = np.array([[math.sqrt(exp_polygon.area/math.pi)]])
+    #     else:
+    #
+    #         # for test
+    #         # print(idx, exp_polygon)
+    #         # print(exp_polygon)
+    #         # if idx < 13 or idx==55:
+    #         #     continue
+    #         x_list, y_list = exp_polygon.exterior.coords.xy
+    #         # xy = exp_polygon.exterior.coords
+    #         vertices = [ (x,y) for (x,y) in zip(x_list,y_list)]
+    #         vertices = np.array(vertices)
+    #         # polygon_dis.append(idx*0.1)
+    #
+    #         ############################ This way to call compute_polygon_medial_axis is unstale, sometime, it has error of:
+    #         ### Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)
+    #         # medial_axis_obj = get_medial_axis_class()
+    #         # h is used to sample points on bundary low h value, to reduce the number of points
+    #         # medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=0.5)
+    #         # medial_axis, radiuses = medial_axis_obj.ref_compute_polygon_medial_axis(vertices, h=0.5)
+    #         # medial_axis_obj = None
+    #         # try:
+    #         h_value = 0.3
+    #         medial_axis, radiuses = compute_polygon_medial_axis(vertices, h=h_value)
+    #         # except Exception as e:  # can get all the exception, and the program will not exit
+    #         #     basic.outputlogMessage('unknown error: ' + str(e))
+    #         ####################################################################################
+    #
+    #         # interrupted by signal 11: SIGSEGV or segmentation fault may be avoid if change the h value
+    #         # medial_axis, radiuses, h_value = get_medial_axis_of_one_polygon(vertices, h=0.3)
+    #
+    #
+    #         ## for test
+    #         # avoid import matplotlib if don't need it, or it will ask for graphic environment, and make window loses focus
+    #         # import matplotlib.pyplot as plt
+    #         # fig, ax = plt.subplots(figsize=(8, 8))
+    #         # # plot_polygon_medial_axis(vertices, medial_axis, ax=ax)
+    #         # plot_polygon_medial_axis(vertices, medial_axis, circ_radius=radiuses, draw_circle_idx=310, ax=ax)
+    #         # ax.axis('equal')
+    #         # ax.set_title('Medial Axis')
+    #         # plt.show()
+    #         # break
+    #
+    #     # to 1d
+    #     radiuses_1d = [value for item in radiuses for value in item]
+    #     # remove redundant ones, if apply this, it not the mean and median value may change
+    #     radiuses_noRed = set(radiuses_1d)
+    #     np_rad_nored = np.array(list(radiuses_noRed))
+    #     min_medAxis_width = np.min(np_rad_nored)
+    #     max_medAxis_width = np.max(np_rad_nored)
+    #     mean_medAxis_width = np.mean(np_rad_nored)
+    #     median_medAxis_width = np.median(np_rad_nored)      # np median will take the average of the middle two if necessary
+    #
+    #     poly_min_Ws.append(min_medAxis_width*2) # multiply by 2, then it is diameter
+    #     poly_max_Ws.append(max_medAxis_width*2)
+    #     poly_mean_Ws.append(mean_medAxis_width*2)
+    #     poly_median_Ws.append(median_medAxis_width*2)
+    #     h_value_list.append(h_value)
+    # #
+    #     # break
 
     # save the distance to shapefile
     shp_obj = shape_opeation()
