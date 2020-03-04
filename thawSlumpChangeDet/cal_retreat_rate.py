@@ -108,7 +108,7 @@ def get_medial_axis_of_one_polygon(vertices, h=0.5, proc_id=0):
         x1, y1, x2, y2, r1, r2 = row
         medial_axis.append(((x1,y1),(x2,y2)))
         radiuses.append((r1,r2))
-    return medial_axis, radiuses
+    return medial_axis, radiuses, h
 
 def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count):
 
@@ -118,6 +118,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count):
     proc_id = multiprocessing.current_process().pid
     # print(proc_id)
 
+    h_value = 0.3       # default h for calculating medial axis
     if exp_polygon.area < 1:
         # for a small polygon, it may failed to calculate its radiues, so get a approximation values
         basic.outputlogMessage('The polygon is very small (area < 1), use sqrt(area/pi) as its radius')
@@ -131,7 +132,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count):
         vertices = np.array(vertices)
 
         # interrupted by signal 11: SIGSEGV or segmentation fault may be avoid if change the h value
-        medial_axis, radiuses = get_medial_axis_of_one_polygon(vertices, h=0.3, proc_id=proc_id)
+        medial_axis, radiuses, h_value = get_medial_axis_of_one_polygon(vertices, h=h_value, proc_id=proc_id)
 
     # to 1d
     radiuses_1d = [value for item in radiuses for value in item]
@@ -148,7 +149,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count):
     # poly_mean_Ws.append(mean_medAxis_width * 2)
     # poly_median_Ws.append(median_medAxis_width * 2)
 
-    return idx, min_medAxis_width * 2, max_medAxis_width * 2, mean_medAxis_width * 2, median_medAxis_width * 2
+    return idx, min_medAxis_width * 2, max_medAxis_width * 2, mean_medAxis_width * 2, median_medAxis_width * 2, h_value
 
 
 def cal_expand_area_distance(expand_shp):
@@ -169,6 +170,7 @@ def cal_expand_area_distance(expand_shp):
     poly_max_Ws = []     #max_medAxis_width
     poly_mean_Ws = []    #mean_medAxis_width
     poly_median_Ws = []  #median_medAxis_width
+    h_value_list = []
 
 
     # parallel getting medial axis of each polygon, then calculate distance.
@@ -186,6 +188,7 @@ def cal_expand_area_distance(expand_shp):
         poly_max_Ws.append(result[2])    # max_medAxis_width*2
         poly_mean_Ws.append(result[3])   # mean_medAxis_width*2
         poly_median_Ws.append(result[4]) # median_medAxis_width*2
+        h_value_list.append(result[5]) # the h value for getting medial axis
 
 
     # ################################################
@@ -264,6 +267,7 @@ def cal_expand_area_distance(expand_shp):
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_max_Ws, 'e_max_dis')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_mean_Ws, 'e_mean_dis')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_median_Ws, 'e_medi_dis')
+    shp_obj.add_one_field_records_to_shapefile(expand_shp, h_value_list, 'e_medi_h')
 
     basic.outputlogMessage('Save expanding distance of all the polygons to %s'%expand_shp)
 
