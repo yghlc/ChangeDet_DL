@@ -58,7 +58,7 @@ class change_RTS():
 
         self.change_poly_index.append(changePolygon_idx)
         self.change_area_list.append(row['INarea'])
-        self.retreat_dis_list.append(row['e_max_dis'])
+        self.retreat_dis_list.append(row['e_max_dis'])      # choose the max retreat distance of this change polygon
 
         self.__update_max_min_avg_values()
 
@@ -111,27 +111,10 @@ def group_change_polygons(change_shp, old_shp, new_shp, save_path):
     new_shapefile = gpd.read_file(new_shp)
     print('new_polygon count:', len(new_shapefile.geometry.values))
 
-    # # old_index, new_index
-    # old_index_change_polygons = {}
-    # new_index_change_polygons = {}
-
     change_RTS_pair = {}
 
     # go through each change polygon
     for idx, row in c_shapefile.iterrows():
-        # print(row.keys())
-        # print(row.to_list())
-        # print(row['old_index'],row['new_index'])
-
-        # if str(row['old_index']) in old_index_change_polygons.keys():
-        #     old_index_change_polygons[str(row['old_index'])].append(idx)
-        # else:
-        #     old_index_change_polygons[str(row['old_index'])] = [idx]
-        #
-        # if str(row['new_index']) in new_index_change_polygons.keys():
-        #     new_index_change_polygons[str(row['new_index'])].append(idx)
-        # else:
-        #     new_index_change_polygons[str(row['new_index'])] = [idx]
 
         rts_pair_key = str(row['old_index'])+'_'+str(row['new_index'])
         if rts_pair_key in change_RTS_pair.keys():
@@ -140,11 +123,7 @@ def group_change_polygons(change_shp, old_shp, new_shp, save_path):
             change_rts_obj = change_RTS(idx,row)
             change_RTS_pair[rts_pair_key] = change_rts_obj
 
-
-
         pass
-
-
 
 
     test =  1
