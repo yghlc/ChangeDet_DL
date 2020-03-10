@@ -30,6 +30,8 @@ class change_RTS():
         self.old_index = -1      # polygon index (0-based) in the old shape file
         self.new_index = -1      # polygon index (0-based) in the new shape file
         self.change_poly_index = []
+        self.change_poly_count = -1
+
         self.max_change_area = -1
         self.min_change_area = -1
         self.avg_change_area = -1
@@ -73,6 +75,8 @@ class change_RTS():
         self.max_retreat_dis = np.max(retreat_np_dis)
         self.min_retreat_dis = np.min(retreat_np_dis)
         self.avg_retreat_dis = np.average(retreat_np_dis)
+
+        self.change_poly_count = len(self.change_poly_index)
 
         pass
 
@@ -126,7 +130,8 @@ def group_change_polygons(change_shp, old_shp, new_shp, save_path):
         pass
 
 
-    test =  1
+    for key in change_RTS_pair.keys():
+        print(key, change_RTS_pair[key].max_retreat_dis,change_RTS_pair[key].max_change_area)
 
     pass
 
