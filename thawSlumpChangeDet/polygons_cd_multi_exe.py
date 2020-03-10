@@ -25,6 +25,9 @@ if __name__ == "__main__":
     para_file = sys.argv[1]
     test_name = sys.argv[2]
 
+    import datetime
+    start_time = datetime.datetime.now()
+
     expr_name = parameters.get_string_parameters(para_file,'expr_name')
     NUM_ITERATIONS = parameters.get_string_parameters(para_file,'export_iteration_num')
     trail= 'iter' + NUM_ITERATIONS
@@ -73,6 +76,13 @@ if __name__ == "__main__":
         args_list.append(shp_path)
 
     basic.exec_command_args_list(args_list)
+
+    end_time = datetime.datetime.now()
+    diff_time = end_time - start_time
+    out_str = "%s: time cost of polygon-based change detection : %d seconds" % (str(end_time), diff_time.seconds)
+    basic.outputlogMessage(out_str)
+    with open("time_cost.txt", 'a') as t_obj:
+        t_obj.writelines(out_str + '\n')
 
 
 
