@@ -73,6 +73,7 @@ def histogram2logfile(value_list,bins,hist_tag=None):
         basic.outputlogMessage('the following is the histogram information of %s'%hist_tag)
     # output hist, min, max, average, accumulate percentage
     np_hist,bin_edges = np.histogram(value_list, bins=bins)
+    basic.outputlogMessage("total count: " + str(len(value_list)))
     basic.outputlogMessage("np_hist: " + str(np_hist))
     basic.outputlogMessage("min value: " + str(min(value_list)))
     basic.outputlogMessage("max value: " + str(max(value_list)))

@@ -14,6 +14,7 @@ deeplabforRS =  os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS')
 sys.path.insert(0, deeplabforRS)
 
 import vector_gpd
+import basic_src.basic as basic
 
 import basic_src.io_function as io_function
 
@@ -22,6 +23,7 @@ import geopandas as gpd
 
 import numpy as np
 
+from plot_histogram import draw_one_list_histogram
 
 # a structure (class) for information of developing RTSs
 class change_RTS():
@@ -80,9 +82,47 @@ class change_RTS():
 
         pass
 
+def read_attribute(change_RTS_info,field_name):
+    values = []
+    for key in change_RTS_info.keys():
+        if field_name == 'max_area':
+            values.append(change_RTS_info[key].max_change_area)
+        elif field_name == 'min_area':
+            values.append(change_RTS_info[key].min_change_area)
+        elif field_name == 'average_area':
+            values.append(change_RTS_info[key].avg_change_area)
+        elif field_name == 'max_retreat_distance':
+            values.append(change_RTS_info[key].max_retreat_dis)
+        elif field_name == 'min_retreat_distance':
+            values.append(change_RTS_info[key].min_retreat_dis)
+        elif field_name == 'average_retreat_distance':
+            values.append(change_RTS_info[key].avg_retreat_dis)
+        elif field_name == 'change_polygon_count':
+            values.append(change_RTS_info[key].change_poly_count)
+        else:
+            raise ValueError('field name: %s not found')
 
+    return values
 
-def group_change_polygons(change_shp, old_shp, new_shp, save_path):
+def draw_one_value_hist(change_RTS_info,field_name,output,logfile,bin_min,bin_max,bin_width,ylim):
+
+    values = read_attribute(change_RTS_info, field_name)
+    if 'area' in field_name:                      # m^2 to ha
+        values = [item/10000.0 for item in values]
+
+    xlabelrotation = None
+    if 'area' in field_name:
+        xlabelrotation = 90
+
+    bins = np.arange(bin_min, bin_max, bin_width)
+
+    # plot histogram of slope values
+    # value_list,output,bins=None,labels=None,color=None,hatch=""
+    draw_one_list_histogram(values, output,bins=bins,color=['grey'],xlabelrotation=xlabelrotation,ylim=ylim )  # ,hatch='-'
+    io_function.move_file_to_dst('processLog.txt', os.path.join(out_dir, logfile), overwrite=True)
+    io_function.move_file_to_dst(output, os.path.join(out_dir, output), overwrite=True)
+
+def group_change_polygons(change_shp, old_shp, new_shp):
     '''
     group change polygons that belongs to the same thaw slumps
     :param change_shp:
@@ -110,10 +150,10 @@ def group_change_polygons(change_shp, old_shp, new_shp, save_path):
     c_shapefile = gpd.read_file(change_shp)
     # c_polygons = c_shapefile.geometry.values
 
-    old_shapefile = gpd.read_file(old_shp)
-    print('old_polygon count:', len(old_shapefile.geometry.values))
-    new_shapefile = gpd.read_file(new_shp)
-    print('new_polygon count:', len(new_shapefile.geometry.values))
+    # old_shapefile = gpd.read_file(old_shp)
+    # print('old_polygon count:', len(old_shapefile.geometry.values))
+    # new_shapefile = gpd.read_file(new_shp)
+    # print('new_polygon count:', len(new_shapefile.geometry.values))
 
     change_RTS_pair = {}
 
@@ -130,10 +170,16 @@ def group_change_polygons(change_shp, old_shp, new_shp, save_path):
         pass
 
 
-    for key in change_RTS_pair.keys():
-        print(key, change_RTS_pair[key].max_retreat_dis,change_RTS_pair[key].max_change_area)
+    # for key in change_RTS_pair.keys():
+    #     print(key, change_RTS_pair[key].max_retreat_dis,change_RTS_pair[key].max_change_area)
 
-    pass
+    return change_RTS_pair
+
+
+def draw_two_hist_of_cd(change_RTS_info_0vs1,change_RTS_info_1vs2, field_name, out_pre_name, bin_min,bin_max,bin_width,ylim):
+
+    draw_one_value_hist(change_RTS_info_0vs1,field_name,out_pre_name+'_2017vs2018.jpg',out_pre_name+'_2017vs2018.txt',bin_min,bin_max,bin_width,ylim)
+    draw_one_value_hist(change_RTS_info_1vs2,field_name,out_pre_name+'_2018vs2019.jpg',out_pre_name+'_2018vs2019.txt',bin_min,bin_max,bin_width,ylim)
 
 
 
@@ -145,7 +191,7 @@ if __name__ == "__main__":
     shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps')
     ground_truth_201707 = os.path.join(shp_dir, 'train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
     ground_truth_201807 = os.path.join(shp_dir, 'train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp')
-    # ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
+    ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
 
     #
     # # plot histogram on the change polygons (based on manual delineation) of thaw slumps in Beiluhe
@@ -154,7 +200,13 @@ if __name__ == "__main__":
     manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201707_vs_201807.shp')
     manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201807_vs_201907.shp')
 
-    group_change_polygons(manu_cd_2017vs2018,ground_truth_201707,ground_truth_201807,'save_2017_2018_group.shp')
+    c_RTS_info_2017vs2018 = group_change_polygons(manu_cd_2017vs2018,ground_truth_201707,ground_truth_201807)
+    c_RTS_info_2018vs2019 = group_change_polygons(manu_cd_2018vs2019,ground_truth_201807,ground_truth_201907)
+
+    # plot histogram of RTS change polygons, for each polygons
+    # draw_one_value_hist(change_RTS_info, 'max_area', 'max_RTSmax_area_manu_2017vs2018.jpg', 'bins_RTSmax_area_manu_2017vs2018.txt', 0, 2.2, 0.1, [0, 120])
+
+    draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'max_RTSmax_area_manu', 0, 2.2, 0.1, [0, 120])
 
     pass
 
