@@ -111,8 +111,9 @@ def draw_one_value_hist(change_RTS_info,field_name,output,logfile,bin_min,bin_ma
         values = [item/10000.0 for item in values]
 
     xlabelrotation = None
-    if 'area' in field_name:
-        xlabelrotation = 90
+    # if 'area' in field_name or 'retreat' in field_name:
+    #     xlabelrotation = 90
+    xlabelrotation = 90
 
     bins = np.arange(bin_min, bin_max, bin_width)
 
@@ -122,28 +123,28 @@ def draw_one_value_hist(change_RTS_info,field_name,output,logfile,bin_min,bin_ma
     io_function.move_file_to_dst('processLog.txt', os.path.join(out_dir, logfile), overwrite=True)
     io_function.move_file_to_dst(output, os.path.join(out_dir, output), overwrite=True)
 
-def group_change_polygons(change_shp, old_shp, new_shp):
+def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None):
     '''
     group change polygons that belongs to the same thaw slumps
     :param change_shp:
     :param old_shp:
     :param new_shp:
-    :param save_path: save the group information to shapefile
+    :param save_path: save the group information (multi-polygon) to shapefile
     :return:
     '''
     # check file existence
     io_function.is_file_exist(change_shp)
-    io_function.is_file_exist(old_shp)
-    io_function.is_file_exist(new_shp)
+    if old_shp is not None: io_function.is_file_exist(old_shp)
+    if new_shp is not None: io_function.is_file_exist(new_shp)
 
     # check old and new shape file name
     # get old shape file path and new file path
     old_file = set(vector_gpd.read_attribute_values_list(change_shp,'old_file')).pop()
     new_file = set(vector_gpd.read_attribute_values_list(change_shp,'new_file')).pop()
 
-    if os.path.basename(old_shp) != old_file:
+    if old_shp is not None and os.path.basename(old_shp) != old_file:
         raise ValueError('The old shape file (%s) is different from the one stored in the attributes of %s' % (old_shp, change_shp))
-    if os.path.basename(new_shp) != new_file:
+    if new_shp is not None and os.path.basename(new_shp) != new_file:
         raise ValueError('The new shape file (%s) is different from the one stored in the attributes of %s' % (new_shp, change_shp))
 
     # read the shape file
@@ -185,28 +186,74 @@ def draw_two_hist_of_cd(change_RTS_info_0vs1,change_RTS_info_1vs2, field_name, o
 
 if __name__ == "__main__":
 
-    ##########################################################################################
-    # # conduct statistic of change RTSs on the ground truth
-    # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_2017To2019_manual_delineation')
-    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps')
-    ground_truth_201707 = os.path.join(shp_dir, 'train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
-    ground_truth_201807 = os.path.join(shp_dir, 'train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp')
-    ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
-
+    # ##########################################################################################
+    # # # conduct statistic of change RTSs on the ground truth
+    # # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_2017To2019_manual_delineation')
+    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps')
+    # ground_truth_201707 = os.path.join(shp_dir, 'train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
+    # ground_truth_201807 = os.path.join(shp_dir, 'train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp')
+    # ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
     #
-    # # plot histogram on the change polygons (based on manual delineation) of thaw slumps in Beiluhe
-    out_dir=os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
-    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
-    manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201707_vs_201807.shp')
-    manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201807_vs_201907.shp')
+    # #
+    # # # plot histogram on the change polygons (based on manual delineation) of thaw slumps in Beiluhe
+    # out_dir=os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
+    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
+    # manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201707_vs_201807.shp')
+    # manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201807_vs_201907.shp')
+    #
+    # c_RTS_info_2017vs2018 = group_change_polygons(manu_cd_2017vs2018,ground_truth_201707,ground_truth_201807)
+    # c_RTS_info_2018vs2019 = group_change_polygons(manu_cd_2018vs2019,ground_truth_201807,ground_truth_201907)
+    #
+    # # plot histogram of RTS change polygons, for each polygons
+    # # draw_one_value_hist(change_RTS_info, 'max_area', 'max_RTSmax_area_manu_2017vs2018.jpg', 'bins_RTSmax_area_manu_2017vs2018.txt', 0, 2.2, 0.1, [0, 120])
+    #
+    # # # max area
+    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
+    # # # min area
+    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'min_area', 'RTS_min_area_manu', 0, 2.2, 0.1, [0, 180])
+    # # average area
+    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'average_area', 'RTS_avg_area_manu', 0, 2.2, 0.1, [0, 150])
+    #
+    # # max_retreat_distance
+    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_retreat_distance', 'RTS_max_retreat_dis_manu', 0, 100, 5, [0, 60])
+    #
+    # # min_retreat_distance
+    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'min_retreat_distance', 'RTS_min_retreat_dis_manu', 0, 100, 5, [0, 110])
+    #
+    # # average_retreat_distance
+    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'average_retreat_distance', 'RTS_avg_retreat_dis_manu', 0, 100, 5, [0, 70])
+    #
+    # # change_polygon_count
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'change_polygon_count', 'RTS_change_polygon_count_manu', 1, 21, 1, [0, 110])
 
-    c_RTS_info_2017vs2018 = group_change_polygons(manu_cd_2017vs2018,ground_truth_201707,ground_truth_201807)
-    c_RTS_info_2018vs2019 = group_change_polygons(manu_cd_2018vs2019,ground_truth_201807,ground_truth_201907)
+    # ##########################################################################################
+    # # plot histogram on the change polygons (based on exp3) of thaw slumps in Beiluhe
+    # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp3_2017To2019')
+    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp3_2017To2019')
+    # autoMap_exp3_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp3_2017To2019_T_I0_vs_I1.shp')
+    # autoMap_exp3_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp3_2017To2019_T_I1_vs_I2.shp')
+    #
+    # c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp3_cd_2017vs2018 )
+    # c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp3_cd_2018vs2019 )
+    #
+    # # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
 
-    # plot histogram of RTS change polygons, for each polygons
-    # draw_one_value_hist(change_RTS_info, 'max_area', 'max_RTSmax_area_manu_2017vs2018.jpg', 'bins_RTSmax_area_manu_2017vs2018.txt', 0, 2.2, 0.1, [0, 120])
 
-    draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'max_RTSmax_area_manu', 0, 2.2, 0.1, [0, 120])
+
+    ##########################################################################################
+    # plot histogram on the change polygons (based on exp5) of thaw slumps in Beiluhe
+    out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
+    autoMap_exp5_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I0_vs_I1.shp')
+    autoMap_exp5_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I1_vs_I2.shp')
+
+    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp5_cd_2017vs2018 )
+    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp5_cd_2018vs2019 )
+
+    # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
+    draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
+
 
     pass
 
