@@ -17,9 +17,11 @@ import vector_gpd
 import basic_src.basic as basic
 
 import basic_src.io_function as io_function
+import basic_src.map_projection as map_projection
 
 import pandas as pd
 import geopandas as gpd
+
 
 import numpy as np
 
@@ -170,6 +172,68 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
 
         pass
 
+    # save change polygons (multi-polygon) belonging to the same RTS to the same file
+    if save_path is not None:
+
+        c_polygons = c_shapefile.geometry.values
+
+        old_index_list = []
+        new_index_list =  []
+        # self.change_poly_index = []
+        change_poly_count_list = []
+
+        max_change_area_list = []
+        min_change_area_list = []
+        avg_change_area_list = []
+        # change_area_list = []
+
+        # for each change polygon, it already has max, min, avg, media retreat distance, choose max as the retreat distance,
+        # then calculate the max, min, and avg values.
+        max_retreat_dis_list = []
+        min_retreat_dis_list = []
+        avg_retreat_dis_list = []
+        # self.retreat_dis_list = []
+
+        multi_polygon_list = []
+
+        new_shp_name_list = []
+        old_shp_name_list = []
+
+        for key in change_RTS_pair.keys():
+            # print(key, change_RTS_pair[key].max_retreat_dis,change_RTS_pair[key].max_change_area)
+            new_shp_name_list.append(new_file)
+            old_shp_name_list.append(old_file)
+
+            old_index_list.append(change_RTS_pair[key].old_index)
+            new_index_list.append(change_RTS_pair[key].new_index)
+            change_poly_count_list.append(change_RTS_pair[key].change_poly_count)
+            max_change_area_list.append(change_RTS_pair[key].max_change_area)
+            min_change_area_list.append(change_RTS_pair[key].min_change_area)
+            avg_change_area_list.append(change_RTS_pair[key].avg_change_area)
+            max_retreat_dis_list.append(change_RTS_pair[key].max_retreat_dis)
+            min_retreat_dis_list.append(change_RTS_pair[key].min_retreat_dis)
+            avg_retreat_dis_list.append(change_RTS_pair[key].avg_retreat_dis)
+
+            rts_c_polygons = [c_polygons[item] for item in change_RTS_pair[key].change_poly_index]
+            multi_polygon_list.append(vector_gpd.polygons_to_a_MultiPolygon(rts_c_polygons))
+
+        # save the polygon changes
+        changePolygons_df = pd.DataFrame({'old_file': old_shp_name_list,
+                                     'new_file': new_shp_name_list,
+                                     'old_index': old_index_list,
+                                     'new_index': new_index_list,
+                                     'c_poly_num': change_poly_count_list,
+                                     'max_c_area': max_change_area_list,
+                                     'min_c_area': min_change_area_list,
+                                     'avg_c_area': avg_change_area_list,
+                                     'max_re_dis': max_retreat_dis_list,
+                                     'min_re_dis': min_retreat_dis_list,
+                                     'avg_re_dis': avg_retreat_dis_list,
+                                     'ChangePolygons': multi_polygon_list
+                                     })
+
+        wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(change_shp)
+        vector_gpd.save_polygons_to_files(changePolygons_df, 'ChangePolygons', wkt_string, save_path)
 
     # for key in change_RTS_pair.keys():
     #     print(key, change_RTS_pair[key].max_retreat_dis,change_RTS_pair[key].max_change_area)
@@ -248,8 +312,8 @@ if __name__ == "__main__":
     autoMap_exp5_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I0_vs_I1.shp')
     autoMap_exp5_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I1_vs_I2.shp')
 
-    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp5_cd_2017vs2018 )
-    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp5_cd_2018vs2019 )
+    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp5_cd_2017vs2018,save_path='rts_change_2017vs2018.shp')
+    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp5_cd_2018vs2019,save_path='rts_change_2018vs2019.shp')
 
     # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
     draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
