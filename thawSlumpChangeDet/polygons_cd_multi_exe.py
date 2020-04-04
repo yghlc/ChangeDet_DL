@@ -45,15 +45,15 @@ if __name__ == "__main__":
     else:
         file_pattern = "I*_" + testid + "*post_" + test_name + "_rmTimeiou.shp"
 
-    polyon_shps_list = io_function.get_file_list_by_pattern(bak_dir, file_pattern)
-    if len(polyon_shps_list) < 2:
+    polygon_shps_list = io_function.get_file_list_by_pattern(bak_dir, file_pattern)
+    if len(polygon_shps_list) < 2:
         raise ValueError('Error, less than two shapefiles, cannot conduct polygon-based change detection')
 
-    # make polyon_shps_list in order: I0 to In
-    polyon_shps_list.sort(key=lambda x: int(re.findall('I\d+', os.path.basename(x))[0][1:]))
+    # make polygon_shps_list in order: I0 to In
+    polygon_shps_list.sort(key=lambda x: int(re.findall('I\d+', os.path.basename(x))[0][1:]))
 
     # change to absolute path, because later, we will change the running folder
-    polyon_shps_list = [os.path.abspath(item) for item in polyon_shps_list]
+    polygon_shps_list = [os.path.abspath(item) for item in polygon_shps_list]
 
     # change detection folder
     out_dir = os.path.join('result_backup',testid+'_'+test_name+'_PolyChanges')
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # conduct polygon-based change detection
     args_list = [polygons_cd_multi_py, '-p',para_file]
-    for shp_path in polyon_shps_list:
+    for shp_path in polygon_shps_list:
         args_list.append(shp_path)
 
     basic.exec_command_args_list(args_list)
