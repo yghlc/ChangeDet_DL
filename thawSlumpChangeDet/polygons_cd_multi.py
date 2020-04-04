@@ -96,7 +96,7 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
     # post-processing for the expanding parts, to get the real expanding part (exclude delineation errors)
     #  calcuating some more information: retreat distance, relative dem
 
-    # remove some small polygons first, to reduce the burden of calcuating retreat distance
+    # remove some small polygons first, to reduce the burden of calculating retreat distance
     min_area_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_change_area', 'float')
     b_smaller = True
     if min_area_thr is not None:
