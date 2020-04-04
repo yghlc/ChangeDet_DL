@@ -194,8 +194,8 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
 def main(options, args):
 
     # for oldest to newest
-    polyon_shps_list = [item for item in args]
-    print(polyon_shps_list)
+    polygon_shps_list = [item for item in args]
+    print(polygon_shps_list)
 
     para_file = options.para_file
 
@@ -206,15 +206,15 @@ def main(options, args):
         with open(validate_list_txt, 'r') as f_obj:
             validate_files = [ item.strip()  for item in f_obj.readlines()]
 
-    for idx in range(len(polyon_shps_list)-1):
+    for idx in range(len(polygon_shps_list)-1):
         # print(idx)
-        output = 'change_' + get_main_shp_name(polyon_shps_list[idx], polyon_shps_list[idx + 1])
+        output = 'change_' + get_main_shp_name(polygon_shps_list[idx], polygon_shps_list[idx + 1])
         if os.path.isfile(output) is False:
-            get_expanding_change(polyon_shps_list[idx], polyon_shps_list[idx+1], para_file)
+            get_expanding_change(polygon_shps_list[idx], polygon_shps_list[idx+1], para_file)
         else:
             basic.outputlogMessage('Warning, Polygon-based change detection results already exist')
         # conduct evaluation
-        report_file = 'evaluation_report_%s.txt'%get_main_shp_name(polyon_shps_list[idx], polyon_shps_list[idx+1])
+        report_file = 'evaluation_report_%s.txt'%get_main_shp_name(polygon_shps_list[idx], polygon_shps_list[idx+1])
         if len(validate_files) > 1:
             evaluation_result(output,validate_files[idx],evaluation_txt = report_file )
 
