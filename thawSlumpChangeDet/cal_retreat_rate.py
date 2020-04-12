@@ -110,6 +110,10 @@ def get_medial_axis_of_one_polygon(vertices, h=0.5, proc_id=0):
         radiuses.append((r1,r2))
     return medial_axis, radiuses, h
 
+def cal_distance_along_slope(medial_axis, radiuses, dem_path):
+    pass
+
+
 def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count):
 
     basic.outputlogMessage(
@@ -136,7 +140,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count):
 
     # to 1d
     radiuses_1d = [value for item in radiuses for value in item]
-    # remove redundant ones, if apply this, it not the mean and median value may change
+    # remove redundant ones, if apply this, the mean and median value may change
     radiuses_noRed = set(radiuses_1d)
     np_rad_nored = np.array(list(radiuses_noRed))
     min_medAxis_width = np.min(np_rad_nored)
@@ -275,15 +279,67 @@ def cal_expand_area_distance(expand_shp):
 
     return True
 
+def getDis(point1, point2):
+    dx = point1[0]-point2[0]
+    dy = point1[1]-point2[1]
+    return math.sqrt(dx*dx + dy*dy)
+
+def find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=10, n=10):
+    '''
+    find N largest medial circle, each of them separately at least sep_distance
+    :param medial_axis:
+    :param radiuses:
+    :param sep_distance:
+    :param n:
+    :return:
+    '''
+
+    # sort, from max to min
+    radiuses_sorted = sorted(radiuses, reverse=True)    # each has two r, very close
+    found_medial_axis = []
+    found_index = []
+    for sort_r in radiuses_sorted:
+
+        index = radiuses.index(sort_r)  # the index in medial_axis
+        (x1, y1), (x2, y2) = medial_axis[index]
+        # check distance
+        b_well_separated = True
+        for m_axis in found_medial_axis:
+            (x1_f, y1_f), (x2_f, y2_f) = m_axis
+            if getDis((x1, y1),(x1_f, y1_f)) < sep_distance or getDis((x1, y1),(x2_f, y2_f)) < sep_distance or \
+                getDis((x2, y2), (x1_f, y1_f)) < sep_distance or getDis((x2, y2), (x2_f, y2_f)) < sep_distance:
+                b_well_separated = False
+
+        if b_well_separated:
+            found_medial_axis.append([(x1, y1), (x2, y2)])
+            found_index.append(index)
+
+        if len(found_medial_axis) >= n:
+            break
+
+    # top_N_radius =radiuses_sorted[:100]
+    # top_n_index = [ radiuses.index(item) for item in top_N_radius ]
+
+    print('intend to find %d, in fact, found %d' % (n, len(found_medial_axis)))
+
+    return found_index
+
 def main(options, args):
 
     # # a test of compute_polygon_medial_axis
     # import numpy as np
     # import matplotlib.pyplot as plt
-    # polygon = np.loadtxt("polygon_2.txt") #sys.argv[1], polygon_1.txt, polygon_2.txt
+    # polygon = np.loadtxt("out_polygon_vertices_38113.txt") #sys.argv[1], polygon_1.txt, polygon_2.txt
     # fig, ax = plt.subplots(figsize=(8, 8))
-    # medial_axis = compute_polygon_medial_axis(polygon, h=0.1)   # it seems that smaller h can output detailed medial axis.
-    # plot_polygon_medial_axis(polygon, medial_axis, ax=ax)
+    # medial_axis, radiuses = compute_polygon_medial_axis(polygon, h=0.1)   # it seems that smaller h can output detailed medial axis.
+    #
+    # max_r = max(radiuses)
+    # max_r_idx = radiuses.index(max_r)
+    # print('max_r',max_r, 'max_r_idx', max_r_idx)
+    #
+    # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=8)
+    #
+    # plot_polygon_medial_axis(polygon, medial_axis, circ_radius=radiuses, draw_circle_idx=top_n_index, ax=ax)
     # ax.axis('equal')
     # ax.set_title('Medial Axis')
     # plt.show()
@@ -302,6 +358,10 @@ if __name__ == "__main__":
     parser.add_option("-p", "--para",
                       action="store", dest="para_file",
                       help="the parameters file")
+
+    parser.add_option("-d", "--dem_path",
+                      action="store", dest="dem_path",
+                      help="the path for the digital elevation model (DEM)")
 
     parser.add_option('-o', '--output',
                       action="store", dest = 'output',
