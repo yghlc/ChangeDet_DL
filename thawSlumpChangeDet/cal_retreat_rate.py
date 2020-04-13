@@ -42,6 +42,8 @@ from shapely.geometry import LineString
 from shapely.geometry import Point
 from shapely.geometry import Polygon
 
+import rasterio
+
 class get_medial_axis_class(object):
     def __init__(self):
         pass
@@ -126,7 +128,7 @@ def get_medial_axis_of_one_polygon(vertices, h=0.5, proc_id=0):
         radiuses.append((r1,r2))
     return medial_axis, radiuses, h
 
-def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_path, dem_res):
+def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_src, dem_res):
 
     (x1, y1), (x2, y2) = a_medial_axis  # (x1, y1) and (x2, y2) are close to each other
     r1, r2 = radius
@@ -156,9 +158,17 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_path, dem_res):
         ye = y0 - dy
 
         # get elevation difference
-        ele_s = RSImage.get_image_location_value(dem_path,xs,ys,'prj',1)
-        ele_e = RSImage.get_image_location_value(dem_path,xe,ye,'prj',1)
-        diff_ele = abs(ele_s - ele_e)
+        # ele_s = RSImage.get_image_location_value(dem_path,xs,ys,'prj',1)
+        # ele_e = RSImage.get_image_location_value(dem_path,xe,ye,'prj',1)
+
+        ele_s,ele_e = [val for val in dem_src.sample([(xs,ys), (xe,ye)],1)]
+        # for test
+        # print(xs,ys,ele_s[0])
+        # print(xe,ye,ele_e[0])
+
+
+        diff_ele = abs(ele_s[0] - ele_e[0])
+        # print(diff_ele)
 
         diff_ele_list.append(diff_ele)
         angle_list.append(angle)
@@ -211,22 +221,21 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_path, dem_res):
     return max_line_length, angle_max, x0, y0
 
 
-def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_path):
+def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
     '''
     calculate distance at the direction of maximum elevation difference (not on the slope)
     :param exp_polygon:
     :param medial_axis:
     :param radiuses:
-    :param dem_path:
+    :param dem_src: dem rasterio object
     :return:
     '''
 
     # sample the medial circles
     top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=10)
 
-    img_obj = RSImageclass()
-    img_obj.open(dem_path)
-    dem_resolution = img_obj.GetXresolution()
+
+    dem_resolution, _ =  dem_src.res
 
     # for each meidal circle, try to calculate the distance at the maximum elevation difference direction
     dis_at_max_dem_diff_list = []
@@ -234,7 +243,7 @@ def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_path):
     center_point_list = []
 
     for n_index in top_n_index:
-        dis_at_max_dem_diff, angle, x0, y0 = meidal_circles_segment(exp_polygon,medial_axis[n_index], radiuses[n_index],dem_path, dem_resolution)
+        dis_at_max_dem_diff, angle, x0, y0 = meidal_circles_segment(exp_polygon,medial_axis[n_index], radiuses[n_index],dem_src, dem_resolution)
         dis_at_max_dem_diff_list.append(dis_at_max_dem_diff)
         angle_list.append(angle)
         center_point_list.append((x0,y0))
@@ -303,10 +312,13 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     if len(expand_polygons) < 1:
         raise ValueError('No polygons in %s' % expand_shp)
 
+    dem_src = None
     # check projection
     if dem_path is not None:
         if get_projection_proj4(expand_shp) != get_projection_proj4(dem_path):
             raise ValueError('error, projection insistence between %s and %s' % (expand_shp, dem_path))
+
+        dem_src =rasterio.open(dem_path)
 
     poly_min_Ws = []     #min_medAxis_width
     poly_max_Ws = []     #max_medAxis_width
@@ -386,7 +398,7 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
             medial_axis, radiuses, h_value = get_medial_axis_of_one_polygon(vertices, h=0.3)
 
             if dem_path is not None:
-                dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_path=dem_path)
+                dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_src=dem_src)
                 dis_line_p_x0, dis_line_p_y0 = l_c_point
 
             ## for test
