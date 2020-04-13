@@ -185,6 +185,18 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_path, dem_res):
         inter_lines = line.intersection(exp_polygon)
         if inter_lines.geom_type == 'LineString':
             pass
+        elif inter_lines.geom_type == 'MultiLineString':
+            # convert MultiLineString to LineString
+            for a_line in list(inter_lines):
+                # print(a_line)
+                # print(a_line.buffer(0.1).intersection(center_point))
+                # only one line will intersect with the center point
+                if a_line.buffer(0.1).intersection(center_point).is_empty:
+                    continue
+                else:
+                    inter_lines = a_line
+                    break
+            # test = 1
         else:
             # if there are multiple lines, need to find the one intersect with center_point
             raise ValueError('type is %s, need to be upgraded'%inter_lines.geom_type)
@@ -195,7 +207,7 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_path, dem_res):
     max_line_length = max(inter_line_length)
     angle_max = angle_list[max_d_ele_index_list[inter_line_length.index(max_line_length)]]
 
-    return max_line_length, angle_max
+    return max_line_length, angle_max, x0, y0
 
 
 def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_path):
@@ -217,12 +229,21 @@ def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_path):
 
     # for each meidal circle, try to calculate the distance at the maximum elevation difference direction
     dis_at_max_dem_diff_list = []
+    angle_list = []
+    center_point_list = []
+
     for n_index in top_n_index:
-        dis_at_max_dem_diff = meidal_circles_segment(exp_polygon,medial_axis[n_index], radiuses[n_index],dem_path, dem_resolution)
+        dis_at_max_dem_diff, angle, x0, y0 = meidal_circles_segment(exp_polygon,medial_axis[n_index], radiuses[n_index],dem_path, dem_resolution)
         dis_at_max_dem_diff_list.append(dis_at_max_dem_diff)
+        angle_list.append(angle)
+        center_point_list.append((x0,y0))
 
     # choose the maximum one as output
-    return max(dis_at_max_dem_diff_list)
+    max_value = max(dis_at_max_dem_diff_list)
+    max_index = dis_at_max_dem_diff_list.index(max_value)
+    angle_at_max = angle_list[max_index]
+    center_at_max = center_point_list[max_index]
+    return max_value, angle_at_max, center_at_max
 
 def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count):
 
@@ -292,6 +313,9 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     poly_median_Ws = []  #median_medAxis_width
     h_value_list = []
     dis_slope_list = []      # distance along slope (direction of maximum elevation difference)
+    dis_angle_list = []     #relative to x axis
+    dis_l_x0_list = []      # the center point of line passes
+    dis_l_y0_list = []
 
 
     # # parallel getting medial axis of each polygon, then calculate distance.
@@ -321,7 +345,10 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
         #     test = 1
 
         h_value = 0.3
-        dis_slope = 0
+        dis_slope = 0.0
+        dis_direction = 0  # relative to x axis
+        dis_line_p_x0 = 0.0
+        dis_line_p_y0 = 0.0
 
         if exp_polygon.area < 1:
             # for a small polygon, it may failed to calculate its radiues, so get a approximation values
@@ -358,7 +385,8 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
             medial_axis, radiuses, h_value = get_medial_axis_of_one_polygon(vertices, h=0.3)
 
             if dem_path is not None:
-                dis_slope = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_path=dem_path)
+                dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_path=dem_path)
+                dis_line_p_x0, dis_line_p_y0 = l_c_point
 
             ## for test
             # avoid import matplotlib if don't need it, or it will ask for graphic environment, and make window loses focus
@@ -387,6 +415,10 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
         poly_median_Ws.append(median_medAxis_width*2)
         h_value_list.append(h_value)
         dis_slope_list.append(dis_slope)
+        dis_angle_list.append(dis_direction)
+        dis_l_x0_list.append(dis_line_p_x0)
+        dis_l_y0_list.append(dis_line_p_y0)
+
     #
         # break
 
@@ -398,6 +430,9 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_median_Ws, 'e_medi_dis')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, h_value_list, 'e_medi_h')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_slope_list, 'e_dis_slop')
+    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_slope_list, 'e_dis_slop')
+    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_x0_list, 'e_dis_p_x0')
+    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_y0_list, 'e_dis_p_y0')
 
     basic.outputlogMessage('Save expanding distance of all the polygons to %s'%expand_shp)
 
