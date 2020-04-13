@@ -410,11 +410,11 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
                 dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_src=dem_src)
                 dis_line_p_x0, dis_line_p_y0 = l_c_point
 
-            # ## for test
+            # # ## for test
             # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
             # line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
             # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj)
-            # break
+            # # break
 
         # to 1d
         radiuses_1d = [value for item in radiuses for value in item]
@@ -447,7 +447,7 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_median_Ws, 'e_medi_dis')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, h_value_list, 'e_medi_h')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_slope_list, 'e_dis_slop')
-    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_slope_list, 'e_dis_slop')
+    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_angle_list, 'e_dis_angl')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_x0_list, 'e_dis_p_x0')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_y0_list, 'e_dis_p_y0')
 
