@@ -40,6 +40,7 @@ from multiprocessing import Pool
 import shapely
 from shapely.geometry import LineString
 from shapely.geometry import Point
+from shapely.geometry import Polygon
 
 class get_medial_axis_class(object):
     def __init__(self):
@@ -390,14 +391,12 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
 
             ## for test
             # avoid import matplotlib if don't need it, or it will ask for graphic environment, and make window loses focus
-            # import matplotlib.pyplot as plt
-            # fig, ax = plt.subplots(figsize=(8, 8))
-            # # plot_polygon_medial_axis(vertices, medial_axis, ax=ax)
-            # plot_polygon_medial_axis(vertices, medial_axis, circ_radius=radiuses, draw_circle_idx=310, ax=ax)
-            # ax.axis('equal')
-            # ax.set_title('Medial Axis')
-            # plt.show()
-            # break
+            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=8)
+            line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
+            plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj)
+
+
+            break
 
         # to 1d
         radiuses_1d = [value for item in radiuses for value in item]
@@ -483,25 +482,66 @@ def find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=1
 
     return found_index
 
+def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circle_idx,line_obj=None):
+    # line_obj: (center_x, center_y, angle, length)
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(8, 8))
+
+    # polygon, medial_axis, circ_radius=radiuses, draw_circle_idx=top_n_index, ax=ax
+
+    plot_polygon_medial_axis(polygon, medial_axis, circ_radius=radiuses, draw_circle_idx=draw_circle_idx, ax=ax)
+
+    # plot the line
+    if line_obj is not None:
+        poly_shapely = Polygon(polygon)
+
+        print('The length of the line with center (%f, %f) is %f, and its angle (relative to X axis) is %f:'%
+              (line_obj[0], line_obj[1],line_obj[3],line_obj[2]))
+
+        # draw the center point
+        ax.plot(line_obj[0],line_obj[1],marker='+',color='black',markersize=20)
+
+        # construct the line
+        rad_angle = math.radians(line_obj[2])
+        dx = line_obj[3]*math.cos(rad_angle)
+        dy = line_obj[3]*math.sin(rad_angle)
+        xs = line_obj[0] + dx
+        ys = line_obj[1] + dy
+        xe = line_obj[0] - dx
+        ye = line_obj[1] - dy
+        line_shapely = LineString([(xs,ys),(xe,ye)])
+        inter_line = line_shapely.intersection(poly_shapely)
+
+        x_list = []
+        y_list = []
+        for coord in inter_line.coords:
+            print(coord)
+            x_list.append(coord[0])
+            y_list.append(coord[1])
+        #
+        line_plt = plt.Line2D(x_list,y_list, color='black')
+        ax.add_line(line_plt)
+
+
+
+    ax.axis('equal')
+    ax.set_title('Medial Axis')
+    plt.show()
+
 def main(options, args):
 
-    # # a test of compute_polygon_medial_axis
-    # import numpy as np
-    # import matplotlib.pyplot as plt
+    # # # a test of compute_polygon_medial_axis
+    # # import numpy as np
     # polygon = np.loadtxt("out_polygon_vertices_38113.txt") #sys.argv[1], polygon_1.txt, polygon_2.txt
-    # fig, ax = plt.subplots(figsize=(8, 8))
     # medial_axis, radiuses = compute_polygon_medial_axis(polygon, h=0.1)   # it seems that smaller h can output detailed medial axis.
-    #
     # max_r = max(radiuses)
     # max_r_idx = radiuses.index(max_r)
     # print('max_r',max_r, 'max_r_idx', max_r_idx)
     #
     # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=8)
-    #
-    # plot_polygon_medial_axis(polygon, medial_axis, circ_radius=radiuses, draw_circle_idx=top_n_index, ax=ax)
-    # ax.axis('equal')
-    # ax.set_title('Medial Axis')
-    # plt.show()
+    # plot_polygon_medial_axis_circle_line(polygon,medial_axis,radiuses,top_n_index)
+
 
     cal_expand_area_distance(args[0], dem_path=options.dem_path)
 
