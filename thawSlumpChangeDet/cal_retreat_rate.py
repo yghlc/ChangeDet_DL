@@ -142,7 +142,7 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_src, dem_res):
 
     center_point = Point(x0,y0)
     # half length of the line segment for calculating elevation difference
-    line_half_len_for_dem = r + max(dem_res/2.0, 10)
+    line_half_len_for_dem = r + dem_res # + 10 #max(dem_res/2.0, 10)
 
     diff_ele_list = []
     angle_list = []
@@ -180,6 +180,7 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_src, dem_res):
     box = exp_polygon.bounds
     line_half_len_for_interset = max(abs(box[2]-box[0]), abs(box[3] - box[1]))/2.0
     inter_line_length = []
+    inter_line_angle = []
     for index in max_d_ele_index_list:
         # construct a line
         rad = math.radians(angle_list[index])
@@ -213,13 +214,21 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_src, dem_res):
             raise ValueError('type is %s, need to be upgraded'%inter_lines.geom_type)
 
         inter_line_length.append(inter_lines.length)
+        inter_line_angle.append(angle_list[index])
 
-    # output the maximum length and angle
-    max_line_length = max(inter_line_length)
-    angle_max = angle_list[max_d_ele_index_list[inter_line_length.index(max_line_length)]]
+    # # output the maximum length and angle
+    # max_line_length = max(inter_line_length)
+    # angle_max = angle_list[max_d_ele_index_list[inter_line_length.index(max_line_length)]]
+    #
+    # return max_line_length, angle_max, x0, y0
 
-    return max_line_length, angle_max, x0, y0
+    # output the median value
+    inter_line_length_np = np.array(inter_line_length)
+    # median_line_length = np.median(inter_line_length_np)      # if even, the median is interpolated by taking the average of the two middle values
+    median_line_length = np.sort(inter_line_length_np)[len(inter_line_length_np)//2]
+    angle_median = inter_line_angle[inter_line_length.index(median_line_length)]
 
+    return median_line_length, angle_median, x0, y0
 
 def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
     '''
@@ -232,7 +241,7 @@ def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
     '''
 
     # sample the medial circles
-    top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=10)
+    top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
 
 
     dem_resolution, _ =  dem_src.res
@@ -249,7 +258,7 @@ def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
         center_point_list.append((x0,y0))
 
     # choose the maximum one as output
-    max_value = max(dis_at_max_dem_diff_list)
+    max_value = max(dis_at_max_dem_diff_list)  #np.median
     max_index = dis_at_max_dem_diff_list.index(max_value)
     angle_at_max = angle_list[max_index]
     center_at_max = center_point_list[max_index]
@@ -403,7 +412,7 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
 
             ## for test
             # avoid import matplotlib if don't need it, or it will ask for graphic environment, and make window loses focus
-            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=8)
+            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
             line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
             plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj)
 
@@ -527,6 +536,16 @@ def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circ
 
         x_list = []
         y_list = []
+        center_point = Point(line_obj[0], line_obj[1])
+
+        if inter_line.geom_type == 'MultiLineString':
+            lines = list(inter_line)
+            for a_line in lines:
+                if a_line.buffer(0.1).intersection(center_point).is_empty:
+                    continue
+                else:
+                    inter_line = a_line
+
         for coord in inter_line.coords:
             print(coord)
             x_list.append(coord[0])
