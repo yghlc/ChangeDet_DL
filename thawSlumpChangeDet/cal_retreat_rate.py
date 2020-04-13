@@ -414,9 +414,7 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
             # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
             # line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
             # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj)
-
-
-            break
+            # break
 
         # to 1d
         radiuses_1d = [value for item in radiuses for value in item]
