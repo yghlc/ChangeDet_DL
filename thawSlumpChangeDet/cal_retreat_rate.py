@@ -410,11 +410,10 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
                 dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_src=dem_src)
                 dis_line_p_x0, dis_line_p_y0 = l_c_point
 
-            ## for test
-            # avoid import matplotlib if don't need it, or it will ask for graphic environment, and make window loses focus
-            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
-            line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
-            plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj)
+            # ## for test
+            # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
+            # line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
+            # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj)
 
 
             break
