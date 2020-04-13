@@ -142,7 +142,7 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_src, dem_res):
 
     center_point = Point(x0,y0)
     # half length of the line segment for calculating elevation difference
-    line_half_len_for_dem = r + dem_res
+    line_half_len_for_dem = r + max(dem_res/2.0, 10)
 
     diff_ele_list = []
     angle_list = []
