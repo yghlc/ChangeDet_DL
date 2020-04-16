@@ -172,7 +172,7 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
             'warning, minimum_relative_elevation is absent in the para file, skip removing polygons based on relative DEM')
 
     # added retreat distance (from medial axis)  # very time-consuming
-    cal_expand_area_distance(all_change_polygons)
+    cal_expand_area_distance(all_change_polygons,dem_path=dem_file)
 
 
     min_retreat_dis_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_retreat_distance', 'float')
