@@ -471,6 +471,10 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_x0_list, 'e_dis_p_x0')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_y0_list, 'e_dis_p_y0')
 
+    if dem_path is not None:
+        diff_e_poly_max_slope_list = [  dis - max_Ws  for dis, max_Ws  in zip(dis_slope_list, poly_max_Ws)]
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, diff_e_poly_max_slope_list, 'diff_dis')
+
     basic.outputlogMessage('Save expanding distance of all the polygons to %s'%expand_shp)
 
     return True
