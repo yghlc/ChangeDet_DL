@@ -298,6 +298,12 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path):
             dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_src=dem_src)
             dis_line_p_x0, dis_line_p_y0 = l_c_point
 
+            # for test, draw the figures of medial circles
+            save_path = "medial_axis_circle_for_%d_polygon.jpg"%idx
+            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
+            line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
+            plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+
     # to 1d
     radiuses_1d = [value for item in radiuses for value in item]
     # remove redundant ones, if apply this, the mean and median value may change
@@ -332,13 +338,13 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     if len(expand_polygons) < 1:
         raise ValueError('No polygons in %s' % expand_shp)
 
-    dem_src = None
+    # dem_src = None
     # check projection
     if dem_path is not None:
         if get_projection_proj4(expand_shp) != get_projection_proj4(dem_path):
             raise ValueError('error, projection insistence between %s and %s' % (expand_shp, dem_path))
 
-        dem_src =rasterio.open(dem_path)
+        # dem_src =rasterio.open(dem_path)
 
     poly_min_Ws = []     #min_medAxis_width
     poly_max_Ws = []     #max_medAxis_width
@@ -350,18 +356,23 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     dis_l_x0_list = []      # the center point of line passes
     dis_l_y0_list = []
 
+    ######################################################################
+    # # parallel getting medial axis of each polygon, then calculate distance.
+    # num_cores = multiprocessing.cpu_count()
+    # print('number of thread %d' % num_cores)
+    # theadPool = Pool(num_cores)  # multi processes
+    #
+    # parameters_list = [
+    #     (idx, exp_polygon, len(expand_polygons), dem_path) for idx, exp_polygon in enumerate(expand_polygons)]
+    # results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
 
-    # parallel getting medial axis of each polygon, then calculate distance.
-    num_cores = multiprocessing.cpu_count()
-    print('number of thread %d' % num_cores)
-    theadPool = Pool(num_cores)  # multi processes
-
-    parameters_list = [
-        (idx, exp_polygon, len(expand_polygons), dem_path) for idx, exp_polygon in enumerate(expand_polygons)]
-    results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
-
+    ######################################################################
     # another way to test non-parallel version
-    # cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path)
+    results = []
+    for idx, exp_polygon in enumerate(expand_polygons):
+        res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path)
+        results.append(res)
+    ######################################################################
 
     for result in results:
         # it still has the same order as expand_polygons
@@ -524,7 +535,7 @@ def find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=1
 
     return found_index
 
-def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circle_idx,line_obj=None):
+def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circle_idx,line_obj=None, save_path=None):
     # line_obj: (center_x, center_y, angle, length)
 
     import matplotlib.pyplot as plt
@@ -579,7 +590,11 @@ def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circ
 
     ax.axis('equal')
     ax.set_title('Medial Axis')
-    plt.show()
+    if save_path is None:
+        plt.show()
+    else:
+        plt.savefig(save_path,dpi=200)
+        basic.outputlogMessage('Save medial axis and circle to %s'%save_path)
 
 def main(options, args):
 
