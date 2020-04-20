@@ -44,6 +44,12 @@ from shapely.geometry import Polygon
 
 import rasterio
 
+import geopandas as gpd
+
+# parameter for sampling medial circles
+global_sep_distance = 20
+global_topSize_count = 3
+
 class get_medial_axis_class(object):
     def __init__(self):
         pass
@@ -119,7 +125,7 @@ def get_medial_axis_of_one_polygon(vertices, h=0.5, proc_id=0):
     medial_axis_radiuses = np.loadtxt(tmp_medial_axis_txt)
     if medial_axis_radiuses.ndim == 1:      # if the result has only one row, change to 2 dimision
         medial_axis_radiuses = medial_axis_radiuses.reshape(1,medial_axis_radiuses.shape[0])
-    print(medial_axis_radiuses.shape)
+    print('medial_axis_radiuses.shape:',medial_axis_radiuses.shape)
     medial_axis = []
     radiuses = []
     for row in medial_axis_radiuses:
@@ -230,6 +236,99 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_src, dem_res):
 
     return median_line_length, angle_median, x0, y0
 
+def meidal_circles_segment_across_center(exp_polygon,a_medial_axis, radius, old_polygon):
+
+    (x1, y1), (x2, y2) = a_medial_axis  # (x1, y1) and (x2, y2) are close to each other
+    r1, r2 = radius
+
+    # use the one with larger radius
+    x0, y0, r = x1, y1, r1
+    if r2 > r1:
+        x0, y0, r = x2, y2, r2
+
+    center_point = Point(x0,y0)
+    # Centroid (geometric center ) of the old polygon
+    old_polygon_center = old_polygon.centroid
+    old_c_x = old_polygon_center.x
+    old_c_y = old_polygon_center.y
+
+    # calculate angle (reference to x axis, range 0 - 180)
+    rad = math.atan2((old_c_y - y0) , (old_c_x - x0)) # get value between -pi to pi
+    # rad = math.atan((old_c_y - y0)/(old_c_x - x0))     # get value between -pi/2 to pi/2
+    angle = math.degrees(rad) # + 90
+
+    # construct a long line
+    box = exp_polygon.bounds
+    line_half_len_for_interset = max(abs(box[2]-box[0]), abs(box[3] - box[1]))/2.0
+    dx = line_half_len_for_interset * math.cos(rad)
+    dy = line_half_len_for_interset * math.sin(rad)
+
+    xs = x0 + dx
+    ys = y0 + dy
+    xe = x0 - dx
+    ye = y0 - dy
+
+    line = LineString([(xs, ys), (xe, ye)])
+    # may have multiple lines, only chose the one intersec with (x0,y0)
+    inter_lines = line.intersection(exp_polygon)
+    if inter_lines.geom_type == 'LineString':
+        pass
+    elif inter_lines.geom_type == 'MultiLineString':
+        # convert MultiLineString to LineString
+        for a_line in list(inter_lines):
+            # only one line will intersect with the center point
+            if a_line.buffer(0.1).intersection(center_point).is_empty:
+                continue
+            else:
+                inter_lines = a_line
+                break
+    else:
+        # if there are multiple lines, need to find the one intersect with center_point
+        raise ValueError('type is %s, need to be upgraded'%inter_lines.geom_type)
+
+    # for test
+    print('x0',x0, 'y0',y0, 'length',inter_lines.length,'rad', rad, 'angle', angle)
+
+    return inter_lines.length, angle, x0, y0
+
+
+def cal_distance_along_polygon_center(exp_polygon,medial_axis, radiuses,old_polygon):
+    '''
+    calculating the retreat distance along the direction from old polygon center and medial circle center
+    :param exp_polygon: a expanding polygon
+    :param medial_axis:
+    :param radiuses:
+    :param old_polygon: the corresponding center
+    :return:
+    '''
+
+    #  return
+    if old_polygon is None:
+        basic.outputlogMessage('Warning, The old polygon is None, skip cal_distance_along_polygon_center')
+        return 0.0, 0.0, (0.0,0.0)
+
+    # sample the medial circles
+    top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
+
+    # for each meidal circle, try to calculate the distance at the direction from center of old_polygon to the circle center
+    dis_at_center_list = []
+    angle_list = []
+    center_point_list = []      # the circle center
+
+    for n_index in top_n_index:
+        dis_across_center, angle, x0, y0 = meidal_circles_segment_across_center(exp_polygon,medial_axis[n_index], radiuses[n_index],old_polygon)
+        dis_at_center_list.append(dis_across_center)
+        angle_list.append(angle)
+        center_point_list.append((x0,y0))
+
+    # choose the maximum one as output
+    max_value = max(dis_at_center_list)  #np.median
+    max_index = dis_at_center_list.index(max_value)
+    angle_at_max = angle_list[max_index]
+    center_at_max = center_point_list[max_index]
+    return max_value, angle_at_max, center_at_max
+
+
 def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
     '''
     calculate distance at the direction of maximum elevation difference (not on the slope)
@@ -241,7 +340,7 @@ def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
     '''
 
     # sample the medial circles
-    top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
+    top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
 
 
     dem_resolution, _ =  dem_src.res
@@ -264,7 +363,7 @@ def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
     center_at_max = center_point_list[max_index]
     return max_value, angle_at_max, center_at_max
 
-def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path):
+def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_poly):
 
     basic.outputlogMessage(
         'Calculating expanding distance of %dth (0 index) polygon, total: %d' % (idx, total_polygon_count))
@@ -277,6 +376,12 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path):
     dis_direction = 0.0  # relative to x axis
     dis_line_p_x0 = 0.0
     dis_line_p_y0 = 0.0
+
+    # distance along old polygon center to medial circle (center)
+    dis_along_center = 0.0
+    dis_c_angle = 0.0
+    dis_c_line_x0 = 0.0
+    dis_c_line_y0 = 0.0
 
     if exp_polygon.area < 1:
         # for a small polygon, it may failed to calculate its radiues, so get a approximation values
@@ -300,9 +405,20 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path):
 
             # for test, draw the figures of medial circles
             save_path = "medial_axis_circle_for_%d_polygon.jpg"%idx
-            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=20, n=3)
+            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
             line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
             plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+
+        if old_poly is not None:
+            dis_along_center, dis_c_angle, c_point = cal_distance_along_polygon_center(exp_polygon, medial_axis, radiuses,old_poly)
+            dis_c_line_x0, dis_c_line_y0 = c_point
+
+            # for test, draw the figures of medial circles
+            save_path = "medial_axis_circle_old_poly_center_for_%d_polygon.jpg"%idx
+            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
+            line_obj = [dis_c_line_x0, dis_c_line_y0,dis_c_angle,dis_along_center]
+            plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+
 
     # to 1d
     radiuses_1d = [value for item in radiuses for value in item]
@@ -320,15 +436,17 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path):
     # poly_median_Ws.append(median_medAxis_width * 2)
 
     return idx, min_medAxis_width * 2, max_medAxis_width * 2, mean_medAxis_width * 2, median_medAxis_width * 2, \
-           h_value, dis_slope, dis_direction,dis_line_p_x0, dis_line_p_y0
+           h_value, dis_slope, dis_direction,dis_line_p_x0, dis_line_p_y0, \
+           dis_along_center, dis_c_angle, dis_c_line_x0, dis_c_line_y0
 
 
-def cal_expand_area_distance(expand_shp, dem_path = None):
+def cal_expand_area_distance(expand_shp, dem_path = None, old_shp= None):
     '''
     calculate the distance of expanding areas along the upslope direction.
     The distance will save to expand_shp, backup it if necessary
     :param expand_shp: the shape file containing polygons which represent expanding areas of active thaw slumps
     :param dem_path: the dem path for calculating the slope distance along slope
+    :param old_shp: the shape file storing the old polygons
     :return: True if successful
     '''
 
@@ -337,6 +455,14 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     expand_polygons = vector_gpd.read_polygons_gpd(expand_shp)
     if len(expand_polygons) < 1:
         raise ValueError('No polygons in %s' % expand_shp)
+
+    # read old polygon list for each expanding polygons
+    old_poly_list = [None]*len(expand_polygons)
+    if old_shp is not None:
+        gpd_shapefile = gpd.read_file(expand_shp)
+        old_poly_idx_list = gpd_shapefile['old_index'].tolist()
+        old_polygons =  vector_gpd.read_polygons_gpd(old_shp)
+        old_poly_list = [ old_polygons[idx] if idx >=0 else None for idx in old_poly_idx_list ]
 
     # dem_src = None
     # check projection
@@ -351,28 +477,37 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     poly_mean_Ws = []    #mean_medAxis_width
     poly_median_Ws = []  #median_medAxis_width
     h_value_list = []
+
+    # distance along the direction of maximum elevation difference
     dis_slope_list = []      # distance along slope (direction of maximum elevation difference)
     dis_angle_list = []     #relative to x axis
     dis_l_x0_list = []      # the center point of line passes
     dis_l_y0_list = []
 
-    ######################################################################
-    # # parallel getting medial axis of each polygon, then calculate distance.
-    # num_cores = multiprocessing.cpu_count()
-    # print('number of thread %d' % num_cores)
-    # theadPool = Pool(num_cores)  # multi processes
-    #
-    # parameters_list = [
-    #     (idx, exp_polygon, len(expand_polygons), dem_path) for idx, exp_polygon in enumerate(expand_polygons)]
-    # results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
+    # distance along the direction from old polygon center to center of medial centers
+    dis_center_list = []        # distance along the direction from old polygon to medial circle center
+    dis_c_angle_list = []       #relative to x axis, for testing and drawing the line
+    dis_c_x0_list = []          # the center (x) of the medal circle, for drawing the line
+    dis_c_y0_list = []          # the center (y) of the medal circle, for drawing the line
 
-    ######################################################################
-    # another way to test non-parallel version
-    results = []
-    for idx, exp_polygon in enumerate(expand_polygons):
-        res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path)
-        results.append(res)
-    ######################################################################
+
+    #####################################################################
+    # parallel getting medial axis of each polygon, then calculate distance.
+    num_cores = multiprocessing.cpu_count()
+    print('number of thread %d' % num_cores)
+    theadPool = Pool(num_cores)  # multi processes
+
+    parameters_list = [
+        (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
+    results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
+
+    # ######################################################################
+    # # another way to test non-parallel version
+    # results = []
+    # for idx, exp_polygon in enumerate(expand_polygons):
+    #     res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx])
+    #     results.append(res)
+    # ######################################################################
 
     for result in results:
         # it still has the same order as expand_polygons
@@ -383,11 +518,17 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
         poly_median_Ws.append(result[4]) # median_medAxis_width*2
         h_value_list.append(result[5]) # the h value for getting medial axis
 
-        dis_slope_list.append(result[6])    #dis_slope
-        dis_angle_list.append(result[7])    #dis_direction
-        dis_l_x0_list.append(result[8]) # dis_line_p_x0
-        dis_l_y0_list.append(result[9]) #dis_line_p_y0
+        if dem_path is not None:
+            dis_slope_list.append(result[6])    #dis_slope
+            dis_angle_list.append(result[7])    #dis_direction
+            dis_l_x0_list.append(result[8]) # dis_line_p_x0
+            dis_l_y0_list.append(result[9]) #dis_line_p_y0
 
+        if old_shp is not None:
+            dis_center_list.append(result[10])
+            dis_c_angle_list.append(result[11])
+            dis_c_x0_list.append(result[12])
+            dis_c_y0_list.append(result[13])
 
     # ################################################
     # # go through each polygon, get its medial axis, then calculate distance.
@@ -477,14 +618,26 @@ def cal_expand_area_distance(expand_shp, dem_path = None):
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_mean_Ws, 'e_mean_dis')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, poly_median_Ws, 'e_medi_dis')
     shp_obj.add_one_field_records_to_shapefile(expand_shp, h_value_list, 'e_medi_h')
-    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_slope_list, 'e_dis_slop')
-    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_angle_list, 'e_dis_angl')
-    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_x0_list, 'e_dis_p_x0')
-    shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_y0_list, 'e_dis_p_y0')
 
     if dem_path is not None:
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_slope_list, 'e_dis_slop')
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_angle_list, 'e_dis_angl')
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_x0_list, 'e_dis_p_x0')
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_l_y0_list, 'e_dis_p_y0')
+
         diff_e_poly_max_slope_list = [  dis - max_Ws  for dis, max_Ws  in zip(dis_slope_list, poly_max_Ws)]
         shp_obj.add_one_field_records_to_shapefile(expand_shp, diff_e_poly_max_slope_list, 'diff_dis')
+
+    if old_shp is not None:
+
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_center_list, 'c_dis_cen')
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_c_angle_list, 'c_dis_angl')
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_c_x0_list, 'c_dis_p_x0')
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_c_y0_list, 'c_dis_p_y0')
+
+        diff_e_poly_cent_dis_list = [  dis - max_Ws  for dis, max_Ws  in zip(dis_center_list, poly_max_Ws)]
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, diff_e_poly_cent_dis_list, 'c_diff_dis')
+
 
     basic.outputlogMessage('Save expanding distance of all the polygons to %s'%expand_shp)
 
@@ -610,7 +763,7 @@ def main(options, args):
     # plot_polygon_medial_axis_circle_line(polygon,medial_axis,radiuses,top_n_index)
 
 
-    cal_expand_area_distance(args[0], dem_path=options.dem_path)
+    cal_expand_area_distance(args[0], dem_path=options.dem_path, old_shp=options.old_polygon_shp)
 
     pass
 
@@ -629,9 +782,10 @@ if __name__ == "__main__":
                       action="store", dest="dem_path",
                       help="the path for the digital elevation model (DEM)")
 
-    parser.add_option('-o', '--output',
-                      action="store", dest = 'output',
-                      help='the path to save the change detection results')
+    parser.add_option("-o", "--old_polygon_shp",
+                      action="store", dest="old_polygon_shp",
+                      help="the path to the old polygon shape file ")
+
 
     (options, args) = parser.parse_args()
     if len(sys.argv) < 2:
