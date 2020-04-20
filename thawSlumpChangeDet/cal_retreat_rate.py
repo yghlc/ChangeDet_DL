@@ -403,21 +403,21 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
             dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_src=dem_src)
             dis_line_p_x0, dis_line_p_y0 = l_c_point
 
-            # for test, draw the figures of medial circles
-            save_path = "medial_axis_circle_for_%d_polygon.jpg"%idx
-            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
-            line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
-            plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+            # for test, draw the figures of medial circles (remove this when run in parallel)
+            # save_path = "medial_axis_circle_for_%d_polygon.jpg"%idx
+            # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
+            # line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
+            # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
 
         if old_poly is not None:
             dis_along_center, dis_c_angle, c_point = cal_distance_along_polygon_center(exp_polygon, medial_axis, radiuses,old_poly)
             dis_c_line_x0, dis_c_line_y0 = c_point
 
-            # for test, draw the figures of medial circles
-            save_path = "medial_axis_circle_old_poly_center_for_%d_polygon.jpg"%idx
-            top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
-            line_obj = [dis_c_line_x0, dis_c_line_y0,dis_c_angle,dis_along_center]
-            plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+            # for test, draw the figures of medial circles  (remove this when run in parallel)
+            # save_path = "medial_axis_circle_old_poly_center_for_%d_polygon.jpg"%idx
+            # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
+            # line_obj = [dis_c_line_x0, dis_c_line_y0,dis_c_angle,dis_along_center]
+            # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
 
 
     # to 1d
