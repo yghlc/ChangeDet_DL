@@ -48,6 +48,19 @@ class change_RTS():
         self.avg_retreat_dis = -1
         self.retreat_dis_list = []
 
+        # for each change polygon, it may (may not) have retreat distance at the direction maximum elevation difference
+        self.max_retreat_dis_slope = -1
+        self.min_retreat_dis_slope = -1
+        self.avg_retreat_dis_slope = -1
+        self.retreat_dis_slope_list = []
+
+        # for each change polygon, it may (may not) have retreat distance at the direction across geometric center of
+        # old polygon and one medial circle
+        self.max_retreat_dis_centroid = -1
+        self.min_retreat_dis_centroid = -1
+        self.avg_retreat_dis_centroid = -1
+        self.retreat_dis_centroid_list = []
+
         self.add_changeRTS_info(changePolygon_idx,row)
 
     def add_changeRTS_info(self,changePolygon_idx,row):
@@ -66,6 +79,12 @@ class change_RTS():
         self.change_area_list.append(row['INarea'])
         self.retreat_dis_list.append(row['e_max_dis'])      # choose the max retreat distance of this change polygon
 
+        if 'e_dis_slop' in row.keys():
+            self.retreat_dis_slope_list.append(row['e_dis_slop'])
+
+        if 'c_dis_cen' in row.keys():
+            self.retreat_dis_centroid_list.append(row['c_dis_cen'])
+
         self.__update_max_min_avg_values()
 
     def __update_max_min_avg_values(self):
@@ -79,6 +98,18 @@ class change_RTS():
         self.max_retreat_dis = np.max(retreat_np_dis)
         self.min_retreat_dis = np.min(retreat_np_dis)
         self.avg_retreat_dis = np.average(retreat_np_dis)
+
+        if len(self.retreat_dis_slope_list) > 0:
+            retreat_np_dis_slope = np.asarray(self.retreat_dis_slope_list, dtype=np.float64)
+            self.max_retreat_dis_slope = np.max(retreat_np_dis_slope)
+            self.min_retreat_dis_slope = np.min(retreat_np_dis_slope)
+            self.avg_retreat_dis_slope = np.average(retreat_np_dis_slope)
+
+        if len(self.retreat_dis_centroid_list) > 0:
+            retreat_np_dis_centroid = np.asarray(self.retreat_dis_centroid_list, dtype=np.float64)
+            self.max_retreat_dis_centroid = np.max(retreat_np_dis_centroid)
+            self.min_retreat_dis_centroid = np.min(retreat_np_dis_centroid)
+            self.avg_retreat_dis_centroid = np.average(retreat_np_dis_centroid)
 
         self.change_poly_count = len(self.change_poly_index)
 
@@ -194,6 +225,17 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         avg_retreat_dis_list = []
         # self.retreat_dis_list = []
 
+        max_retreat_dis_slope_list = []
+        min_retreat_dis_slope_list = []
+        avg_retreat_dis_slope_list = []
+
+        max_retreat_dis_centroid_list = []
+        min_retreat_dis_centroid_list = []
+        avg_retreat_dis_centroid_list = []
+
+        diff_max_retreat_dis_slope_list = []        # calculate the difference between max_retreat_dis and max_retreat_dis_slope
+        diff_max_retreat_dis_centroid_list = []        # calculate the difference between max_retreat_dis and max_retreat_dis_centroid
+
         multi_polygon_list = []
 
         new_shp_name_list = []
@@ -214,6 +256,17 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
             min_retreat_dis_list.append(change_RTS_pair[key].min_retreat_dis)
             avg_retreat_dis_list.append(change_RTS_pair[key].avg_retreat_dis)
 
+            max_retreat_dis_slope_list.append(change_RTS_pair[key].max_retreat_dis_slope)
+            min_retreat_dis_slope_list.append(change_RTS_pair[key].min_retreat_dis_slope)
+            avg_retreat_dis_slope_list.append(change_RTS_pair[key].avg_retreat_dis_slope)
+
+            max_retreat_dis_centroid_list.append(change_RTS_pair[key].max_retreat_dis_centroid)
+            min_retreat_dis_centroid_list.append(change_RTS_pair[key].min_retreat_dis_centroid)
+            avg_retreat_dis_centroid_list.append(change_RTS_pair[key].avg_retreat_dis_centroid)
+
+            diff_max_retreat_dis_slope_list.append(change_RTS_pair[key].max_retreat_dis_slope - change_RTS_pair[key].max_retreat_dis)
+            diff_max_retreat_dis_centroid_list.append(change_RTS_pair[key].max_retreat_dis_centroid - change_RTS_pair[key].max_retreat_dis)
+
             rts_c_polygons = [c_polygons[item] for item in change_RTS_pair[key].change_poly_index]
             multi_polygon_list.append(vector_gpd.polygons_to_a_MultiPolygon(rts_c_polygons))
 
@@ -229,6 +282,14 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
                                      'max_re_dis': max_retreat_dis_list,
                                      'min_re_dis': min_retreat_dis_list,
                                      'avg_re_dis': avg_retreat_dis_list,
+                                     'maxDisSlo': max_retreat_dis_slope_list,
+                                     'minDisSlo': min_retreat_dis_slope_list,
+                                     'avgDisSlo': avg_retreat_dis_slope_list,
+                                     'diffReSlo':diff_max_retreat_dis_slope_list,
+                                     'maxDisCen': max_retreat_dis_centroid_list,
+                                     'minDisCen': min_retreat_dis_centroid_list,
+                                     'avgDisCen': avg_retreat_dis_centroid_list,
+                                     'diffReCen': diff_max_retreat_dis_centroid_list,
                                      'ChangePolygons': multi_polygon_list
                                      })
 
@@ -250,44 +311,46 @@ def draw_two_hist_of_cd(change_RTS_info_0vs1,change_RTS_info_1vs2, field_name, o
 
 if __name__ == "__main__":
 
-    # ##########################################################################################
-    # # # conduct statistic of change RTSs on the ground truth
-    # # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_2017To2019_manual_delineation')
-    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps')
-    # ground_truth_201707 = os.path.join(shp_dir, 'train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
-    # ground_truth_201807 = os.path.join(shp_dir, 'train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp')
-    # ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
+    ##########################################################################################
+    # # conduct statistic of change RTSs on the ground truth
+    # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_2017To2019_manual_delineation')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps')
+    ground_truth_201707 = os.path.join(shp_dir, 'train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
+    ground_truth_201807 = os.path.join(shp_dir, 'train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp')
+    ground_truth_201907 = os.path.join(shp_dir, 'train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp')
+
     #
-    # #
-    # # # plot histogram on the change polygons (based on manual delineation) of thaw slumps in Beiluhe
-    # out_dir=os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
-    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
-    # manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201707_vs_201807.shp')
-    # manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201807_vs_201907.shp')
-    #
-    # c_RTS_info_2017vs2018 = group_change_polygons(manu_cd_2017vs2018,ground_truth_201707,ground_truth_201807)
-    # c_RTS_info_2018vs2019 = group_change_polygons(manu_cd_2018vs2019,ground_truth_201807,ground_truth_201907)
-    #
-    # # plot histogram of RTS change polygons, for each polygons
-    # # draw_one_value_hist(change_RTS_info, 'max_area', 'max_RTSmax_area_manu_2017vs2018.jpg', 'bins_RTSmax_area_manu_2017vs2018.txt', 0, 2.2, 0.1, [0, 120])
-    #
-    # # # max area
-    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
-    # # # min area
-    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'min_area', 'RTS_min_area_manu', 0, 2.2, 0.1, [0, 180])
-    # # average area
-    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'average_area', 'RTS_avg_area_manu', 0, 2.2, 0.1, [0, 150])
-    #
-    # # max_retreat_distance
-    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_retreat_distance', 'RTS_max_retreat_dis_manu', 0, 100, 5, [0, 60])
-    #
-    # # min_retreat_distance
-    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'min_retreat_distance', 'RTS_min_retreat_dis_manu', 0, 100, 5, [0, 110])
-    #
-    # # average_retreat_distance
-    # # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'average_retreat_distance', 'RTS_avg_retreat_dis_manu', 0, 100, 5, [0, 70])
-    #
-    # # change_polygon_count
+    # # plot histogram on the change polygons (based on manual delineation) of thaw slumps in Beiluhe
+    out_dir=os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
+    manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201707_vs_201807.shp')
+    manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201807_vs_201907.shp')
+
+    c_RTS_info_2017vs2018 = group_change_polygons(manu_cd_2017vs2018,ground_truth_201707,ground_truth_201807,
+                                                  save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
+    c_RTS_info_2018vs2019 = group_change_polygons(manu_cd_2018vs2019,ground_truth_201807,ground_truth_201907,
+                                                  save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
+
+    # plot histogram of RTS change polygons, for each polygons
+    # draw_one_value_hist(change_RTS_info, 'max_area', 'max_RTSmax_area_manu_2017vs2018.jpg', 'bins_RTSmax_area_manu_2017vs2018.txt', 0, 2.2, 0.1, [0, 120])
+
+    # # max area
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
+    # # min area
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'min_area', 'RTS_min_area_manu', 0, 2.2, 0.1, [0, 180])
+    # average area
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'average_area', 'RTS_avg_area_manu', 0, 2.2, 0.1, [0, 150])
+
+    # max_retreat_distance
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_retreat_distance', 'RTS_max_retreat_dis_manu', 0, 100, 5, [0, 60])
+
+    # min_retreat_distance
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'min_retreat_distance', 'RTS_min_retreat_dis_manu', 0, 100, 5, [0, 110])
+
+    # average_retreat_distance
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'average_retreat_distance', 'RTS_avg_retreat_dis_manu', 0, 100, 5, [0, 70])
+
+    # change_polygon_count
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'change_polygon_count', 'RTS_change_polygon_count_manu', 1, 21, 1, [0, 110])
 
     # ##########################################################################################
@@ -305,18 +368,18 @@ if __name__ == "__main__":
 
 
 
-    ##########################################################################################
-    # plot histogram on the change polygons (based on exp5) of thaw slumps in Beiluhe
-    out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
-    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
-    autoMap_exp5_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I0_vs_I1.shp')
-    autoMap_exp5_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I1_vs_I2.shp')
-
-    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp5_cd_2017vs2018,save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
-    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp5_cd_2018vs2019,save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
-
-    # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
-    draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
+    # ##########################################################################################
+    # # plot histogram on the change polygons (based on exp5) of thaw slumps in Beiluhe
+    # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
+    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
+    # autoMap_exp5_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I0_vs_I1.shp')
+    # autoMap_exp5_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I1_vs_I2.shp')
+    #
+    # c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp5_cd_2017vs2018,save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
+    # c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp5_cd_2018vs2019,save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
+    #
+    # # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
 
 
     pass
