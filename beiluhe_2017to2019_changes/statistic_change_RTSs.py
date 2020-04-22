@@ -61,6 +61,12 @@ class change_RTS():
         self.avg_retreat_dis_centroid = -1
         self.retreat_dis_centroid_list = []
 
+        # for each change polygon, it may (may not) have retreat distance along the line (manually draw)
+        self.max_retreat_dis_line = -1
+        self.min_retreat_dis_line = -1
+        self.avg_retreat_dis_line = -1
+        self.retreat_dis_line_list = []
+
         self.add_changeRTS_info(changePolygon_idx,row)
 
     def add_changeRTS_info(self,changePolygon_idx,row):
@@ -84,6 +90,9 @@ class change_RTS():
 
         if 'c_dis_cen' in row.keys():
             self.retreat_dis_centroid_list.append(row['c_dis_cen'])
+
+        if 'e_dis_line' in row.keys():
+            self.retreat_dis_line_list.append(row['e_dis_line'])
 
         self.__update_max_min_avg_values()
 
@@ -110,6 +119,12 @@ class change_RTS():
             self.max_retreat_dis_centroid = np.max(retreat_np_dis_centroid)
             self.min_retreat_dis_centroid = np.min(retreat_np_dis_centroid)
             self.avg_retreat_dis_centroid = np.average(retreat_np_dis_centroid)
+
+        if len(self.retreat_dis_line_list) > 0:
+            retreat_np_dis_line = np.asarray(self.retreat_dis_line_list, dtype=np.float64)
+            self.max_retreat_dis_line = np.max(retreat_np_dis_line)
+            self.min_retreat_dis_line = np.min(retreat_np_dis_line)
+            self.avg_retreat_dis_line = np.average(retreat_np_dis_line)
 
         self.change_poly_count = len(self.change_poly_index)
 
@@ -233,6 +248,10 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         min_retreat_dis_centroid_list = []
         avg_retreat_dis_centroid_list = []
 
+        max_retreat_dis_line_list = []
+        min_retreat_dis_line_list = []
+        avg_retreat_dis_line_list = []
+
         diff_max_retreat_dis_slope_list = []        # calculate the difference between max_retreat_dis and max_retreat_dis_slope
         diff_max_retreat_dis_centroid_list = []        # calculate the difference between max_retreat_dis and max_retreat_dis_centroid
 
@@ -267,6 +286,12 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
             diff_max_retreat_dis_slope_list.append(change_RTS_pair[key].max_retreat_dis_slope - change_RTS_pair[key].max_retreat_dis)
             diff_max_retreat_dis_centroid_list.append(change_RTS_pair[key].max_retreat_dis_centroid - change_RTS_pair[key].max_retreat_dis)
 
+            # only the max_retreat_dis_line can be trust, because usually, we only have one line for each RTS
+            # other parts of expanding area don't have line, then the retreat value will be set as 0.
+            max_retreat_dis_line_list.append(change_RTS_pair[key].max_retreat_dis_line)
+            min_retreat_dis_line_list.append(change_RTS_pair[key].min_retreat_dis_line)
+            avg_retreat_dis_line_list.append(change_RTS_pair[key].avg_retreat_dis_line)
+
             rts_c_polygons = [c_polygons[item] for item in change_RTS_pair[key].change_poly_index]
             multi_polygon_list.append(vector_gpd.polygons_to_a_MultiPolygon(rts_c_polygons))
 
@@ -290,6 +315,9 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
                                      'minDisCen': min_retreat_dis_centroid_list,
                                      'avgDisCen': avg_retreat_dis_centroid_list,
                                      'diffReCen': diff_max_retreat_dis_centroid_list,
+                                     'maxDisLin': max_retreat_dis_line_list,            # only the max_retreat_dis_line can be trust
+                                     'minDisLin': min_retreat_dis_line_list,
+                                     'avgDisLin': avg_retreat_dis_line_list,
                                      'ChangePolygons': multi_polygon_list
                                      })
 
