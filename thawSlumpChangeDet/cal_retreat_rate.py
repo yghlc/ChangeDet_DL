@@ -524,23 +524,23 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
     # distance along expanding lines (manually draw)
     dis_e_line_list = []
 
-    # #####################################################################
-    # # parallel getting medial axis of each polygon, then calculate distance.
-    # num_cores = multiprocessing.cpu_count()
-    # print('number of thread %d' % num_cores)
-    # theadPool = Pool(num_cores)  # multi processes
-    #
-    # parameters_list = [
-    #     (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx], e_line_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
-    # results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
+    #####################################################################
+    # parallel getting medial axis of each polygon, then calculate distance.
+    num_cores = multiprocessing.cpu_count()
+    print('number of thread %d' % num_cores)
+    theadPool = Pool(num_cores)  # multi processes
 
-    ######################################################################
-    # another way to test non-parallel version
-    results = []
-    for idx, exp_polygon in enumerate(expand_polygons):
-        res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
-        results.append(res)
-    ######################################################################
+    parameters_list = [
+        (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx], e_line_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
+    results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
+
+    # ######################################################################
+    # # another way to test non-parallel version
+    # results = []
+    # for idx, exp_polygon in enumerate(expand_polygons):
+    #     res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
+    #     results.append(res)
+    # ######################################################################
 
     for result in results:
         # it still has the same order as expand_polygons
