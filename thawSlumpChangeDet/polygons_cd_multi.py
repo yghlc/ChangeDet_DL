@@ -57,7 +57,7 @@ def get_main_shp_name(old_shp_path,new_shp_path):
 
     return main_shp_name
 
-def get_expanding_change(old_shp_path,new_shp_path,para_file):
+def get_expanding_change(old_shp_path,new_shp_path,para_file, expanding_line_shp=None):
 
 
     main_shp_name = get_main_shp_name(old_shp_path, new_shp_path)
@@ -172,7 +172,7 @@ def get_expanding_change(old_shp_path,new_shp_path,para_file):
             'warning, minimum_relative_elevation is absent in the para file, skip removing polygons based on relative DEM')
 
     # added retreat distance (from medial axis)  # very time-consuming
-    cal_expand_area_distance(all_change_polygons,dem_path=dem_file, old_shp=old_shp_path)
+    cal_expand_area_distance(all_change_polygons,expand_line=expanding_line_shp, dem_path=dem_file, old_shp=old_shp_path)
 
 
     min_retreat_dis_thr = parameters.get_digit_parameters_None_if_absence(para_file, 'minimum_retreat_distance', 'float')
@@ -206,11 +206,18 @@ def main(options, args):
         with open(validate_list_txt, 'r') as f_obj:
             validate_files = [ item.strip()  for item in f_obj.readlines()]
 
+    # manually draw lines for indicating expanding direction
+    expanding_lines = [None]*(len(polygon_shps_list)-1)
+    expanding_lines_txt = parameters.get_string_parameters_None_if_absence(para_file,'expanding_lines')
+    if expanding_lines_txt is not None:
+        with open(expanding_lines_txt, 'r') as f_obj:
+            expanding_lines = [ item.strip()  for item in f_obj.readlines()]
+
     for idx in range(len(polygon_shps_list)-1):
         # print(idx)
         output = 'change_' + get_main_shp_name(polygon_shps_list[idx], polygon_shps_list[idx + 1])
         if os.path.isfile(output) is False:
-            get_expanding_change(polygon_shps_list[idx], polygon_shps_list[idx+1], para_file)
+            get_expanding_change(polygon_shps_list[idx], polygon_shps_list[idx+1], para_file, expanding_line_shp=expanding_lines[idx])
         else:
             basic.outputlogMessage('Warning, Polygon-based change detection results already exist')
         # conduct evaluation
