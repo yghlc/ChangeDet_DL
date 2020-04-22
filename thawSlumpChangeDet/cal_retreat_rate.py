@@ -363,7 +363,18 @@ def cal_distance_along_slope(exp_polygon,medial_axis, radiuses, dem_src):
     center_at_max = center_point_list[max_index]
     return max_value, angle_at_max, center_at_max
 
-def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_poly):
+def cal_distance_along_expanding_line(idx, exp_polygon,expanding_line):
+    inter_lines = expanding_line.intersection(exp_polygon)
+
+    if inter_lines.geom_type == 'LineString':
+        return inter_lines.length
+    elif inter_lines.geom_type == 'MultiLineString':
+        # if there are multiple lines, need to find the one intersect with center_point
+        raise ValueError('The line at location of %d expanding polygon cross multiple polygons '%idx)
+
+    pass
+
+def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_poly, expand_line):
 
     basic.outputlogMessage(
         'Calculating expanding distance of %dth (0 index) polygon, total: %d' % (idx, total_polygon_count))
@@ -382,6 +393,9 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
     dis_c_angle = 0.0
     dis_c_line_x0 = 0.0
     dis_c_line_y0 = 0.0
+
+    # distance along expanding line (manually draw)
+    dis_e_line = 0.0
 
     if exp_polygon.area < 1:
         # for a small polygon, it may failed to calculate its radiues, so get a approximation values
@@ -419,6 +433,9 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
             # line_obj = [dis_c_line_x0, dis_c_line_y0,dis_c_angle,dis_along_center]
             # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
 
+        if expand_line is not None:
+            dis_e_line  = cal_distance_along_expanding_line(idx, exp_polygon,expand_line)
+
 
     # to 1d
     radiuses_1d = [value for item in radiuses for value in item]
@@ -437,14 +454,15 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
 
     return idx, min_medAxis_width * 2, max_medAxis_width * 2, mean_medAxis_width * 2, median_medAxis_width * 2, \
            h_value, dis_slope, dis_direction,dis_line_p_x0, dis_line_p_y0, \
-           dis_along_center, dis_c_angle, dis_c_line_x0, dis_c_line_y0
+           dis_along_center, dis_c_angle, dis_c_line_x0, dis_c_line_y0, dis_e_line
 
 
-def cal_expand_area_distance(expand_shp, dem_path = None, old_shp= None):
+def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_shp= None):
     '''
     calculate the distance of expanding areas along the upslope direction.
     The distance will save to expand_shp, backup it if necessary
     :param expand_shp: the shape file containing polygons which represent expanding areas of active thaw slumps
+    :param expand_line: lines indicating the expanding the direction
     :param dem_path: the dem path for calculating the slope distance along slope
     :param old_shp: the shape file storing the old polygons
     :return: True if successful
@@ -463,6 +481,15 @@ def cal_expand_area_distance(expand_shp, dem_path = None, old_shp= None):
         old_poly_idx_list = gpd_shapefile['old_index'].tolist()
         old_polygons =  vector_gpd.read_polygons_gpd(old_shp)
         old_poly_list = [ old_polygons[idx] if idx >=0 else None for idx in old_poly_idx_list ]
+
+    # read expanding lines (from manual input), put them at the some order of expanding polygons
+    e_line_list = [None]*len(expand_polygons)
+    if expand_line is not None:
+        lines = vector_gpd.read_lines_gpd(expand_line)
+        line_checked = [False]*len(lines)
+        for idx, e_polygon in enumerate(expand_polygons):
+            e_line = vector_gpd.find_one_line_intersect_Polygon(e_polygon,lines,line_checked)
+            e_line_list[idx] = e_line
 
     # dem_src = None
     # check projection
@@ -490,24 +517,26 @@ def cal_expand_area_distance(expand_shp, dem_path = None, old_shp= None):
     dis_c_x0_list = []          # the center (x) of the medal circle, for drawing the line
     dis_c_y0_list = []          # the center (y) of the medal circle, for drawing the line
 
+    # distance along expanding lines (manually draw)
+    dis_e_line_list = []
 
-    #####################################################################
-    # parallel getting medial axis of each polygon, then calculate distance.
-    num_cores = multiprocessing.cpu_count()
-    print('number of thread %d' % num_cores)
-    theadPool = Pool(num_cores)  # multi processes
+    # #####################################################################
+    # # parallel getting medial axis of each polygon, then calculate distance.
+    # num_cores = multiprocessing.cpu_count()
+    # print('number of thread %d' % num_cores)
+    # theadPool = Pool(num_cores)  # multi processes
+    #
+    # parameters_list = [
+    #     (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx], e_line_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
+    # results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
 
-    parameters_list = [
-        (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
-    results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
-
-    # ######################################################################
-    # # another way to test non-parallel version
-    # results = []
-    # for idx, exp_polygon in enumerate(expand_polygons):
-    #     res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx])
-    #     results.append(res)
-    # ######################################################################
+    ######################################################################
+    # another way to test non-parallel version
+    results = []
+    for idx, exp_polygon in enumerate(expand_polygons):
+        res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
+        results.append(res)
+    ######################################################################
 
     for result in results:
         # it still has the same order as expand_polygons
@@ -529,6 +558,9 @@ def cal_expand_area_distance(expand_shp, dem_path = None, old_shp= None):
             dis_c_angle_list.append(result[11])
             dis_c_x0_list.append(result[12])
             dis_c_y0_list.append(result[13])
+
+        if expand_line is not None:
+            dis_e_line_list.append(result[14])
 
     # ################################################
     # # go through each polygon, get its medial axis, then calculate distance.
@@ -638,6 +670,8 @@ def cal_expand_area_distance(expand_shp, dem_path = None, old_shp= None):
         diff_e_poly_cent_dis_list = [  dis - max_Ws  for dis, max_Ws  in zip(dis_center_list, poly_max_Ws)]
         shp_obj.add_one_field_records_to_shapefile(expand_shp, diff_e_poly_cent_dis_list, 'c_diff_dis')
 
+    if expand_line is not None:
+        shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_e_line_list, 'e_dis_line')
 
     basic.outputlogMessage('Save expanding distance of all the polygons to %s'%expand_shp)
 
@@ -763,7 +797,7 @@ def main(options, args):
     # plot_polygon_medial_axis_circle_line(polygon,medial_axis,radiuses,top_n_index)
 
 
-    cal_expand_area_distance(args[0], dem_path=options.dem_path, old_shp=options.old_polygon_shp)
+    cal_expand_area_distance(args[0],expand_line=options.expanding_line_shp, dem_path=options.dem_path, old_shp=options.old_polygon_shp)
 
     pass
 
@@ -784,7 +818,11 @@ if __name__ == "__main__":
 
     parser.add_option("-o", "--old_polygon_shp",
                       action="store", dest="old_polygon_shp",
-                      help="the path to the old polygon shape file ")
+                      help="the path to the old polygon shapefile ")
+
+    parser.add_option("-l", "--expanding_line_shp",
+                      action="store", dest="expanding_line_shp",
+                      help="the path to the shapefile storing lines indicating the ")
 
 
     (options, args) = parser.parse_args()
