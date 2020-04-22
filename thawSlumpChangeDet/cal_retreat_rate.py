@@ -485,6 +485,10 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
     # read expanding lines (from manual input), put them at the some order of expanding polygons
     e_line_list = [None]*len(expand_polygons)
     if expand_line is not None:
+        # check they have the same projection
+        if get_projection_proj4(expand_shp) != get_projection_proj4(expand_line):
+            raise ValueError('error, projection insistence between %s and %s' % (expand_shp, expand_line))
+
         lines = vector_gpd.read_lines_gpd(expand_line)
         line_checked = [False]*len(lines)
         for idx, e_polygon in enumerate(expand_polygons):
