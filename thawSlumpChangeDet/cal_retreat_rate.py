@@ -247,8 +247,17 @@ def meidal_circles_segment_across_center(exp_polygon,a_medial_axis, radius, old_
         x0, y0, r = x2, y2, r2
 
     center_point = Point(x0,y0)
+    #################################################
     # Centroid (geometric center ) of the old polygon
-    old_polygon_center = old_polygon.centroid
+    # old_polygon_center = old_polygon.centroid
+    #################################################
+    # use the Centroid (geometric center ) of the intersection between old polygon and change polygons
+    # tmp_inter = old_polygon.intersection(exp_polygon)       # this intersetion can results in MULTILINESTRING or GEOMETRYCOLLECTION (LINESTRING & POLYGON)
+    tmp_inter = old_polygon.buffer(0.05).intersection(exp_polygon)  # buffer first, then it results in a Polygon
+    old_polygon_center = tmp_inter.centroid
+    print(tmp_inter)
+    # print(old_polygon_center)
+
     old_c_x = old_polygon_center.x
     old_c_y = old_polygon_center.y
 
@@ -412,6 +421,11 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
         # interrupted by signal 11: SIGSEGV or segmentation fault may be avoid if change the h value
         medial_axis, radiuses, h_value = get_medial_axis_of_one_polygon(vertices, h=h_value, proc_id=proc_id)
 
+        # # for test, ONLY draw the figures of medial circles (remove this when run in parallel)
+        # save_path = "medial_axis_circle_for_%d_polygon.jpg"%idx
+        # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=8, n=100)
+        # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=None, save_path=save_path)
+
         if dem_path is not None:
             dem_src = rasterio.open(dem_path)
             dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_src=dem_src)
@@ -534,13 +548,13 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
         (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx], e_line_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
     results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
 
-    # ######################################################################
+    ###################################################################
     # # another way to test non-parallel version
     # results = []
     # for idx, exp_polygon in enumerate(expand_polygons):
     #     res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
     #     results.append(res)
-    # ######################################################################
+    #####################################################################
 
     for result in results:
         # it still has the same order as expand_polygons
@@ -744,7 +758,7 @@ def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circ
               (line_obj[0], line_obj[1],line_obj[3],line_obj[2]))
 
         # draw the center point
-        ax.plot(line_obj[0],line_obj[1],marker='+',color='black',markersize=20)
+        ax.plot(line_obj[0],line_obj[1],marker='o',color='black',markersize=8)
 
         # construct the line
         rad_angle = math.radians(line_obj[2])
@@ -780,7 +794,8 @@ def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circ
 
 
     ax.axis('equal')
-    ax.set_title('Medial Axis')
+    # ax.set_title('Medial Axis')
+    plt.axis('off')
     if save_path is None:
         plt.show()
     else:
