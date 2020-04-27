@@ -39,6 +39,7 @@ class change_RTS():
         self.max_change_area = -1
         self.min_change_area = -1
         self.avg_change_area = -1
+        self.sum_change_area = -1
         self.change_area_list = []
 
         # for each change polygon, it already has max, min, avg, media retreat distance, choose max as the retreat distance,
@@ -102,6 +103,7 @@ class change_RTS():
         self.max_change_area = np.max(area_np_values)
         self.min_change_area = np.min(area_np_values)
         self.avg_change_area = np.average(area_np_values)
+        self.sum_change_area = np.sum(area_np_values)
 
         retreat_np_dis = np.asarray(self.retreat_dis_list, dtype=np.float64)
         self.max_retreat_dis = np.max(retreat_np_dis)
@@ -231,6 +233,7 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         max_change_area_list = []
         min_change_area_list = []
         avg_change_area_list = []
+        sum_change_area_list = []
         # change_area_list = []
 
         # for each change polygon, it already has max, min, avg, media retreat distance, choose max as the retreat distance,
@@ -271,6 +274,7 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
             max_change_area_list.append(change_RTS_pair[key].max_change_area)
             min_change_area_list.append(change_RTS_pair[key].min_change_area)
             avg_change_area_list.append(change_RTS_pair[key].avg_change_area)
+            sum_change_area_list.append(change_RTS_pair[key].sum_change_area)
             max_retreat_dis_list.append(change_RTS_pair[key].max_retreat_dis)
             min_retreat_dis_list.append(change_RTS_pair[key].min_retreat_dis)
             avg_retreat_dis_list.append(change_RTS_pair[key].avg_retreat_dis)
@@ -304,6 +308,7 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
                                      'max_c_area': max_change_area_list,
                                      'min_c_area': min_change_area_list,
                                      'avg_c_area': avg_change_area_list,
+                                     'sum_c_area': sum_change_area_list,
                                      'max_re_dis': max_retreat_dis_list,
                                      'min_re_dis': min_retreat_dis_list,
                                      'avg_re_dis': avg_retreat_dis_list,
