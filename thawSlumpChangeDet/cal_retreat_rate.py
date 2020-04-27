@@ -236,7 +236,7 @@ def meidal_circles_segment(exp_polygon,a_medial_axis, radius,dem_src, dem_res):
 
     return median_line_length, angle_median, x0, y0
 
-def meidal_circles_segment_across_center(exp_polygon,a_medial_axis, radius, old_polygon):
+def meidal_circles_segment_across_center(exp_polygon,a_medial_axis, radius, old_polygon_center):
 
     (x1, y1), (x2, y2) = a_medial_axis  # (x1, y1) and (x2, y2) are close to each other
     r1, r2 = radius
@@ -247,16 +247,6 @@ def meidal_circles_segment_across_center(exp_polygon,a_medial_axis, radius, old_
         x0, y0, r = x2, y2, r2
 
     center_point = Point(x0,y0)
-    #################################################
-    # Centroid (geometric center ) of the old polygon
-    # old_polygon_center = old_polygon.centroid
-    #################################################
-    # use the Centroid (geometric center ) of the intersection between old polygon and change polygons
-    # tmp_inter = old_polygon.intersection(exp_polygon)       # this intersetion can results in MULTILINESTRING or GEOMETRYCOLLECTION (LINESTRING & POLYGON)
-    tmp_inter = old_polygon.buffer(0.05).intersection(exp_polygon)  # buffer first, then it results in a Polygon
-    old_polygon_center = tmp_inter.centroid
-    print(tmp_inter)
-    # print(old_polygon_center)
 
     old_c_x = old_polygon_center.x
     old_c_y = old_polygon_center.y
@@ -324,8 +314,19 @@ def cal_distance_along_polygon_center(exp_polygon,medial_axis, radiuses,old_poly
     angle_list = []
     center_point_list = []      # the circle center
 
+    #################################################
+    # Centroid (geometric center ) of the old polygon
+    # old_polygon_center = old_polygon.centroid
+    #################################################
+    # use the Centroid (geometric center ) of the intersection between old polygon and change polygons
+    # tmp_inter = old_polygon.intersection(exp_polygon)       # this intersetion can results in MULTILINESTRING or GEOMETRYCOLLECTION (LINESTRING & POLYGON)
+    tmp_inter = old_polygon.buffer(0.05).intersection(exp_polygon)  # buffer first, then it results in a Polygon
+    old_polygon_center = tmp_inter.centroid
+    # print(tmp_inter)
+    # print(old_polygon_center)
+
     for n_index in top_n_index:
-        dis_across_center, angle, x0, y0 = meidal_circles_segment_across_center(exp_polygon,medial_axis[n_index], radiuses[n_index],old_polygon)
+        dis_across_center, angle, x0, y0 = meidal_circles_segment_across_center(exp_polygon,medial_axis[n_index], radiuses[n_index],old_polygon_center)
         dis_at_center_list.append(dis_across_center)
         angle_list.append(angle)
         center_point_list.append((x0,y0))
