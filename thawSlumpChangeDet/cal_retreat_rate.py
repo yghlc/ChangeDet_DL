@@ -286,7 +286,7 @@ def meidal_circles_segment_across_center(exp_polygon,a_medial_axis, radius, old_
         raise ValueError('type is %s, need to be upgraded'%inter_lines.geom_type)
 
     # for test
-    print('x0',x0, 'y0',y0, 'length',inter_lines.length,'rad', rad, 'angle', angle)
+    # print('x0',x0, 'y0',y0, 'length',inter_lines.length,'rad', rad, 'angle', angle)
 
     return inter_lines.length, angle, x0, y0
 
