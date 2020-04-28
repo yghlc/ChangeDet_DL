@@ -329,6 +329,13 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(change_shp)
         vector_gpd.save_polygons_to_files(changePolygons_df, 'ChangePolygons', wkt_string, save_path)
 
+        # save to excel format
+        excel_save_path = os.path.splitext(save_path)[0] + '.xlsx'
+        print(excel_save_path)
+        # output top 1 to excel
+        with pd.ExcelWriter(excel_save_path) as writer:
+            changePolygons_df.to_excel(writer, sheet_name=os.path.splitext(os.path.basename(excel_save_path))[0])
+
     # for key in change_RTS_pair.keys():
     #     print(key, change_RTS_pair[key].max_retreat_dis,change_RTS_pair[key].max_change_area)
 
