@@ -316,12 +316,12 @@ def cal_distance_along_polygon_center(exp_polygon,medial_axis, radiuses,old_poly
 
     #################################################
     # Centroid (geometric center ) of the old polygon
-    # old_polygon_center = old_polygon.centroid
+    old_polygon_center = old_polygon.centroid
     #################################################
     # use the Centroid (geometric center ) of the intersection between old polygon and change polygons
     # tmp_inter = old_polygon.intersection(exp_polygon)       # this intersetion can results in MULTILINESTRING or GEOMETRYCOLLECTION (LINESTRING & POLYGON)
-    tmp_inter = old_polygon.buffer(0.05).intersection(exp_polygon)  # buffer first, then it results in a Polygon
-    old_polygon_center = tmp_inter.centroid
+    # tmp_inter = old_polygon.buffer(0.05).intersection(exp_polygon)  # buffer first, then it results in a Polygon
+    # old_polygon_center = tmp_inter.centroid
     # print(tmp_inter)
     # print(old_polygon_center)
 
