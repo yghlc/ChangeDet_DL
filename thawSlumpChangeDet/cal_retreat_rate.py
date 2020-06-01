@@ -475,7 +475,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
 def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_shp= None):
     '''
     calculate the distance of expanding areas along the upslope direction.
-    The distance will save to expand_shp, backup it if necessary
+    The distance will be saved to expand_shp, backup it if necessary
     :param expand_shp: the shape file containing polygons which represent expanding areas of active thaw slumps
     :param expand_line: lines indicating the expanding the direction
     :param dem_path: the dem path for calculating the slope distance along slope
