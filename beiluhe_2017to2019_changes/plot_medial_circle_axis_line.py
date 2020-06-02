@@ -18,20 +18,29 @@ from shapely.geometry import LineString
 from shapely.geometry import Point
 from shapely.geometry import Polygon
 
+import geopandas as gpd
 
 sys.path.append(os.path.expanduser('~/codes/PycharmProjects/ChangeDet_DL/thawSlumpChangeDet'))
 from cal_retreat_rate import find_top_n_medial_circle_with_sampling
 # from cal_retreat_rate import plot_polygon_medial_axis_circle_line
+from cal_retreat_rate import get_projection_proj4
 from cal_retreat_rate import get_medial_axis_of_one_polygon
+from cal_retreat_rate import cal_one_expand_area_dis
+from cal_retreat_rate import cal_distance_along_slope
+from cal_retreat_rate import cal_distance_along_expanding_line
+from cal_retreat_rate import cal_distance_along_polygon_center
 import basic_src.basic as basic
 import basic_src.io_function as io_function
 
 import vector_gpd
-
+import rasterio
 
 test_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/test_cal_retreat_dis')
+dem_path = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/DEM/srtm_30/beiluhe_srtm30_utm.tif')
 
 expand_shp = os.path.join(test_dir,'polygons_for_test_retreat_dis_2017vs2018.shp')
+old_shp = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps/train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp')
+expand_line = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/thaw_slumps/rts_expanding_direction_2017to2019/rts_expanding_line_201707_vs_201807.shp')
 # expand_shp = os.path.join(test_dir,'polygons_for_test_retreat_dis_2018vs2019.shp')
 out_dir = os.path.join(test_dir,'figures_'+os.path.splitext(os.path.basename(expand_shp))[0])
 
@@ -147,33 +156,33 @@ def main():
     if len(expand_polygons) < 1:
         raise ValueError('No polygons in %s' % expand_shp)
 
-    # # read old polygon list for each expanding polygons
-    # old_poly_list = [None]*len(expand_polygons)
-    # if old_shp is not None:
-    #     gpd_shapefile = gpd.read_file(expand_shp)
-    #     old_poly_idx_list = gpd_shapefile['old_index'].tolist()
-    #     old_polygons =  vector_gpd.read_polygons_gpd(old_shp)
-    #     old_poly_list = [ old_polygons[idx] if idx >=0 else None for idx in old_poly_idx_list ]
-    #
-    # # read expanding lines (from manual input), put them at the some order of expanding polygons
-    # e_line_list = [None]*len(expand_polygons)
-    # if expand_line is not None:
-    #     # check they have the same projection
-    #     if get_projection_proj4(expand_shp) != get_projection_proj4(expand_line):
-    #         raise ValueError('error, projection insistence between %s and %s' % (expand_shp, expand_line))
-    #
-    #     lines = vector_gpd.read_lines_gpd(expand_line)
-    #     line_checked = [False]*len(lines)
-    #     for idx, e_polygon in enumerate(expand_polygons):
-    #         e_line = vector_gpd.find_one_line_intersect_Polygon(e_polygon,lines,line_checked)
-    #         e_line_list[idx] = e_line
+    # read old polygon list for each expanding polygons
+    old_poly_list = [None]*len(expand_polygons)
+    if old_shp is not None:
+        gpd_shapefile = gpd.read_file(expand_shp)
+        old_poly_idx_list = gpd_shapefile['old_index'].tolist()
+        old_polygons =  vector_gpd.read_polygons_gpd(old_shp)
+        old_poly_list = [ old_polygons[idx] if idx >=0 else None for idx in old_poly_idx_list ]
+
+    # read expanding lines (from manual input), put them at the some order of expanding polygons
+    e_line_list = [None]*len(expand_polygons)
+    if expand_line is not None:
+        # check they have the same projection
+        if get_projection_proj4(expand_shp) != get_projection_proj4(expand_line):
+            raise ValueError('error, projection insistence between %s and %s' % (expand_shp, expand_line))
+
+        lines = vector_gpd.read_lines_gpd(expand_line)
+        line_checked = [False]*len(lines)
+        for idx, e_polygon in enumerate(expand_polygons):
+            e_line = vector_gpd.find_one_line_intersect_Polygon(e_polygon,lines,line_checked)
+            e_line_list[idx] = e_line
 
 
-    # # dem_src = None
-    # # check projection
-    # if dem_path is not None:
-    #     if get_projection_proj4(expand_shp) != get_projection_proj4(dem_path):
-    #         raise ValueError('error, projection insistence between %s and %s' % (expand_shp, dem_path))
+    # dem_src = None
+    # check projection
+    if dem_path is not None:
+        if get_projection_proj4(expand_shp) != get_projection_proj4(dem_path):
+            raise ValueError('error, projection insistence between %s and %s' % (expand_shp, dem_path))
 
 
     ##################################################################
@@ -181,8 +190,9 @@ def main():
     h_value = 0.3  # default h for calculating medial axis
     proc_id = 100
     for idx, exp_polygon in enumerate(expand_polygons):
-        # res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
-        # results.append(res)
+        res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
+        print(res)
+        results.append(res)
 
         x_list, y_list = exp_polygon.exterior.coords.xy
         # xy = exp_polygon.exterior.coords
@@ -196,7 +206,35 @@ def main():
         top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=15, n=20)
         plot_polygon_medial_axis_circle_line(vertices,medial_axis,radiuses,top_n_index,save_path=save_path)
 
-        break
+        old_poly = None
+        # old_poly = old_poly_list[idx]
+
+        if dem_path is not None:
+            dem_src = rasterio.open(dem_path)
+            dis_slope, dis_direction, l_c_point = cal_distance_along_slope(exp_polygon, medial_axis, radiuses, dem_src=dem_src)
+            dis_line_p_x0, dis_line_p_y0 = l_c_point
+
+            # for test, draw the figures of medial circles (remove this when run in parallel)
+            # save_path = "medial_axis_circle_for_%d_polygon.jpg"%idx
+            # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
+            # line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
+            # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+
+        if old_poly is not None:
+            dis_along_center, dis_c_angle, c_point = cal_distance_along_polygon_center(exp_polygon, medial_axis, radiuses,old_poly)
+            dis_c_line_x0, dis_c_line_y0 = c_point
+
+            # for test, draw the figures of medial circles  (remove this when run in parallel)
+            # save_path = "medial_axis_circle_old_poly_center_for_%d_polygon.jpg"%idx
+            # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
+            # line_obj = [dis_c_line_x0, dis_c_line_y0,dis_c_angle,dis_along_center]
+            # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+
+        if expand_line is not None:
+            dis_e_line = cal_distance_along_expanding_line(idx, exp_polygon,expand_line)
+
+
+        # break
 
     # polygons
 
