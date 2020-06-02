@@ -346,7 +346,7 @@ def main():
 
 
         # only for the first polygon
-        break
+        # break
 
     # polygons
 
