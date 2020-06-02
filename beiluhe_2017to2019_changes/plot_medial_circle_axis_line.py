@@ -19,10 +19,11 @@ from shapely.geometry import Point
 from shapely.geometry import Polygon
 
 import geopandas as gpd
+import pandas as pd
 
 sys.path.append(os.path.expanduser('~/codes/PycharmProjects/ChangeDet_DL/thawSlumpChangeDet'))
 from cal_retreat_rate import find_top_n_medial_circle_with_sampling
-# from cal_retreat_rate import plot_polygon_medial_axis_circle_line
+from cal_retreat_rate import plot_polygon_medial_axis_circle_line
 from cal_retreat_rate import get_projection_proj4
 from cal_retreat_rate import get_medial_axis_of_one_polygon
 from cal_retreat_rate import cal_one_expand_area_dis
@@ -31,6 +32,7 @@ from cal_retreat_rate import cal_distance_along_expanding_line
 from cal_retreat_rate import cal_distance_along_polygon_center
 import basic_src.basic as basic
 import basic_src.io_function as io_function
+import basic_src.map_projection as map_projection
 
 import vector_gpd
 import rasterio
@@ -150,6 +152,111 @@ def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circ
         plt.savefig(save_path,dpi=200)
         basic.outputlogMessage('Save medial axis and circle to %s'%save_path)
 
+def save_a_line_to_shapefile(poly_shapely, line_obj, save_path,ref_shapefile):
+    # save the line
+
+    # poly_shapely = Polygon(polygon)
+
+    print('The length of the line with center (%f, %f) is %f, and its angle (relative to X axis) is %f:' %
+          (line_obj[0], line_obj[1], line_obj[3], line_obj[2]))
+
+    # draw the center point
+    # ax.plot(line_obj[0], line_obj[1], marker='o', color='black', markersize=8)
+
+    # construct the line
+    rad_angle = math.radians(line_obj[2])
+    dx = line_obj[3] * math.cos(rad_angle)
+    dy = line_obj[3] * math.sin(rad_angle)
+    xs = line_obj[0] + dx
+    ys = line_obj[1] + dy
+    xe = line_obj[0] - dx
+    ye = line_obj[1] - dy
+    line_shapely = LineString([(xs, ys), (xe, ye)])
+    inter_line = line_shapely.intersection(poly_shapely)
+
+    # x_list = []
+    # y_list = []
+    center_point = Point(line_obj[0], line_obj[1])
+
+    if inter_line.geom_type == 'MultiLineString':
+        lines = list(inter_line)
+        for a_line in lines:
+            if a_line.buffer(0.1).intersection(center_point).is_empty:
+                continue
+            else:
+                inter_line = a_line
+
+    # save the line
+    save_lines_attributes = {}
+    save_lines_attributes["Lines"] = [inter_line]
+    lines_df = pd.DataFrame(save_lines_attributes)
+
+    wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(ref_shapefile)
+    save_line_path = io_function.get_name_by_adding_tail(save_path, 'line')
+    vector_gpd.save_polygons_to_files(lines_df, 'Lines', wkt_string, save_line_path)
+    basic.outputlogMessage('save medial axis to %s' % save_line_path)
+
+
+def save_circles_to_shapefile(medial_axis,radiuses,draw_circle_idx,save_path,ref_shapefile):
+
+    if isinstance(draw_circle_idx, list) is False:
+        draw_circle_idx = [draw_circle_idx]
+
+    circles_shapely = []
+    centers_points = []
+
+    lines_shapely = []
+
+    for idx, ((x1, y1), (x2, y2)) in enumerate(medial_axis):
+
+        start = Point(x1, y1)
+        end = Point(x2, y2)
+        a_line = LineString([start, end])
+        lines_shapely.append(a_line)
+
+        # draw circle
+        if radiuses is not None and idx in draw_circle_idx:
+
+            # save the circle one
+            center = Point(x1, y1)
+            centers_points.append(center)
+
+            a_circle = center.buffer(radiuses[idx][0])
+            circles_shapely.append(a_circle)
+
+            pass
+
+    # save polygons
+    save_circles_attributes = {}
+    save_circles_attributes["Polygons"] = circles_shapely
+    polygon_df = pd.DataFrame(save_circles_attributes)
+
+    wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(ref_shapefile)
+    vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', wkt_string, save_path)
+    basic.outputlogMessage('save circles to %s'%save_path)
+
+    # save center points
+    save_centers_attributes = {}
+    save_centers_attributes["Points"] = centers_points
+    center_df = pd.DataFrame(save_centers_attributes)
+
+    save_center_path = io_function.get_name_by_adding_tail(save_path,'center')
+    vector_gpd.save_polygons_to_files(center_df, 'Points', wkt_string, save_center_path)
+    basic.outputlogMessage('save circle centers to %s' % save_center_path)
+
+
+    # save lines (medial axis)
+    save_lines_attributes = {}
+    save_lines_attributes["Lines"] = lines_shapely
+    lines_df = pd.DataFrame(save_lines_attributes)
+
+    save_line_path = io_function.get_name_by_adding_tail(save_path,'line')
+    vector_gpd.save_polygons_to_files(lines_df, 'Lines', wkt_string, save_line_path)
+    basic.outputlogMessage('save medial axis to %s' % save_line_path)
+
+    pass
+
+
 def main():
 
     expand_polygons = vector_gpd.read_polygons_gpd(expand_shp)
@@ -206,8 +313,11 @@ def main():
         top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=15, n=20)
         plot_polygon_medial_axis_circle_line(vertices,medial_axis,radiuses,top_n_index,save_path=save_path)
 
-        old_poly = None
-        # old_poly = old_poly_list[idx]
+        # save circles to shape file
+        save_circles_shp = os.path.join(out_dir,"medial_circle_of_%d_polygon.shp" % idx)
+        save_circles_to_shapefile(medial_axis, radiuses, top_n_index, save_circles_shp,expand_shp)
+
+        old_poly = old_poly_list[idx]
 
         if dem_path is not None:
             dem_src = rasterio.open(dem_path)
@@ -217,8 +327,10 @@ def main():
             # for test, draw the figures of medial circles (remove this when run in parallel)
             # save_path = "medial_axis_circle_for_%d_polygon.jpg"%idx
             # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
-            # line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
+            line_obj = [dis_line_p_x0, dis_line_p_y0,dis_direction,dis_slope]
             # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+            save_dem_line = os.path.join(out_dir,"dem_line_of_%d_polygon.shp" % idx)
+            save_a_line_to_shapefile(exp_polygon, line_obj, save_dem_line, expand_shp)
 
         if old_poly is not None:
             dis_along_center, dis_c_angle, c_point = cal_distance_along_polygon_center(exp_polygon, medial_axis, radiuses,old_poly)
@@ -227,14 +339,14 @@ def main():
             # for test, draw the figures of medial circles  (remove this when run in parallel)
             # save_path = "medial_axis_circle_old_poly_center_for_%d_polygon.jpg"%idx
             # top_n_index = find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=global_sep_distance, n=global_topSize_count)
-            # line_obj = [dis_c_line_x0, dis_c_line_y0,dis_c_angle,dis_along_center]
+            line_obj = [dis_c_line_x0, dis_c_line_y0,dis_c_angle,dis_along_center]
             # plot_polygon_medial_axis_circle_line(vertices,medial_axis, radiuses,top_n_index,line_obj=line_obj, save_path=save_path)
+            save_old_poly_line = os.path.join(out_dir,"old_polygon_center_line_of_%d_polygon.shp" % idx)
+            save_a_line_to_shapefile(exp_polygon, line_obj, save_old_poly_line, expand_shp)
 
-        if expand_line is not None:
-            dis_e_line = cal_distance_along_expanding_line(idx, exp_polygon,expand_line)
 
-
-        # break
+        # only for the first polygon
+        break
 
     # polygons
 
