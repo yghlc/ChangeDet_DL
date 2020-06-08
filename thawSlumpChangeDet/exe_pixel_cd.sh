@@ -58,9 +58,9 @@ SECONDS=0
 ${cd_dir}/thawSlumpChangeDet/bash_prediction_cd.py ${para_file}
 
 
-#${eo_dir}/thawslumpScripts/postProc.sh ${para_file}
-#
-#${eo_dir}/thawslumpScripts/accuracies_assess.sh ${para_file}
+${cd_dir}/thawSlumpChangeDet/bash_postProc.py ${para_file}
+
+#${cd_dir}/thawSlumpChangeDet/accuracies_assess.sh ${para_file}
 
 ################################################
 ## backup results
