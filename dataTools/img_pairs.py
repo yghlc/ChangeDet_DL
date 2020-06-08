@@ -165,7 +165,7 @@ class two_images_pixel_pair(torch.utils.data.Dataset):
                         elif label_data[row, col] == label_no_change_value:     # no-change pixel 1
                             no_change_idx.append(idx)
                         else:
-                            raise ValueError('Error: unknow label: %d at row: %d, col: %d'
+                            raise ValueError('Error: unknown label: %d at row: %d, col: %d'
                                              %(label_data[row, col],row, col))
                         idx += 1
 
