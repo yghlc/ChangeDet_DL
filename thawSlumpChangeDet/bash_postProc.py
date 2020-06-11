@@ -21,6 +21,7 @@ import basic_src.basic as basic
 from dataTools.merge_shapefiles import merge_shape_files
 from polygon_post_process import cal_add_area_length_of_polygon
 from vector_features import shape_opeation
+from evaluation_result import evaluation_result
 
 # get parameter
 para_file=sys.argv[1]
@@ -160,14 +161,15 @@ if area_thr is not None:
     if remove_polygons(change_polygons_shp, 'INarea', area_thr, b_smaller, rm_area_save_shp) is False:
         basic.outputlogMessage("error, removing polygons based on size failed")
     else:
-        polygons_shp = rm_area_save_shp
+        change_polygons_shp = rm_area_save_shp
 else:
     basic.outputlogMessage('warning, minimum_area is absent in the para file, skip removing polygons based on areas')
 
 
-
 # calculate IOU values (need validation polygons)
-
+val_path = parameters.get_validation_shape()
+input = change_polygons_shp
+evaluation_result(input, val_path)
 
 
 
