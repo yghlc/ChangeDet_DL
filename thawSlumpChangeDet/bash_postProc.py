@@ -19,6 +19,8 @@ import basic_src.io_function as io_function
 import basic_src.basic as basic
 
 from dataTools.merge_shapefiles import merge_shape_files
+from polygon_post_process import cal_add_area_length_of_polygon
+from vector_features import shape_opeation
 
 # get parameter
 para_file=sys.argv[1]
@@ -103,6 +105,20 @@ def merge_raster_to_shapefile(inf_dir,save_path):
 
     return True
 
+def remove_polygons(shapefile,field_name, threshold, bsmaller,output):
+    '''
+    remove polygons based on attribute values.
+    :param shapefile: input shapefile name
+    :param field_name:
+    :param threshold:
+    :param bsmaller:
+    :param output:
+    :return:
+    '''
+    operation_obj = shape_opeation()
+    if operation_obj.remove_shape_baseon_field_value(shapefile, output, field_name, threshold, smaller=bsmaller) is False:
+        return False
+
 ############################################################
 ## convert change map (raster) to shape file, one by one
 ## then merge the shapefiles. (a problem: have duplicated polygons)
@@ -128,10 +144,26 @@ def merge_raster_to_shapefile(inf_dir,save_path):
 
 ############################################################
 # merge the raster first, then convert them to shapefiles
-save_path = os.path.join(inf_result_dir,'predict_change_polygons.shp')
-merge_raster_to_shapefile(inf_result_dir,save_path)
+change_polygons_shp = os.path.join(inf_result_dir,'predict_change_polygons.shp')
+merge_raster_to_shapefile(inf_result_dir,change_polygons_shp)
 
-# remove small polygons and duplicated polygons
+#
+
+if cal_add_area_length_of_polygon(change_polygons_shp) is False:
+    sys.exit(1)
+
+# remove small polygons
+area_thr = parameters.get_digit_parameters_None_if_absence(para_file,'minimum_area','int')
+b_smaller = True
+if area_thr is not None:
+    rm_area_save_shp = io_function.get_name_by_adding_tail(change_polygons_shp, 'rmArea')
+    if remove_polygons(change_polygons_shp, 'INarea', area_thr, b_smaller, rm_area_save_shp) is False:
+        basic.outputlogMessage("error, removing polygons based on size failed")
+    else:
+        polygons_shp = rm_area_save_shp
+else:
+    basic.outputlogMessage('warning, minimum_area is absent in the para file, skip removing polygons based on areas')
+
 
 
 # calculate IOU values (need validation polygons)
