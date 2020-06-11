@@ -72,28 +72,67 @@ def post_processing_one_change_map(idx, nodata=None):
 
     return out_shp
 
-# convert change map (raster) to shape file, one by one
-change_shp_list = []
-with open(img_pair_txt,'r') as f_obj:
-    lines = f_obj.readlines()
-    for idx, str_line in enumerate(lines):
-        # path_str [old_image, new_image, label_path (if available)]
-        path_str = [os.path.join(root, item.strip()) for item in str_line.split(':')]
+def merge_raster_to_shapefile(inf_dir,save_path):
 
-        # post_processing_one_change_map, set no change pixels (0) as no data
-        change_polygons_shp = post_processing_one_change_map(idx, nodata=0)
-        change_shp_list.append(change_polygons_shp)
+    if os.path.isfile(save_path):
+        basic.outputlogMessage('%s exists, skip'%save_path)
+        return True
 
-    pass
+    # curr_dir = os.getcwd()
 
-# merge the shape file to a single one
+    # os.chdir(inf_dir)
+
+    merged_path = os.path.join(inf_dir,'merged_change_map.tif')
+    if os.path.isfile(merged_path) is False:
+        command_string = 'gdal_merge.py -init 0 -n 0 -a_nodata 0 -o %s %s/predict_change_map_*.tif' % (merged_path,inf_dir)
+        output = os.system(command_string)
+        if output != 0:
+            sys.exit(1)  # this can help exit the bash script
+    else:
+        basic.outputlogMessage("%s exists, skip"%merged_path)
+
+    # convert the shapefile
+    # to shape files
+    command_string = 'gdal_polygonize.py -8 %s -b 1 -f "ESRI Shapefile" %s'%(merged_path,save_path)
+    print(command_string)
+    output = os.system(command_string)
+    if output != 0:
+        sys.exit(1)  # this can help exit the bash script
+
+    # os.chdir(curr_dir)
+
+    return True
+
+############################################################
+## convert change map (raster) to shape file, one by one
+## then merge the shapefiles. (a problem: have duplicated polygons)
+# change_shp_list = []
+# with open(img_pair_txt,'r') as f_obj:
+#     lines = f_obj.readlines()
+#     for idx, str_line in enumerate(lines):
+#         # path_str [old_image, new_image, label_path (if available)]
+#         path_str = [os.path.join(root, item.strip()) for item in str_line.split(':')]
+#
+#         # post_processing_one_change_map, set no change pixels (0) as no data
+#         change_polygons_shp = post_processing_one_change_map(idx, nodata=0)
+#         change_shp_list.append(change_polygons_shp)
+#
+#     pass
+#
+# # merge the shape file to a single one
+# save_path = os.path.join(inf_result_dir,'predict_change_polygons.shp')
+# if merge_shape_files(change_shp_list,save_path) is True:
+#     basic.outputlogMessage("save change polygons to %s"%save_path)
+# else:
+#     basic.outputlogMessage("error, saving change polygons failed")
+
+############################################################
+# merge the raster first, then convert them to shapefiles
 save_path = os.path.join(inf_result_dir,'predict_change_polygons.shp')
-if merge_shape_files(change_shp_list,save_path) is True:
-    basic.outputlogMessage("save change polygons to %s"%save_path)
-else:
-    basic.outputlogMessage("error, saving change polygons failed")
+merge_raster_to_shapefile(inf_result_dir,save_path)
 
-# remove small polygons
+# remove small polygons and duplicated polygons
+
 
 # calculate IOU values (need validation polygons)
 
