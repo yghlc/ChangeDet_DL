@@ -66,6 +66,9 @@ def draw_p_r_curves_one_k_fold(k_value, test_num,image_count=1,res_description =
     for img_idx in range(image_count):
         # for the result after post-procesing (without appling remove non-active thaw slump using multi-temporal image)
         save_fig_path = 'I%d_p_r_%s_%s.jpg' % (img_idx, res_dir, res_description)
+        if os.path.isfile(save_fig_path):
+            basic.outputlogMessage('warning, %s exists, skip'%save_fig_path)
+            continue
         if res_description == 'post':
             shps_list = io_function.get_file_list_by_pattern(res_dir,'*_tiles/I%d_*post*t%d.shp'%(img_idx,test_num))
             draw_precision_recall_curves(shps_list, multi_validate_shapefiles[img_idx], save_fig_path)
@@ -78,9 +81,15 @@ def draw_p_r_curves_one_k_fold(k_value, test_num,image_count=1,res_description =
             raise ValueError('Unknown result description (e.g., post, rmTimeiou)')
 
         # for test
-        sys.exit(1)
+        # sys.exit(1)
     pass
 
+def draw_p_r_curves_for_one_k_fold_test(k, test_num):
+    print(k, test_num)
+    # for image from 2017 to 2019 (count = 3)
+    draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='post')
+
+    draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='rmTimeiou')
 
 def draw_p_r_curves_for_all_k_fold_test():
 
@@ -91,11 +100,7 @@ def draw_p_r_curves_for_all_k_fold_test():
 
     for k in (3,5,10):
         for test_num in range(1,6):
-            print(k,test_num)
-            # for image from 2017 to 2019 (count = 3)
-            draw_p_r_curves_one_k_fold(k,test_num,image_count=3,res_description = 'post')
-
-            draw_p_r_curves_one_k_fold(k,test_num,image_count=3,res_description = 'rmTimeiou')
+            draw_p_r_curves_for_one_k_fold_test(k,test_num)
 
 
     os.chdir(curr_dir)
