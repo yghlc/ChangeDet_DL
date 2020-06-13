@@ -21,6 +21,8 @@ import basic_src.basic as basic
 from plot_accuracies import plot_precision_recall_curve
 from plot_accuracies import plot_precision_recall_curve_multi
 
+import matplotlib.pyplot as plt
+
 def read_validate_shapefiles(txt_path):
     basic.outputlogMessage('read validation shapefiles from %s'%txt_path)
     shp_list = []
@@ -39,11 +41,11 @@ def read_validate_shapefiles(txt_path):
     return shp_list
 
 
-def draw_precision_recall_curves(shp_paths,ground_truth_shp,out_fig_path):
+def draw_precision_recall_curves(shp_paths,ground_truth_shp,out_fig_path, legend_loc='best'):
     # plot precision recall curves for mapping result of one images (one validation shape file)
 
     if isinstance(shp_paths,list) and len(shp_paths) > 1:
-        plot_precision_recall_curve_multi(shp_paths, ground_truth_shp, out_fig_path)
+        plot_precision_recall_curve_multi(shp_paths, ground_truth_shp, out_fig_path,legend_loc=legend_loc)
     else:
         if isinstance(shp_paths, list):
             shape_file = shp_paths[0]
@@ -53,7 +55,7 @@ def draw_precision_recall_curves(shp_paths,ground_truth_shp,out_fig_path):
     return True
 
 
-def draw_p_r_curves_one_k_fold(k_value, test_num,image_count=1,res_description = 'post'):
+def draw_p_r_curves_one_k_fold(k_value, test_num,image_count=1,res_description = 'post',legend_loc='best'):
 
     # 5fold_test3
     res_dir = '%dfold_test%d'%(k_value,test_num)
@@ -71,15 +73,17 @@ def draw_p_r_curves_one_k_fold(k_value, test_num,image_count=1,res_description =
             continue
         if res_description == 'post':
             shps_list = io_function.get_file_list_by_pattern(res_dir,'*_tiles/I%d_*post*t%d.shp'%(img_idx,test_num))
-            draw_precision_recall_curves(shps_list, multi_validate_shapefiles[img_idx], save_fig_path)
+            draw_precision_recall_curves(shps_list, multi_validate_shapefiles[img_idx], save_fig_path,legend_loc=legend_loc)
 
         elif res_description == 'rmTimeiou':
             shps_list = io_function.get_file_list_by_pattern(res_dir, '*_tiles/I%d_*post*rmTimeiou.shp' % (img_idx))
-            draw_precision_recall_curves(shps_list, multi_validate_shapefiles[img_idx], save_fig_path)
+            draw_precision_recall_curves(shps_list, multi_validate_shapefiles[img_idx], save_fig_path,legend_loc=legend_loc)
 
         else:
             raise ValueError('Unknown result description (e.g., post, rmTimeiou)')
 
+        # plt.clf()   # clears the entire current figure with all its axes, but leaves the window opened for next plot
+        plt.close()
         # for test
         # sys.exit(1)
     pass
@@ -98,7 +102,7 @@ def draw_p_r_curves_for_all_k_fold_test():
             # for image from 2017 to 2019 (count = 3)
             draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='post')
 
-            draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='rmTimeiou')
+            draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='rmTimeiou', legend_loc='upper left')
 
 
     os.chdir(curr_dir)
