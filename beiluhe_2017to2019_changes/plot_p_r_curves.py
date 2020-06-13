@@ -84,12 +84,6 @@ def draw_p_r_curves_one_k_fold(k_value, test_num,image_count=1,res_description =
         # sys.exit(1)
     pass
 
-def draw_p_r_curves_for_one_k_fold_test(k, test_num):
-    print(k, test_num)
-    # for image from 2017 to 2019 (count = 3)
-    draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='post')
-
-    draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='rmTimeiou')
 
 def draw_p_r_curves_for_all_k_fold_test():
 
@@ -100,7 +94,11 @@ def draw_p_r_curves_for_all_k_fold_test():
 
     for k in (3,5,10):
         for test_num in range(1,6):
-            draw_p_r_curves_for_one_k_fold_test(k,test_num)
+            print(k, test_num)
+            # for image from 2017 to 2019 (count = 3)
+            draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='post')
+
+            draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='rmTimeiou')
 
 
     os.chdir(curr_dir)
