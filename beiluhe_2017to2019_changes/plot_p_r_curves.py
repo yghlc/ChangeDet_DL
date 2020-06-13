@@ -45,6 +45,9 @@ def draw_precision_recall_curves(shp_paths,ground_truth_shp,out_fig_path, legend
     # plot precision recall curves for mapping result of one images (one validation shape file)
 
     if isinstance(shp_paths,list) and len(shp_paths) > 1:
+        # output then to see whether they are in order
+        for shp_path in shp_paths:
+            print(shp_path)
         plot_precision_recall_curve_multi(shp_paths, ground_truth_shp, out_fig_path,legend_loc=legend_loc)
     else:
         if isinstance(shp_paths, list):
@@ -72,11 +75,11 @@ def draw_p_r_curves_one_k_fold(k_value, test_num,image_count=1,res_description =
             basic.outputlogMessage('warning, %s exists, skip'%save_fig_path)
             continue
         if res_description == 'post':
-            shps_list = io_function.get_file_list_by_pattern(res_dir,'*_tiles/I%d_*post*t%d.shp'%(img_idx,test_num))
+            shps_list = io_function.get_file_list_by_pattern_ls(res_dir,'*_tiles/I%d_*post*t%d.shp'%(img_idx,test_num))
             draw_precision_recall_curves(shps_list, multi_validate_shapefiles[img_idx], save_fig_path,legend_loc=legend_loc)
 
         elif res_description == 'rmTimeiou':
-            shps_list = io_function.get_file_list_by_pattern(res_dir, '*_tiles/I%d_*post*rmTimeiou.shp' % (img_idx))
+            shps_list = io_function.get_file_list_by_pattern_ls(res_dir, '*_tiles/I%d_*post*rmTimeiou.shp' % (img_idx))
             draw_precision_recall_curves(shps_list, multi_validate_shapefiles[img_idx], save_fig_path,legend_loc=legend_loc)
 
         else:
