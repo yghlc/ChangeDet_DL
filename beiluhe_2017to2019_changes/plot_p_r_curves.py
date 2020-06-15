@@ -97,19 +97,66 @@ def draw_p_r_curves_for_all_k_fold_test():
     curr_dir = os.getcwd()
 
     # plot precision-recall curves for k-fold cross-validation
+    if os.path.isdir('k_fold_cross_validation') is False:
+        print('k_fold_cross_validation not in current folder (%s)'%os.getcwd())
+        return False
     os.chdir('k_fold_cross_validation')
 
     for k in (3,5,10):
         for test_num in range(1,6):
             print(k, test_num)
             # for image from 2017 to 2019 (count = 3)
-            draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='post')
+            draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='post',legend_loc='upper left')
 
             draw_p_r_curves_one_k_fold(k, test_num, image_count=3, res_description='rmTimeiou', legend_loc='upper left')
 
 
     os.chdir(curr_dir)
 
+def draw_p_r_curves_multi_shape(res_dir,test_name='2017_2019',image_count=1,res_description = 'post',legend_loc='best'):
+
+    # 5fold_test3
+
+    multi_validate_shapefile_txt = io_function.get_file_list_by_pattern(res_dir,'multi_validate_shapefile.txt')
+    multi_validate_shapefiles = read_validate_shapefiles(multi_validate_shapefile_txt[0])
+    if len(multi_validate_shapefiles) != image_count:
+        raise ValueError('the count of validation shapefiles and images is different')
+
+    # plot the multi-temporal results together
+
+    save_fig_path = 'p_r_%s_%s.jpg' % (res_dir, res_description)
+    if os.path.isfile(save_fig_path):
+        basic.outputlogMessage('warning, %s exists, skip' % save_fig_path)
+        return True
+    ## for the result after post-procesing (without appling remove non-active thaw slump using multi-temporal image)
+    if res_description == 'post':
+        shps_list = io_function.get_file_list_by_pattern_ls(res_dir, '*post*%s.shp' % (test_name))
+        draw_precision_recall_curves(shps_list, multi_validate_shapefiles, save_fig_path,legend_loc=legend_loc)
+
+    elif res_description == 'rmTimeiou':
+        shps_list = io_function.get_file_list_by_pattern_ls(res_dir, '*post*rmTimeiou.shp' )
+        draw_precision_recall_curves(shps_list, multi_validate_shapefiles, save_fig_path,legend_loc=legend_loc)
+
+    else:
+        raise ValueError('Unknown result description (e.g., post, rmTimeiou)')
+
+    plt.close()
+
+
+def draw_p_r_curves_for_multi_temporal_mapping(folder_name):
+
+    if os.path.isdir(folder_name) is False:
+        print('%s is  not in current directory (%s)'%(folder_name,os.getcwd()))
+        return False
+
+    # try to get the test name
+    test_name = '_'.join(folder_name.split('_')[-3:-1])
+
+    draw_p_r_curves_multi_shape(folder_name,test_name=test_name,image_count=3,res_description = 'post',legend_loc='upper left')
+
+    draw_p_r_curves_multi_shape(folder_name,test_name=test_name,image_count=3,res_description = 'rmTimeiou',legend_loc='upper left')
+
+    pass
 
 
 
@@ -117,8 +164,13 @@ if __name__ == "__main__":
 
     basic.setlogfile('plot_p_r_curves.log')
 
-    # draw precission recall for all k-fold cross-validation
-    draw_p_r_curves_for_all_k_fold_test()
+
+    if len(sys.argv) == 2:
+        folder_name = sys.argv[1]
+        draw_p_r_curves_for_multi_temporal_mapping(folder_name)
+    else:
+        # draw precission recall for all k-fold cross-validation
+        draw_p_r_curves_for_all_k_fold_test()
 
 
     pass
