@@ -47,21 +47,26 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     new_shp_list = []
     # remove polygons based on time occurrence ('time_occur')
     normal_occurrence = len(shp_list)       # the expected count
+    min_occurrence = parameters.get_digit_parameters_None_if_absence(para_file,'minimum_time_occurence','int')
+    max_occurrence = parameters.get_digit_parameters_None_if_absence(para_file,'maximum_time_occurence','int')
     for idx, shp_file in enumerate(shp_list):
         # remove occurance
         save_shp = io_function.get_name_by_adding_tail(shp_file, 'RmOccur')
-        vector_gpd.remove_polygon_equal(shp_file,'time_occur',normal_occurrence, True,save_shp)
+        # vector_gpd.remove_polygon_equal(shp_file,'time_occur',normal_occurrence, True,save_shp)
+        vector_gpd.remove_polygons_not_in_range(shp_file,'time_occur',min_occurrence,max_occurrence,save_shp)
         new_shp_list.append(save_shp)
 
-    shp_list = new_shp_list.copy()
-    new_shp_list = []
 
     # remove based on time_idx
-    normal_time_idx = '_'.join([str(item) for item in range(normal_occurrence)])
+    shp_list = new_shp_list.copy()
+    new_shp_list = []
+    # normal_time_idx = '_'.join([str(item) for item in range(normal_occurrence)])
+    normal_time_idx = [item for item in range(normal_occurrence)]
     for idx, shp_file in enumerate(shp_list):
         # remove occurance
         save_shp = io_function.get_name_by_adding_tail(shp_file, 'RmTimeidx')
-        vector_gpd.remove_polygon_equal(shp_file,'time_idx',normal_time_idx, True,save_shp)
+        # vector_gpd.remove_polygon_equal(shp_file,'time_idx',normal_time_idx, True,save_shp)
+        vector_gpd.remove_polygon_index_string(shp_file,'time_idx',normal_time_idx,save_shp)
         new_shp_list.append(save_shp)
 
     shp_list = new_shp_list.copy()
@@ -134,7 +139,10 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     remove_count = len(rm_polygon_idx_2d)
     for rm_idx_list in rm_polygon_idx_2d:
         for rm_idx, shapefile in zip(rm_idx_list,shapefile_list):
-            shapefile.drop(rm_idx,inplace=True)
+            #         errors : {'ignore', 'raise'}, default 'raise'
+            #             If 'ignore', suppress error and only existing labels are
+            #             dropped.
+            shapefile.drop(rm_idx,inplace=True,errors='ignore')     # some rm_idx many have been dropped previously
 
     # save to files
     for shapefile, shp_path in zip(shapefile_list,shp_list_copy):
