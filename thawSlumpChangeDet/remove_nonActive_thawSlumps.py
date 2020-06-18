@@ -60,13 +60,13 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     # remove based on time_idx
     shp_list = new_shp_list.copy()
     new_shp_list = []
-    # normal_time_idx = '_'.join([str(item) for item in range(normal_occurrence)])
-    normal_time_idx = [item for item in range(normal_occurrence)]
+    normal_time_idx = '_'.join([str(item) for item in range(normal_occurrence)])
+    # normal_time_idx = [item for item in range(normal_occurrence)]
     for idx, shp_file in enumerate(shp_list):
         # remove occurance
         save_shp = io_function.get_name_by_adding_tail(shp_file, 'RmTimeidx')
-        # vector_gpd.remove_polygon_equal(shp_file,'time_idx',normal_time_idx, True,save_shp)
-        vector_gpd.remove_polygon_index_string(shp_file,'time_idx',normal_time_idx,save_shp)
+        vector_gpd.remove_polygon_equal(shp_file,'time_idx',normal_time_idx, True,save_shp)
+        # vector_gpd.remove_polygon_index_string(shp_file,'time_idx',normal_time_idx,save_shp)
         new_shp_list.append(save_shp)
 
     shp_list = new_shp_list.copy()
