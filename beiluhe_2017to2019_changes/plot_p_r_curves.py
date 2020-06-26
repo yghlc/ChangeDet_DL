@@ -150,7 +150,8 @@ def draw_p_r_curves_for_multi_temporal_mapping(folder_name):
         return False
 
     # try to get the test name
-    test_name = '_'.join(folder_name.split('_')[-3:-1])
+    str_list = folder_name.split('_')
+    test_name = '_'.join(folder_name.split('_')[str_list.index('tiles')-2:str_list.index('tiles')])
 
     draw_p_r_curves_multi_shape(folder_name,test_name=test_name,image_count=3,res_description = 'post',legend_loc='upper left')
 
