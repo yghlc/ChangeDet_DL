@@ -27,6 +27,9 @@ from vector_features import shape_opeation
 
 import pandas as pd
 
+import multiprocessing
+from multiprocessing import Pool
+
 # sys.path.insert(0, os.path.dirname(__file__))
 
 def get_a_polygon_union_occurrence(polygon, polygons_list_2d, b_merged_2d, time_idx, time_num):
@@ -191,8 +194,21 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
         iou_list = []
         occurrence = []
         occurr_time = []
-        for polygon in polygons:
-            iou_value, max_idx = max_IoU_score(polygon, union_polygons)
+
+        # results = []
+        # for polygon in polygons:
+        #     iou_value, max_idx = max_IoU_score(polygon, union_polygons)
+        #     results.append((iou_value,max_idx))
+
+        #####################################################################
+        # parallel getting medial axis of each polygon, then calculate distance.
+        num_cores = multiprocessing.cpu_count()
+        basic.outputlogMessage('number of thread %d' % num_cores)
+        theadPool = Pool(num_cores)  # multi processes
+        parameters_list = [(polygon,union_polygons) for polygon in polygons]
+        results = theadPool.starmap(max_IoU_score, parameters_list)  # need python3
+
+        for iou_value,max_idx in results:
             iou_list.append(iou_value)
             occurrence.append(occurrence_list[max_idx])
             occur_time_str = [str(item) for item in occur_time_list[max_idx]]
