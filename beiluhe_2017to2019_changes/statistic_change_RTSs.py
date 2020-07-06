@@ -399,7 +399,7 @@ def statistic_using_manu_results():
 
 
     ############################################################################################################
-    ############drawing figure have been move to plot_histogram.py ############
+    ############drawing figure have been move to plot_histogram_rts_change.py ############
 
     # plot histogram of RTS change polygons, for each polygons
     # draw_one_value_hist(change_RTS_info, 'max_area', 'max_RTSmax_area_manu_2017vs2018.jpg', 'bins_RTSmax_area_manu_2017vs2018.txt', 0, 2.2, 0.1, [0, 120])
