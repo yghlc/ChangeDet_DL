@@ -141,6 +141,8 @@ def read_attribute(change_RTS_info,field_name):
             values.append(change_RTS_info[key].min_change_area)
         elif field_name == 'average_area':
             values.append(change_RTS_info[key].avg_change_area)
+        elif field_name == 'sum_area':
+            values.append(change_RTS_info[key].sum_change_area)
         elif field_name == 'max_retreat_distance':
             values.append(change_RTS_info[key].max_retreat_dis)
         elif field_name == 'min_retreat_distance':
@@ -150,11 +152,11 @@ def read_attribute(change_RTS_info,field_name):
         elif field_name == 'change_polygon_count':
             values.append(change_RTS_info[key].change_poly_count)
         else:
-            raise ValueError('field name: %s not found')
+            raise ValueError('field name: %s not found'%field_name)
 
     return values
 
-def draw_one_value_hist(change_RTS_info,field_name,output,logfile,bin_min,bin_max,bin_width,ylim):
+def draw_one_value_hist(change_RTS_info,field_name, out_dir, output,logfile,bin_min,bin_max,bin_width,ylim):
 
     values = read_attribute(change_RTS_info, field_name)
     if 'area' in field_name:                      # m^2 to ha
@@ -367,14 +369,13 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
     return change_RTS_pair
 
 
-def draw_two_hist_of_cd(change_RTS_info_0vs1,change_RTS_info_1vs2, field_name, out_pre_name, bin_min,bin_max,bin_width,ylim):
+def draw_two_hist_of_cd(change_RTS_info_0vs1,change_RTS_info_1vs2, out_dir, field_name,out_pre_name, bin_min,bin_max,bin_width,ylim):
 
-    draw_one_value_hist(change_RTS_info_0vs1,field_name,out_pre_name+'_2017vs2018.jpg',out_pre_name+'_2017vs2018.txt',bin_min,bin_max,bin_width,ylim)
-    draw_one_value_hist(change_RTS_info_1vs2,field_name,out_pre_name+'_2018vs2019.jpg',out_pre_name+'_2018vs2019.txt',bin_min,bin_max,bin_width,ylim)
+    draw_one_value_hist(change_RTS_info_0vs1,field_name,out_dir,out_pre_name+'_2017vs2018.jpg',out_pre_name+'_2017vs2018.txt',bin_min,bin_max,bin_width,ylim)
+    draw_one_value_hist(change_RTS_info_1vs2,field_name,out_dir, out_pre_name+'_2018vs2019.jpg',out_pre_name+'_2018vs2019.txt',bin_min,bin_max,bin_width,ylim)
 
 
-
-if __name__ == "__main__":
+def statistic_using_manu_results():
 
     ##########################################################################################
     # # conduct statistic of change RTSs on the ground truth
@@ -396,15 +397,21 @@ if __name__ == "__main__":
     c_RTS_info_2018vs2019 = group_change_polygons(manu_cd_2018vs2019,ground_truth_201807,ground_truth_201907,
                                                   save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
 
+
+    ############################################################################################################
+    ############drawing figure have been move to plot_histogram.py ############
+
     # plot histogram of RTS change polygons, for each polygons
     # draw_one_value_hist(change_RTS_info, 'max_area', 'max_RTSmax_area_manu_2017vs2018.jpg', 'bins_RTSmax_area_manu_2017vs2018.txt', 0, 2.2, 0.1, [0, 120])
 
-    # # max area
-    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
-    # # min area
-    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'min_area', 'RTS_min_area_manu', 0, 2.2, 0.1, [0, 180])
-    # average area
-    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'average_area', 'RTS_avg_area_manu', 0, 2.2, 0.1, [0, 150])
+    # # # max area
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, out_dir,'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
+    # # # min area
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, out_dir, 'min_area', 'RTS_min_area_manu', 0, 2.2, 0.1, [0, 180])
+    # # # average area
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, out_dir,'average_area', 'RTS_avg_area_manu', 0, 2.2, 0.1, [0, 150])
+    # # sum area
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, out_dir,'sum_area', 'RTS_sum_area_manu', 0, 2.2, 0.1, [0, 150])
 
     # max_retreat_distance
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_retreat_distance', 'RTS_max_retreat_dis_manu', 0, 100, 5, [0, 60])
@@ -418,33 +425,45 @@ if __name__ == "__main__":
     # change_polygon_count
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'change_polygon_count', 'RTS_change_polygon_count_manu', 1, 21, 1, [0, 110])
 
-    # ##########################################################################################
-    # # plot histogram on the change polygons (based on exp3) of thaw slumps in Beiluhe
-    # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp3_2017To2019')
-    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp3_2017To2019')
-    # autoMap_exp3_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp3_2017To2019_T_I0_vs_I1.shp')
-    # autoMap_exp3_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp3_2017To2019_T_I1_vs_I2.shp')
-    #
-    # c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp3_cd_2017vs2018 )
-    # c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp3_cd_2018vs2019 )
-    #
-    # # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
+
+def statistic_using_auto_exp3_results():
+
+    ##########################################################################################
+    # plot histogram on the change polygons (based on exp3) of thaw slumps in Beiluhe
+    out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp3_2017To2019')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp3_2017To2019')
+    autoMap_exp3_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp3_2017To2019_T_I0_vs_I1.shp')
+    autoMap_exp3_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp3_2017To2019_T_I1_vs_I2.shp')
+
+    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp3_cd_2017vs2018 )
+    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp3_cd_2018vs2019 )
+
+
+def statistic_using_auto_exp5_results():
+    ##########################################################################################
+    # plot histogram on the change polygons (based on exp5) of thaw slumps in Beiluhe
+    out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
+    autoMap_exp5_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I0_vs_I1.shp')
+    autoMap_exp5_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I1_vs_I2.shp')
+
+    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp5_cd_2017vs2018,save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
+    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp5_cd_2018vs2019,save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
+
+    # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
 
 
+if __name__ == "__main__":
 
-    # ##########################################################################################
-    # # plot histogram on the change polygons (based on exp5) of thaw slumps in Beiluhe
-    # out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
-    # shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp5_2017To2019')
-    # autoMap_exp5_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I0_vs_I1.shp')
-    # autoMap_exp5_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp5_2017To2019_T_I1_vs_I2.shp')
-    #
-    # c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp5_cd_2017vs2018,save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
-    # c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp5_cd_2018vs2019,save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
-    #
-    # # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
-    # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
+
+    statistic_using_manu_results()
+
+    # statistic_using_auto_exp3_results()
+
+    # statistic_using_auto_exp5_results()
+
+
 
 
     pass
