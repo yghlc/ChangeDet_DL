@@ -336,6 +336,7 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         print(excel_save_path)
         # output top 1 to excel
         with pd.ExcelWriter(excel_save_path) as writer:
+            del changePolygons_df['ChangePolygons']
             changePolygons_df.to_excel(writer, sheet_name=os.path.splitext(os.path.basename(excel_save_path))[0])
 
     # for key in change_RTS_pair.keys():
