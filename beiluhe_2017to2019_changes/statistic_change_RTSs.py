@@ -257,8 +257,12 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         min_retreat_dis_line_list = []
         avg_retreat_dis_line_list = []
 
-        diff_max_retreat_dis_slope_list = []        # calculate the difference between max_retreat_dis and max_retreat_dis_slope
-        diff_max_retreat_dis_centroid_list = []        # calculate the difference between max_retreat_dis and max_retreat_dis_centroid
+        # calculate the variation (use standard deviation ) of three retreat distance (medial circle, along slope, across centroid)
+        std_retreat_dis_list = []
+
+        diff_retreat_dis_line_list = []            # calculate the difference between max_retreat_dis and max_retreat_dis_line (ground truth)
+        diff_retreat_slope_line_list = []          # calculate the difference between retreat along slope and max_retreat_dis_line (ground truth)
+        diff_retreat_centroid_line_list = []       # calculate the difference between retreat across centroid of old polygon and max_retreat_dis_line (ground truth)
 
         multi_polygon_list = []
 
@@ -277,6 +281,7 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
             min_change_area_list.append(change_RTS_pair[key].min_change_area)
             avg_change_area_list.append(change_RTS_pair[key].avg_change_area)
             sum_change_area_list.append(change_RTS_pair[key].sum_change_area)
+
             max_retreat_dis_list.append(change_RTS_pair[key].max_retreat_dis)
             min_retreat_dis_list.append(change_RTS_pair[key].min_retreat_dis)
             avg_retreat_dis_list.append(change_RTS_pair[key].avg_retreat_dis)
@@ -289,8 +294,23 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
             min_retreat_dis_centroid_list.append(change_RTS_pair[key].min_retreat_dis_centroid)
             avg_retreat_dis_centroid_list.append(change_RTS_pair[key].avg_retreat_dis_centroid)
 
-            diff_max_retreat_dis_slope_list.append(change_RTS_pair[key].max_retreat_dis_slope - change_RTS_pair[key].max_retreat_dis)
-            diff_max_retreat_dis_centroid_list.append(change_RTS_pair[key].max_retreat_dis_centroid - change_RTS_pair[key].max_retreat_dis)
+            # calculate the variation (use standard deviation ) of three retreat distance (medial circle, along slope, across centroid)
+            multi_re_dis = np.array([change_RTS_pair[key].max_retreat_dis, change_RTS_pair[key].max_retreat_dis_slope,change_RTS_pair[key].max_retreat_dis_centroid ])
+            std_retreat_dis_list.append(np.std(multi_re_dis))
+
+            # calculate the difference between automatic calculated distance and manually drawn ones
+            if change_RTS_pair[key].max_retreat_dis_line > 0:
+                # if max_retreat_dis_line is valid
+                diff_retreat_dis_line_list.append(change_RTS_pair[key].max_retreat_dis - change_RTS_pair[key].max_retreat_dis_line)
+                diff_retreat_slope_line_list.append(change_RTS_pair[key].max_retreat_dis_slope - change_RTS_pair[key].max_retreat_dis_line)
+                diff_retreat_centroid_line_list.append(change_RTS_pair[key].max_retreat_dis_centroid - change_RTS_pair[key].max_retreat_dis_line)
+            else:
+                diff_retreat_dis_line_list.append(0)
+                diff_retreat_slope_line_list.append(0)
+                diff_retreat_centroid_line_list.append(0)
+
+            # diff_max_retreat_dis_slope_list.append(change_RTS_pair[key].max_retreat_dis_slope - change_RTS_pair[key].max_retreat_dis)
+            # diff_max_retreat_dis_centroid_list.append(change_RTS_pair[key].max_retreat_dis_centroid - change_RTS_pair[key].max_retreat_dis)
 
             # only the max_retreat_dis_line can be trust, because usually, we only have one line for each RTS
             # other parts of expanding area don't have line, then the retreat value will be set as 0.
@@ -314,17 +334,19 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
                                      'max_re_dis': max_retreat_dis_list,
                                      'min_re_dis': min_retreat_dis_list,
                                      'avg_re_dis': avg_retreat_dis_list,
+                                     'diffDisLin': diff_retreat_dis_line_list,
                                      'maxDisSlo': max_retreat_dis_slope_list,
                                      'minDisSlo': min_retreat_dis_slope_list,
                                      'avgDisSlo': avg_retreat_dis_slope_list,
-                                     'diffReSlo':diff_max_retreat_dis_slope_list,
+                                     'diffSloLin': diff_retreat_slope_line_list,
                                      'maxDisCen': max_retreat_dis_centroid_list,
                                      'minDisCen': min_retreat_dis_centroid_list,
                                      'avgDisCen': avg_retreat_dis_centroid_list,
-                                     'diffReCen': diff_max_retreat_dis_centroid_list,
+                                     'diffCenLin': diff_retreat_centroid_line_list,
                                      'maxDisLin': max_retreat_dis_line_list,            # only the max_retreat_dis_line can be trust
                                      'minDisLin': min_retreat_dis_line_list,
                                      'avgDisLin': avg_retreat_dis_line_list,
+                                     'ReDis_std': std_retreat_dis_list,
                                      'ChangePolygons': multi_polygon_list
                                      })
 
