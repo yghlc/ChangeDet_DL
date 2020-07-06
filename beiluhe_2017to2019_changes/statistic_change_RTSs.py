@@ -237,6 +237,7 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         # change_area_list = []
 
         # for each change polygon, it already has max, min, avg, media retreat distance, choose max as the retreat distance,
+        # the retreat distance is calculated based on the max medial circle.
         # then calculate the max, min, and avg values.
         max_retreat_dis_list = []
         min_retreat_dis_list = []
@@ -251,6 +252,7 @@ def group_change_polygons(change_shp, old_shp=None, new_shp=None,save_path=None)
         min_retreat_dis_centroid_list = []
         avg_retreat_dis_centroid_list = []
 
+        # this one, is based on manually draw lines, can be consider as ground truths.
         max_retreat_dis_line_list = []
         min_retreat_dis_line_list = []
         avg_retreat_dis_line_list = []
