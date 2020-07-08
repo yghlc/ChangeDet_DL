@@ -18,13 +18,18 @@ def main():
 
     folder_list = io_function.get_file_list_by_pattern('./','Planet_beiluhe*timeSeries')
 
-    for folder in folder_list:
+    for idx, folder in enumerate(folder_list):
         png_list = io_function.get_file_list_by_pattern(folder,'*.png')
         png_list.sort()
 
+        # test
+        # if '142' not in folder:
+        #     continue
+
         save_path = os.path.basename(folder) + '.gif'
 
-        commandString = 'convert -delay 60 -loop 0 ' + ' '.join(png_list) + ' ' + save_path
+        # need to adjust dealy and loop value if necessary
+        commandString = 'convert -delay 100 -loop 0 ' + ' '.join(png_list) + ' ' + save_path
         res = os.system(commandString)
         if res !=0:
             sys.exit(res)
