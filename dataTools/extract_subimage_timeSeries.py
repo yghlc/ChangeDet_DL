@@ -182,6 +182,8 @@ def get_time_str_list(image_folder_list):
 
 def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0'):
 
+    # TODO: draw a rectangle to mark the thaw slump
+
     with rasterio.open(tif_image) as img_obj:
         res = img_obj.res   # resolution
         width = img_obj.width
