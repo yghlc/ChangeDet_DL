@@ -53,6 +53,7 @@ def get_union_polygons_at_the_same_loc(shp_list, out_dir='./', union_save_path =
     union_save_path = os.path.join(out_dir, union_save_path)   # put to the same folder of first shapefile
     if os.path.isfile(union_save_path):
         basic.outputlogMessage('%s already exist, skip'%union_save_path)
+        return vector_gpd.read_polygons_gpd(union_save_path)
 
     polygons_list_2d = []
     for idx, shp in enumerate(shp_list):
