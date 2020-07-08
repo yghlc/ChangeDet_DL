@@ -16,7 +16,8 @@ import basic_src.basic as basic
 
 def main():
 
-    folder_list = io_function.get_file_list_by_pattern('./','Planet_beiluhe*')
+    folder_list = io_function.get_file_list_by_pattern('./','Planet_beiluhe*timeSeries')
+
     for folder in folder_list:
         png_list = io_function.get_file_list_by_pattern(folder,'*.png')
         png_list.sort()
