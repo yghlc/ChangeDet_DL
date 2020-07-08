@@ -149,7 +149,7 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
             img_tile_boxes = img_tile_boxes_list[time]
 
             # get one sub-image based on the buffer areas
-            subimg_shortName = pre_name+'poly_%d_t_%d.tif'%(idx,time)
+            subimg_shortName = pre_name+'_poly_%d_t_%d.tif'%(idx,time)
             subimg_saved_path = os.path.join(poly_save_dir, subimg_shortName)
             if get_sub_image(idx,expansion_polygon,image_tile_list,img_tile_boxes, subimg_saved_path, dstnodata, brectangle) is False:
                 basic.outputlogMessage('Warning, skip the %dth polygon'%idx)
