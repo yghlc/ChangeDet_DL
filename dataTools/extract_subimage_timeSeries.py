@@ -39,8 +39,17 @@ import rasterio
 import pandas as pd
 import parameters
 
+import numpy as np
+
+import matplotlib.pyplot as plt
+import matplotlib.cbook as cbook
+from matplotlib_scalebar.scalebar import ScaleBar
+import calendar
+
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/ChangeDet_DL/thawSlumpChangeDet'))
 import polygons_change_analyze
+
+time_str_list = []
 
 def get_union_polygons_at_the_same_loc(shp_list, out_dir='./', union_save_path = None):
     '''
@@ -114,7 +123,7 @@ def organize_change_info(txt_path):
 
     pass
 
-def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bufferSize, pre_name, dstnodata, brectangle=True):
+def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bufferSize, pre_name, dstnodata, brectangle=True, b_draw = False):
     '''
     extract time series sub-images at different polygon location,
     :param polygons:
@@ -132,6 +141,9 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
     for idx in range(time_count):
         img_tile_boxes = get_image_tile_bound_boxes(time_images_2d[idx])
         img_tile_boxes_list.append(img_tile_boxes)
+
+    if b_draw:
+        plt_obj = plt.figure()
 
     for idx, c_polygon in enumerate(polygons):
         # output message
@@ -154,16 +166,60 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
             if get_sub_image(idx,expansion_polygon,image_tile_list,img_tile_boxes, subimg_saved_path, dstnodata, brectangle) is False:
                 basic.outputlogMessage('Warning, skip the %dth polygon'%idx)
 
+            # draw time and scale bar on images (annotate)
+            if b_draw:
+                draw_annotate_for_a_image(plt_obj,subimg_saved_path, time_str=time_str_list[time])
+        # test
+        # sys.exit(0)
 
+def get_time_str_list(image_folder_list):
+    global time_str_list
+    for folder_str in image_folder_list:
+        year = folder_str[:4]
+        month = folder_str[4:6]
+        month_name = calendar.month_name[int(month)]
+        time_str_list.append(year + ' ' +month_name)
+
+def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0'):
+
+    with rasterio.open(tif_image) as img_obj:
+        res = img_obj.res   # resolution
+        width = img_obj.width
+        height = img_obj.height
+        indexes = img_obj.indexes
+
+        # image = img_obj.read(indexes) #  plt.imread(tif_image)
+        # image = np.transpose(image,(1,2,0))
+        # print(image.shape)
+        image = plt.imread(tif_image)
+        # print(image_2.shape)
+        plt.imshow(image)
+        scalebar = ScaleBar(res[0])  # 1 pixel = 0.2 meter
+
+        frame = plt.gca()
+        frame.add_artist(scalebar)
+
+        plt.text(50, height - 5, time_str, ha="center", size=14, color='white')
+
+        frame.axes.get_xaxis().set_visible(False)
+        frame.axes.get_yaxis().set_visible(False)
+
+        save_fig = os.path.splitext(tif_image)[0] + '_draw.png'
+        plt.savefig(save_fig, bbox_inches="tight")
+        # plt.show()
+
+        plt.clf()
+
+    pass
 
 def main(options, args):
 
     out_dir = options.out_dir
     if out_dir is None: out_dir = './'
 
+    b_draw_scalebar_time = True
+
     para_file = options.para_file
-
-
 
     dstnodata = parameters.get_string_parameters(para_file, 'dst_nodata')
     dstnodata = int(dstnodata)
@@ -171,7 +227,7 @@ def main(options, args):
     bufferSize = int(bufferSize)
 
     rectangle_ext = parameters.get_string_parameters(para_file, 'b_use_rectangle')
-    if 'rectangle' in 'rectangle_ext':
+    if 'rectangle' in rectangle_ext:
         b_rectangle = True
     else:
         b_rectangle = False
@@ -200,8 +256,9 @@ def main(options, args):
     if len(poly_shp_list) != len(image_folder_list):
         raise ValueError('The number of shape file and time image is different')
 
-    # 2D list, for a specific time, it may have multi images.
+    get_time_str_list(image_folder_list)
 
+    # 2D list, for a specific time, it may have multi images.
     image_list_2d = get_image_list_2d(input_image_dir, image_folder_list, image_pattern_list)
 
     # need to check: the shape file and raster should have the same projection.
@@ -237,7 +294,8 @@ def main(options, args):
     # extract time-series sub-images
     # get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bufferSize, pre_name, dstnodata,
     #                                       brectangle=True):
-    get_time_series_subImage_for_polygons(union_polygons,image_list_2d,out_dir,bufferSize, pre_name, dstnodata, brectangle=b_rectangle)
+    get_time_series_subImage_for_polygons(union_polygons,image_list_2d,out_dir,bufferSize, pre_name,
+                                          dstnodata, brectangle=b_rectangle, b_draw=b_draw_scalebar_time)
 
 
     pass
