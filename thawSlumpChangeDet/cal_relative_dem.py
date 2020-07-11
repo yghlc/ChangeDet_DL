@@ -15,6 +15,7 @@ from optparse import OptionParser
 
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 import basic_src.basic as basic
+import basic_src.io_function as io_function
 from vector_features import shape_opeation
 
 # import thest two to make sure load GEOS dll before using shapely
@@ -108,6 +109,7 @@ def main(options, args):
     change_polygon_shp = args[0]
     old_polygon_shp = args[1]
     dem_file = args[2]
+    dem_file = io_function.get_file_path_new_home_folder(dem_file)
     cal_relative_dem(change_polygon_shp, old_polygon_shp, dem_file, nodata = 0)
 
 
