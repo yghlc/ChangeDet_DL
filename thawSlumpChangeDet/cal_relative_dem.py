@@ -74,7 +74,7 @@ def cal_relative_dem(expand_shp, old_shp, dem_path, nodata = 0):
     :param nodata:
     :return: True if successful
     '''
-
+    dem_path = io_function.get_file_path_new_home_folder(dem_path)
 
     # calculate mean elevation of polygons in expand_shp, also find the polygon index (start from 0) old_shp
     expand_polygons_dem = get_mean_elevation_of_polygons(expand_shp, dem_path, nodata)
@@ -109,7 +109,6 @@ def main(options, args):
     change_polygon_shp = args[0]
     old_polygon_shp = args[1]
     dem_file = args[2]
-    dem_file = io_function.get_file_path_new_home_folder(dem_file)
     cal_relative_dem(change_polygon_shp, old_polygon_shp, dem_file, nodata = 0)
 
 
