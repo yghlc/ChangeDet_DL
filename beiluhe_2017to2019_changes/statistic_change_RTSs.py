@@ -453,16 +453,29 @@ def statistic_using_auto_exp5_results():
     # max area (exp3 has many false positive, so the total count of changing RTS is over 400)
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018, c_RTS_info_2018vs2019, 'max_area', 'RTS_max_area_manu', 0, 2.2, 0.1, [0, 120])
 
+def statistic_using_auto_exp7_results():
+
+    ##########################################################################################
+    # plot histogram on the change polygons (based on exp7) of thaw slumps in Beiluhe
+    out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp7_2017To2019')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp7_2017To2019')
+    autoMap_exp7_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp7_2017To2019_T_I0_vs_I1.shp')
+    autoMap_exp7_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp7_2017To2019_T_I1_vs_I2.shp')
+
+    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp7_cd_2017vs2018,save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
+    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp7_cd_2018vs2019,save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
+
 
 if __name__ == "__main__":
 
 
-    statistic_using_manu_results()
+    # statistic_using_manu_results()
 
     # statistic_using_auto_exp3_results()
 
     # statistic_using_auto_exp5_results()
 
+    statistic_using_auto_exp7_results()
 
 
 
