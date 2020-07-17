@@ -25,8 +25,17 @@ import shapely
 from shapely.geometry import mapping # transform to GeJSON format
 from shapely.geometry import shape
 
+from xml.dom import minidom
 
-def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, save_list_path=None):
+def read_cloud_cover(metadata_path):
+    xmldoc = minidom.parse(metadata_path)
+    nodes = xmldoc.getElementsByTagName("opt:cloudCoverPercentage")
+    cloud_per = float(nodes[0].firstChild.data)
+    # print(cloud_per)
+    return cloud_per
+
+
+def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, cloud_cover_thr, save_list_path=None):
     '''
     get planet surface reference (SR) list overlap a polygon (within or overlap part of the polygon)
     :param polygon: polygon in the shapely format
@@ -46,11 +55,20 @@ def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, save_list_p
         if inter.is_empty is False:
             img_dir = os.path.splitext(geojson_file)[0]
             sr_img_paths = io_function.get_file_list_by_pattern(img_dir,'*_SR.tif')
+            meta_data_paths = io_function.get_file_list_by_pattern(img_dir,'*_metadata.xml')
+            if len(sr_img_paths) != len(meta_data_paths):
+                raise ValueError('the count of metadata files and images is different')
             if len(sr_img_paths) < 1:
                 basic.outputlogMessage('warning, no Planet SR image in the %s'%img_dir)
             elif len(sr_img_paths) > 1:
                 basic.outputlogMessage('warning, more than one Planet SR image in the %s'%img_dir)
             else:
+                # check cloud cover
+                cloud_cover = read_cloud_cover(meta_data_paths[0])
+                if cloud_cover > cloud_cover_thr:
+                    continue
+
+                # add image
                 image_path_list.append(sr_img_paths[0])
 
     if save_list_path is not None:
@@ -65,6 +83,9 @@ def main(options, args):
     image_dir = args[0]
     shp_path = args[1]
 
+    cloud_cover_thr = options.cloud_cover  # 0.3
+    cloud_cover_thr =  cloud_cover_thr* 100     # in xml, it is percentage
+
     geojson_list = io_function.get_file_list_by_ext('.geojson',image_dir,bsub_folder=True)
     if len(geojson_list) < 1:
         raise ValueError('There is no geojson files in %s'%image_dir)
@@ -73,7 +94,7 @@ def main(options, args):
     extent_polygons = vector_gpd.read_polygons_gpd(shp_path)
     for idx, polygon in enumerate(extent_polygons):
         save_list_txt = 'planet_sr_image_poly_%d.txt'%idx
-        get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list,save_list_path=save_list_txt)
+        get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list,cloud_cover_thr,save_list_path=save_list_txt)
 
         pass
 
@@ -96,9 +117,9 @@ if __name__ == "__main__":
     # parser.add_option("-e", "--end_date",default='2018-06-30',
     #                   action="store", dest="end_date",
     #                   help="the end date for inquiry, with format year-month-day, e.g., 2018-05-23")
-    # parser.add_option("-c", "--cloud_cover",
-    #                   action="store", dest="cloud_cover", type=float,
-    #                   help="the could cover threshold, only accept images with cloud cover less than the threshold")
+    parser.add_option("-c", "--cloud_cover",
+                      action="store", dest="cloud_cover", type=float,default=0.3,
+                      help="the could cover threshold, only accept images with cloud cover less than the threshold")
     # parser.add_option("-i", "--item_types",
     #                   action="store", dest="item_types",default='PSScene4Band',
     #                   help="the item types, e.g., PSScene4Band,PSOrthoTile")
