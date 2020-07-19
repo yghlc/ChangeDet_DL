@@ -25,9 +25,9 @@ function mosaic_a_folder(){
     cd -
 }
 
-#for dir in $(ls -d rgb_cloud*per); do
-#    mosaic_a_folder $dir
-#done
+for dir in $(ls -d rgb_cloud*per); do
+    mosaic_a_folder $dir
+done
 
 # merge the different cloud cover, put the one with less cloud cover in the last, overlay others
 tif1=rgb_cloud_1_per/rgb_cloud_1_per_mosaic_${out_res}.tif
