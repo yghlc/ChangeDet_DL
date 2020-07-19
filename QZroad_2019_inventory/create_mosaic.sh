@@ -5,7 +5,7 @@
 
 # run this one in: ~/Data/Qinghai-Tibet/entire_QTP_images/planet_sr_images/QZroad_rgb_image_2019_Jul_Aug
 
-out_res=30
+out_res=3
 nodata=0
 fin_out=QZroad_rgb_image_2019_Jul_Aug_mosaic_${out_res}.tif
 
