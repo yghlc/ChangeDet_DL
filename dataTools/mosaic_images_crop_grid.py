@@ -138,7 +138,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     # #  polygon.exterior.coords
     minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
     print(minx, miny, maxx, maxy)
-    results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny)
+    results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
     print(results)
 
     io_function.delete_file_or_dir(out)
