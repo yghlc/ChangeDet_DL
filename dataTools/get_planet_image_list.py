@@ -45,6 +45,7 @@ def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, cloud_cover
     '''
 
     image_path_list = []
+    cloud_cover_list = []
     for geojson_file in geojson_list:
         # print(geojson_file)
         with open(geojson_file) as json_obj:
@@ -73,13 +74,14 @@ def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, cloud_cover
 
                 # add image
                 image_path_list.append(sr_img_paths[0])
+                cloud_cover_list.append(cloud_cover)
 
     if save_list_path is not None:
         with open(save_list_path,'w') as f_obj:
             for image_path in image_path_list:
                 f_obj.writelines(image_path + '\n')
 
-    return image_path_list
+    return image_path_list, cloud_cover_list
 
 def main(options, args):
 
