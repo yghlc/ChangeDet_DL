@@ -118,7 +118,8 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     if os.path.isfile(out):
         io_function.delete_file_or_dir(out)
 
-    img_cloud_list = [(img_path,cloud) for cloud, img_path in sorted(zip(cloud_covers,planet_img_list), key=lambda pair: pair[0])]
+    # reverse=True to make it in descending order
+    img_cloud_list = [(img_path,cloud) for cloud, img_path in sorted(zip(cloud_covers,planet_img_list), key=lambda pair: pair[0],reverse=True)]
     # for checking
     print('Image and its cloud after sorting:')
     for (img_path,cloud)  in img_cloud_list:
