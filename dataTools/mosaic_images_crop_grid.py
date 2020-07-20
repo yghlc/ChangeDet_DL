@@ -127,7 +127,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     tifs = [img_path for (img_path,cloud)  in img_cloud_list ]
     tifs_str = ' '.join(tifs)
 
-    cmd_str = 'gdal_merge.py -o %s -a_nodata %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
+    cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
