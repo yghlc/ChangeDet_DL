@@ -141,7 +141,11 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
     print(results)
 
-    io_function.delete_file_or_dir(out)
+    if results is False:
+        basic.outputlogMessage('Crop %s failed, keep the one without cropping'%out)
+        io_function.move_file_to_dst(out,fin_out)
+    else:
+        io_function.delete_file_or_dir(out)
 
     # sys.exit(0)
 
