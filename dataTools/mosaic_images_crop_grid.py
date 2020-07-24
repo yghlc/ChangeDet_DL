@@ -163,6 +163,8 @@ def main(options, args):
     # read grid polygons
     grid_polygons = vector_gpd.read_polygons_gpd(grid_polygon_shp)
     grid_ids = vector_gpd.read_attribute_values_list(grid_polygon_shp,'id')
+    if grid_ids is None:
+        grid_ids = [ id + 1 for id in range(len(grid_polygons))]
 
     shp_prj = map_projection.get_raster_or_vector_srs_info_proj4(grid_polygon_shp).strip()
     # print(shp_prj)
