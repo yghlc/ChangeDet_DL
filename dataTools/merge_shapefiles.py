@@ -88,6 +88,7 @@ def main(options, args):
 
     for out_name in out_name_list:
         file_list = [ item for item in shp_list if out_name in item ]
+        # no need to remove "out_name" if it exist, it will be overwrite
         merge_shape_files(file_list, out_name)
 
     pass
