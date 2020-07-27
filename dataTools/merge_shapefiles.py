@@ -21,7 +21,7 @@ import vector_gpd
 
 import pandas as pd
 import geopandas as gpd
-
+from optparse import OptionParser
 
 def merge_shape_files(file_list, save_path):
 
@@ -35,6 +35,8 @@ def merge_shape_files(file_list, save_path):
     polygons_list = []
     polygon_attributes_list = []
 
+    b_get_field_name = False
+
     for idx, shp_path in enumerate(file_list):
 
         # check projection
@@ -43,13 +45,18 @@ def merge_shape_files(file_list, save_path):
             raise ValueError('Projection inconsistent: %s is different with the first one'%shp_path)
 
         shapefile = gpd.read_file(shp_path)
+        if len(shapefile.geometry.values) < 1:
+            basic.outputlogMessage('warning, %s is empty, skip'%shp_path)
+            continue
 
         # go through each geometry
         for ri, row in shapefile.iterrows():
-            if idx == 0 and ri==0:
+            # if idx == 0 and ri==0:
+            if b_get_field_name is False:
                 attribute_names = row.keys().to_list()
                 attribute_names = attribute_names[:len(attribute_names) - 1]
                 # basic.outputlogMessage("attribute names: "+ str(row.keys().to_list()))
+                b_get_field_name = True
 
             polygons_list.append(row['geometry'])
             polygon_attributes = row[:len(row) - 1].to_list()
@@ -69,5 +76,42 @@ def merge_shape_files(file_list, save_path):
     return vector_gpd.save_polygons_to_files(polygon_df, 'Polygons', ref_prj, save_path)
 
 
+def main(options, args):
+
+    folder = args[0]
+    shp_list = io_function.get_file_list_by_ext('.shp',folder,bsub_folder=False)
+
+    # remove I*
+    out_name_list = [ '_'.join(os.path.basename(shp).split('_')[1:]) for shp in shp_list ]
+    # remove duplicated ones
+    out_name_list = [ item for item in set(out_name_list) ]
+
+    for out_name in out_name_list:
+        file_list = [ item for item in shp_list if out_name in item ]
+        merge_shape_files(file_list, out_name)
+
+    pass
+
 if __name__ == "__main__":
+    usage = "usage: %prog [options] folder "
+    parser = OptionParser(usage=usage, version="1.0 2020-07-27")
+    parser.description = 'Introduction: merge shape files '
+
+    # parser.add_option("-p", "--para",
+    #                   action="store", dest="para_file",
+    #                   help="the parameters file")
+
+    # parser.add_option('-o', '--output',
+    #                   action="store", dest = 'output',
+    #                   help='the path to save the change detection results')
+
+    (options, args) = parser.parse_args()
+    # if len(sys.argv) < 2:
+    #     parser.print_help()
+    #     sys.exit(2)
+
+
+    main(options, args)
+
+
     pass
