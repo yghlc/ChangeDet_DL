@@ -60,6 +60,8 @@ def merge_shape_files(file_list, save_path):
 
             polygons_list.append(row['geometry'])
             polygon_attributes = row[:len(row) - 1].to_list()
+            if len(polygon_attributes) < len(attribute_names):
+                polygon_attributes.extend([None]* (len(attribute_names) - len(polygon_attributes)))
             polygon_attributes_list.append(polygon_attributes)
 
     # save results
