@@ -21,26 +21,37 @@ res_dir = os.path.expanduser('~/Data/Qinghai-Tibet/QZrailroad_buffer_area/autoMa
 new_path = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp2_iter30000_QZroad_2019.shp')
 
 old_path = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp1_iter30000_QZroad_2019.shp')
+old_path2 = os.path.expanduser('~/Data/Qinghai-Tibet/QZrailroad_buffer_area/thaw_slumps_for_training/qz_manu_RTS_utm_201907_08_v2.shp')
 
+old_path_list = [old_path, old_path2]
 
 # check projection
-old_prj = get_raster_or_vector_srs_info_proj4(old_path)
+
 new_prj = get_raster_or_vector_srs_info_proj4(new_path)
-if old_prj != new_prj:
-    raise ValueError('inconsistent projection between %s and %s'%(new_path, old_path))
+for poly_path in old_path_list:
+    old_prj = get_raster_or_vector_srs_info_proj4(poly_path)
+    if old_prj != new_prj:
+        raise ValueError('inconsistent projection between %s and %s'%(new_path, poly_path))
 
 # get new polygons
 new_polygons = vector_gpd.read_polygons_gpd(new_path)
-old_polygons = vector_gpd.read_polygons_gpd(old_path)
+
+old_polygons = []
+for poly_path in old_path_list:
+    polygons = vector_gpd.read_polygons_gpd(poly_path)
+    old_polygons.extend(polygons)
 
 true_new_polygon_list = []
 for idx,poly in enumerate(new_polygons):
     print('process the %d th polygon, total: %d'%(idx+1,len(new_polygons)))
+    b_find = False
     for old_poly in old_polygons:
         inter = poly.intersection(old_poly)
         if inter.is_empty is False:
-            true_new_polygon_list.append(poly)
+            b_find = True
             break
+    if b_find is False:
+        true_new_polygon_list.append(poly)
 
 # save to file
 save_path = io_function.get_name_by_adding_tail(new_path,'NEW_polygons')
