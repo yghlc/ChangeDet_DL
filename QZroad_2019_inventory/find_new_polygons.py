@@ -19,15 +19,18 @@ from basic_src.map_projection import get_raster_or_vector_srs_info_proj4
 res_dir = os.path.expanduser('~/Data/Qinghai-Tibet/QZrailroad_buffer_area/autoMapping')
 
 # new_path = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp2_iter30000_QZroad_2019.shp')
-new_path = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp3_iter30000_QZroad_2019.shp')
+# new_path = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp3_iter30000_QZroad_2019.shp')
+new_path = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp4_iter30000_QZroad_2019.shp')
 
 old_path = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp1_iter30000_QZroad_2019.shp')
 # old_path2 = os.path.expanduser('~/Data/Qinghai-Tibet/QZrailroad_buffer_area/thaw_slumps_for_training/qz_manu_RTS_utm_201907_08_v2.shp')
-old_path2 = os.path.expanduser('~/Data/Qinghai-Tibet/QZrailroad_buffer_area/thaw_slumps_for_training/qz_manu_RTS_utm_201907_08_v3_edit.shp')
+old_path2 = os.path.expanduser('~/Data/Qinghai-Tibet/QZrailroad_buffer_area/thaw_slumps_for_training/qz_manu_RTS_utm_201907_08_v4.shp')
 
 old_path3 = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp2_iter30000_QZroad_2019.shp')
 
-old_path_list = [old_path, old_path2,old_path3]
+old_path4 = os.path.join(res_dir,'QZ_deeplabV3+_2/result_backup/QZ_deeplabV3+_2_exp3_iter30000_QZroad_2019.shp')
+
+old_path_list = [old_path, old_path2,old_path3, old_path4]
 
 # check projection
 
