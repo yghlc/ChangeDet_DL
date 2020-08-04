@@ -70,6 +70,10 @@ def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, cloud_cover
         if inter.is_empty is False:
             img_dir = os.path.splitext(geojson_file)[0]
             sr_img_paths = io_function.get_file_list_by_pattern(img_dir,'*_SR.tif')
+            if len(sr_img_paths) < 0:
+                basic.outputlogMessage('warning, no SR image in %s, try to find Analytic images'%img_dir)
+                sr_img_paths = io_function.get_file_list_by_pattern(img_dir, '*AnalyticMS.tif')
+                
             meta_data_paths = io_function.get_file_list_by_pattern(img_dir,'*_metadata.xml')
             if len(sr_img_paths) != len(meta_data_paths):
                 # raise ValueError('the count of metadata files and images is different')
