@@ -112,7 +112,7 @@ def read_a_meta_of_scene(scene_folder_or_geojson,scene_id_list):
 
     # if already exists
     if scene_id in scene_id_list:
-        return None,None,None,None,None,None,None,None
+        return None,None,None,None,None,None,None,None,None
 
     print(scene_id)
 
@@ -140,7 +140,15 @@ def read_a_meta_of_scene(scene_folder_or_geojson,scene_id_list):
     if len(sr_tif) == 1:
         image_type = 'analytic_sr'
 
-    return scene_id,cloud_cover,acquisitionDate,geojson_path,scene_folder,asset_count,image_type,asset_files
+    # consider as the downloading time
+    if os.path.isfile(geojson_path):
+        modified_time = io_function.get_file_modified_time(geojson_path)
+    else:
+        geojson_path = ''
+        modified_time = io_function.get_file_modified_time(scene_folder)
+
+
+    return scene_id,cloud_cover,acquisitionDate,geojson_path,scene_folder,asset_count,image_type,asset_files,modified_time
 
 
 
@@ -175,10 +183,11 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
     asset_count_list = []
     asset_files_list = []
     image_type_list = []    # 'analytic_sr' (surface reflectance) or 'analytic'
+    modife_time_list = []
 
     for a_scene_file_dir in scene_geojson_folders:
         # print(id)
-        scene_id, cloud_cover, acquisitionDate, geojson_path, scene_folder, asset_count, image_type,asset_files = \
+        scene_id, cloud_cover, acquisitionDate, geojson_path, scene_folder, asset_count, image_type,asset_files, modified_time = \
         read_a_meta_of_scene(a_scene_file_dir, scene_id_list)
 
         if scene_id is None:
@@ -192,6 +201,7 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
         asset_count_list.append(asset_count)
         asset_files_list.append(asset_files)
         image_type_list.append(image_type)
+        modife_time_list.append(modified_time)
 
     add_scene_count = len(scene_id_list) - old_scene_count
     if add_scene_count < 1:
@@ -201,6 +211,7 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
     scene_table = {'scene_id': scene_id_list,
                    'cloud_cover': cloud_cover_list,
                    'acquisitionDate':acqui_date_list,
+                   'downloadTime':modife_time_list,
                    'asset_count': asset_count_list,
                    'image_type': image_type_list,
                    'asset_files':asset_files_list,
