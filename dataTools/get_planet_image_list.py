@@ -152,9 +152,10 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
 
     # read save_xlsx if it exist
     scene_id_list = []
-    if os.path.isfile(save_xlsx):
-        df = pd.read_excel(save_xlsx)
-        scene_id_list.extend(df['scene_id'].to_list())
+    # may be not good to exclude these the scene id if we want to update some records.
+    # if os.path.isfile(save_xlsx):
+    #     df = pd.read_excel(save_xlsx)
+    #     scene_id_list.extend(df['scene_id'].to_list())
 
     old_scene_count = len(scene_id_list)
     # print(old_scene_count)
