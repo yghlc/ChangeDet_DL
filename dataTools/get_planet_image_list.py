@@ -27,12 +27,26 @@ from shapely.geometry import shape
 
 from xml.dom import minidom
 
+
+import pandas as pd
+
 def read_cloud_cover(metadata_path):
     xmldoc = minidom.parse(metadata_path)
     nodes = xmldoc.getElementsByTagName("opt:cloudCoverPercentage")
     cloud_per = float(nodes[0].firstChild.data)
     # print(cloud_per)
     return cloud_per
+
+def read_acquired_date(metadata_path):
+    xmldoc = minidom.parse(metadata_path)
+    nodes = xmldoc.getElementsByTagName("ps:acquisitionDateTime")
+    #acquisitionDatetime = float(nodes[0].firstChild.data)
+    # 2016-08-23T03:27:21+00:00
+    # acquisitionDatetime = datetime.strptime(nodes[0].firstChild.data, '%y-%m-%dT%H:%M:%S')
+    acquisitionDate = pd.to_datetime(nodes[0].firstChild.data).date()
+    # acquisitionDateTime = pd.to_datetime(nodes[0].firstChild.data).to_pydatetime()
+    # print(cloud_per)
+    return acquisitionDate
 
 
 def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, cloud_cover_thr, save_list_path=None):
@@ -83,9 +97,129 @@ def get_Planet_SR_image_list_overlap_a_polygon(polygon,geojson_list, cloud_cover
 
     return image_path_list, cloud_cover_list
 
+def read_a_meta_of_scene(scene_folder_or_geojson,scene_id_list):
+
+    # get scene id
+    if os.path.isfile(scene_folder_or_geojson): # geojson file
+       scene_id = os.path.splitext(os.path.basename(scene_folder_or_geojson))[0]
+       geojson_path = scene_folder_or_geojson
+       scene_folder = os.path.splitext(scene_folder_or_geojson)[0]
+    else:
+        # scene_folder
+        scene_id = os.path.basename(scene_folder_or_geojson)
+        geojson_path = scene_folder_or_geojson + '.geojson'
+        scene_folder = scene_folder_or_geojson
+
+    # if already exists
+    if scene_id in scene_id_list:
+        return None,None,None,None,None,None,None
+
+    print(scene_id)
+
+    # get metadata path
+    cloud_cover = -1
+    acquisitionDate = datetime(1970,1,1)
+    metadata_paths = io_function.get_file_list_by_pattern(scene_folder,'*metadata.xml')
+    if len(metadata_paths) < 1:
+        basic.outputlogMessage('warning, there is no metadata file in %s'%scene_folder)
+    elif len(metadata_paths) > 1:
+        basic.outputlogMessage('warning, there are more than one metadata files in %s' % scene_folder)
+    else:
+        # read metadata
+        metadata_path = metadata_paths[0]
+        cloud_cover = read_cloud_cover(metadata_path)
+        acquisitionDate =  read_acquired_date(metadata_path)
+
+    assets = io_function.get_file_list_by_pattern(scene_folder,'*')
+    asset_count = len(assets)
+
+    image_type = 'analytic'  # 'analytic_sr' (surface reflectance) or 'analytic'
+    sr_tif = io_function.get_file_list_by_pattern(scene_folder,'*_SR.tif')
+    if len(sr_tif) == 1:
+        image_type = 'analytic_sr'
+
+    return scene_id,cloud_cover,acquisitionDate,geojson_path,scene_folder,asset_count,image_type
+
+
+
+def save_planet_images_to_excel(image_dir,save_xlsx):
+
+    # read save_xlsx if it exist
+    scene_id_list = []
+    if os.path.isfile(save_xlsx):
+        df = pd.read_excel(save_xlsx)
+        scene_id_list.extend(df['scene_id'].to_list())
+
+    old_scene_count = len(scene_id_list)
+    # print(old_scene_count)
+
+    # get scene folders (idealy, the number of scene folder are the same to the one of geojson files)
+    scene_geojson_folders = io_function.get_file_list_by_pattern(image_dir,'????????_??????_*')     # acquired date_time
+    if len(scene_geojson_folders) < 1:
+        raise ValueError('There is no scene folder or geojson in %s'%image_dir)
+
+
+    # read each scene and save to xlsx
+
+    cloud_cover_list = []
+    acqui_date_list = []        # acquisitionDate
+    geojson_file_list = []
+    scene_folder_list = []
+    asset_count_list = []
+    image_type_list = []    # 'analytic_sr' (surface reflectance) or 'analytic'
+
+    for a_scene_file_dir in scene_geojson_folders:
+        # print(id)
+        scene_id, cloud_cover, acquisitionDate, geojson_path, scene_folder, asset_count, image_type = \
+        read_a_meta_of_scene(a_scene_file_dir, scene_id_list)
+
+        if scene_id is None:
+            continue
+
+        scene_id_list.append(scene_id)
+        cloud_cover_list.append(cloud_cover)
+        acqui_date_list.append(acquisitionDate)
+        geojson_file_list.append(geojson_path)
+        scene_folder_list.append(scene_folder)
+        asset_count_list.append(asset_count)
+        image_type_list.append(image_type)
+
+    add_scene_count = len(scene_id_list) - old_scene_count
+    if add_scene_count < 1:
+        basic.outputlogMessage('No new downloaded scenes in %s, skip writting xlsx'%image_dir)
+        return True
+
+    scene_table = {'scene_id': scene_id_list,
+                   'cloud_cover': cloud_cover_list,
+                   'acquisitionDate':acqui_date_list,
+                   'asset_count': asset_count_list,
+                   'image_type': image_type_list,
+                   'geojson':geojson_file_list,
+                   'folder':scene_folder_list
+                   }
+
+    # # put then in order
+    # import collections
+    # dict_top1_per = collections.OrderedDict(sorted(dict_top1_per.items()))
+
+    df = pd.DataFrame(scene_table) #.set_index('vertical_offset')
+    with pd.ExcelWriter(save_xlsx) as writer:
+        df.to_excel(writer)
+
+    return True
+
+
+
 def main(options, args):
 
     image_dir = args[0]
+
+    # get the file list in folder and save to excel
+    if options.save_xlsx_path is not None:
+        save_xlsx = options.save_xlsx_path
+        save_planet_images_to_excel(image_dir,save_xlsx)
+        return True
+
     shp_path = args[1]
 
     cloud_cover_thr = options.cloud_cover  # 0.3
@@ -131,6 +265,9 @@ if __name__ == "__main__":
     # parser.add_option("-a", "--planet_account",
     #                   action="store", dest="planet_account",default='huanglingcao@link.cuhk.edu.hk',
     #                   help="planet email account, e.g., huanglingcao@link.cuhk.edu.hk")
+    parser.add_option("-x", "--save_xlsx_path",
+                      action="store", dest="save_xlsx_path",
+                      help="save the sence lists to xlsx file")
 
 
 
