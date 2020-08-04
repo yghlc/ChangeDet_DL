@@ -205,6 +205,7 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
     df = pd.DataFrame(scene_table) #.set_index('vertical_offset')
     with pd.ExcelWriter(save_xlsx) as writer:
         df.to_excel(writer)
+        basic.outputlogMessage('write records of downloaded scenes to %s'%save_xlsx)
 
     return True
 
