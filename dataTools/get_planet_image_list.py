@@ -112,7 +112,7 @@ def read_a_meta_of_scene(scene_folder_or_geojson,scene_id_list):
 
     # if already exists
     if scene_id in scene_id_list:
-        return None,None,None,None,None,None,None
+        return None,None,None,None,None,None,None,None
 
     print(scene_id)
 
@@ -132,13 +132,15 @@ def read_a_meta_of_scene(scene_folder_or_geojson,scene_id_list):
 
     assets = io_function.get_file_list_by_pattern(scene_folder,'*')
     asset_count = len(assets)
+    asset_files = sorted([ os.path.basename(item) for item in assets])
+    asset_files =','.join(asset_files)
 
     image_type = 'analytic'  # 'analytic_sr' (surface reflectance) or 'analytic'
     sr_tif = io_function.get_file_list_by_pattern(scene_folder,'*_SR.tif')
     if len(sr_tif) == 1:
         image_type = 'analytic_sr'
 
-    return scene_id,cloud_cover,acquisitionDate,geojson_path,scene_folder,asset_count,image_type
+    return scene_id,cloud_cover,acquisitionDate,geojson_path,scene_folder,asset_count,image_type,asset_files
 
 
 
@@ -166,11 +168,12 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
     geojson_file_list = []
     scene_folder_list = []
     asset_count_list = []
+    asset_files_list = []
     image_type_list = []    # 'analytic_sr' (surface reflectance) or 'analytic'
 
     for a_scene_file_dir in scene_geojson_folders:
         # print(id)
-        scene_id, cloud_cover, acquisitionDate, geojson_path, scene_folder, asset_count, image_type = \
+        scene_id, cloud_cover, acquisitionDate, geojson_path, scene_folder, asset_count, image_type,asset_files = \
         read_a_meta_of_scene(a_scene_file_dir, scene_id_list)
 
         if scene_id is None:
@@ -182,6 +185,7 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
         geojson_file_list.append(geojson_path)
         scene_folder_list.append(scene_folder)
         asset_count_list.append(asset_count)
+        asset_files_list.append(asset_files)
         image_type_list.append(image_type)
 
     add_scene_count = len(scene_id_list) - old_scene_count
@@ -194,6 +198,7 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
                    'acquisitionDate':acqui_date_list,
                    'asset_count': asset_count_list,
                    'image_type': image_type_list,
+                   'asset_files':asset_files_list,
                    'geojson':geojson_file_list,
                    'folder':scene_folder_list
                    }
