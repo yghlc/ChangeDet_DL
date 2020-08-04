@@ -214,25 +214,7 @@ def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0'):
 
     pass
 
-def main(options, args):
-
-    out_dir = options.out_dir
-    if out_dir is None: out_dir = './'
-
-    b_draw_scalebar_time = True
-
-    para_file = options.para_file
-
-    dstnodata = parameters.get_string_parameters(para_file, 'dst_nodata')
-    dstnodata = int(dstnodata)
-    bufferSize = parameters.get_string_parameters(para_file, 'buffer_size')
-    bufferSize = int(bufferSize)
-
-    rectangle_ext = parameters.get_string_parameters(para_file, 'b_use_rectangle')
-    if 'rectangle' in rectangle_ext:
-        b_rectangle = True
-    else:
-        b_rectangle = False
+def extract_timeSeries_from_mosaic_multi_polygons(para_file,txt_mosaic_polygons,bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
 
     input_image_dir = parameters.get_string_parameters(para_file, 'input_image_dir')
     input_image_dir = io_function.get_file_path_new_home_folder(input_image_dir)
@@ -240,8 +222,7 @@ def main(options, args):
     poly_shp_list = []
     image_folder_list = []
     image_pattern_list = []
-    txt_input = args[0]
-    with open(txt_input,'r') as f_obj:
+    with open(txt_mosaic_polygons,'r') as f_obj:
         lines = [item.strip() for item in f_obj.readlines()]
 
         for idx in range(len(lines)):
@@ -278,17 +259,7 @@ def main(options, args):
 
     ###################################################################
 
-    # io_function.mkdir(os.path.join(saved_dir,'subImages'))
-    # io_function.mkdir(os.path.join(saved_dir,'subLabels'))
-
-    if 'qtb_sentinel2' in image_list_2d[0][0]:
-        # for qtb_sentinel-2 mosaic
-        # pre_name = '_'.join(os.path.splitext(os.path.basename(image_tile_list[0]))[0].split('_')[:4])
-        pass
-    else:
-        # pre_name = os.path.splitext(os.path.basename(image_tile_list[0]))[0]
-        pass
-    pre_name = 'Planet_beiluhe'
+    pre_name = parameters.get_string_parameters(para_file, 'pre_name')
 
     # get_sub_images_and_labels(t_polygons_shp, t_polygons_shp_all, bufferSize, image_tile_list,
     #                           saved_dir, pre_name, dstnodata, brectangle=options.rectangle)
@@ -298,6 +269,86 @@ def main(options, args):
     #                                       brectangle=True):
     get_time_series_subImage_for_polygons(union_polygons,image_list_2d,out_dir,bufferSize, pre_name,
                                           dstnodata, brectangle=b_rectangle, b_draw=b_draw_scalebar_time)
+
+def extract_timeSeries_from_planet_rgb_images(planet_images_dir,para_file, txt_polygons, bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
+
+    # get xlsx files which cotaining plaent scenes information
+    # each xlsx contain images in the same period
+    xlsx_list = io_function.get_file_list_by_ext('.xlsx',planet_images_dir,bsub_folder=False)
+    if len(xlsx_list) < 1:
+        raise IOError('no xlsx files in %s'%planet_images_dir)
+    [ print(item) for item in xlsx_list]
+
+
+    poly_shp_list = []
+    with open(txt_polygons,'r') as f_obj:
+        lines = [item.strip() for item in f_obj.readlines()]
+        for idx in range(len(lines)):
+            line = lines[idx]
+            polygon_shp = line.split(':')
+            polygon_shp = io_function.get_file_path_new_home_folder(polygon_shp)
+            poly_shp_list.append(polygon_shp)
+
+    if len(poly_shp_list) < 1:
+        raise IOError('No shape file in the list')
+
+    # check these are EPSG:4326 projection
+    if get_projection_proj4(poly_shp_list[0]).strip() == '+proj=longlat +datum=WGS84 +no_defs':
+        bufferSize = meters_to_degress_onEarth(bufferSize)
+
+    if len(poly_shp_list) > 1:
+        # get get union of polygons at the same location
+        # basic.outputlogMessage('warning, multiple shapefiles are available, get unions of them at the same location')
+        # union_polygons = get_union_polygons_at_the_same_loc(poly_shp_list)
+        raise IOError('Only support one shapefile')
+
+    else:
+        union_polygons = vector_gpd.read_polygons_gpd(poly_shp_list[0])
+
+
+    # 2D list, for a specific time, it may have multi images.
+    image_list_2d = get_image_list_2d(input_image_dir, image_folder_list, image_pattern_list)
+
+    # need to check: the shape file and raster should have the same projection.
+    for polygons_shp, image_tile_list in zip(poly_shp_list, image_list_2d):
+        if get_projection_proj4(polygons_shp) != get_projection_proj4(image_tile_list[0]):
+            raise ValueError('error, the input raster (e.g., %s) and vector (%s) files don\'t have the same projection' % (image_tile_list[0], polygons_shp))
+
+
+
+
+
+    pass
+
+def main(options, args):
+
+    out_dir = options.out_dir
+    if out_dir is None: out_dir = './'
+
+    b_draw_scalebar_time = True
+
+    para_file = options.para_file
+
+    dstnodata = parameters.get_string_parameters(para_file, 'dst_nodata')
+    dstnodata = int(dstnodata)
+    bufferSize = parameters.get_string_parameters(para_file, 'buffer_size')
+    bufferSize = int(bufferSize)
+
+    rectangle_ext = parameters.get_string_parameters(para_file, 'b_use_rectangle')
+    if 'rectangle' in rectangle_ext:
+        b_rectangle = True
+    else:
+        b_rectangle = False
+
+    planet_images_dir =  options.planet_images_dir
+
+    if planet_images_dir is not None:
+        txt_polygons = args[0]
+        extract_timeSeries_from_planet_rgb_images(planet_images_dir, para_file, txt_polygons,bufferSize, out_dir, dstnodata,
+                                                  b_draw_scalebar_time, b_rectangle)
+    else:
+        txt_mosaic_polygons = args[0]
+        extract_timeSeries_from_mosaic_multi_polygons(para_file,txt_mosaic_polygons,bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle)
 
 
     pass
@@ -315,6 +366,11 @@ if __name__ == "__main__":
     parser.add_option("-o", "--out_dir",
                       action="store", dest="out_dir", default = './',
                       help="the folder path for saving output files")
+
+    parser.add_option("-i", "--planet_images_dir",
+                      action="store", dest="planet_images_dir",
+                      help="the folder containing Planet original images, if this is set, "
+                           "it will extract the timeSeries from the original images")
 
     parser.add_option("-p", "--para_file",
                       action="store", dest="para_file",
