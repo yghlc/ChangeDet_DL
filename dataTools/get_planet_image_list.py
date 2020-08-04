@@ -117,7 +117,7 @@ def read_a_meta_of_scene(scene_folder_or_geojson,scene_id_list):
     print(scene_id)
 
     # get metadata path
-    cloud_cover = -1
+    cloud_cover = 101
     acquisitionDate = datetime(1970,1,1)
     metadata_paths = io_function.get_file_list_by_pattern(scene_folder,'*metadata.xml')
     if len(metadata_paths) < 1:
