@@ -146,6 +146,10 @@ def read_a_meta_of_scene(scene_folder_or_geojson,scene_id_list):
 
 def save_planet_images_to_excel(image_dir,save_xlsx):
 
+    if os.path.isfile(image_dir):
+        basic.outputlogMessage('Input %s is a file, expected a folder'%image_dir)
+        return False
+
     # read save_xlsx if it exist
     scene_id_list = []
     if os.path.isfile(save_xlsx):
