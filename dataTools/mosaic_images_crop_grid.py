@@ -44,7 +44,11 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images'):
     dst_max=255
 
     # gdal_translate -ot Byte -scale ${src_min} ${src_max} ${dst_min} ${dst_max} ${image_path} ${output}_8bit.tif
-    cmd_str = 'gdal_translate -ot Byte -scale %d %d %d %d %s %s_8bit.tif'%(src_min,src_max,dst_min,dst_max,tif_path,output)
+    if 'SR.tif' in tif_path:
+        cmd_str = 'gdal_translate -ot Byte -scale %d %d %d %d %s %s_8bit.tif'%(src_min,src_max,dst_min,dst_max,tif_path,output)
+    else:
+        # gdal_contrast_stretch -percentile-range 0.01 0.99 ${output}.tif ${output}_8bit.tif
+        cmd_str = 'gdal_contrast_stretch -percentile-range 0.01 0.99 %s %s_8bit.tif' % (tif_path, output)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
