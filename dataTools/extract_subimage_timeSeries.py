@@ -29,6 +29,9 @@ from sentinelScripts.get_subImages import check_projection_rasters
 from sentinelScripts.get_subImages import meters_to_degress_onEarth
 from sentinelScripts.get_subImages import get_image_tile_bound_boxes
 
+from get_planet_image_list import get_Planet_SR_image_list_overlap_a_polygon
+from mosaic_images_crop_grid import convert_planet_to_rgb_images
+
 # import thest two to make sure load GEOS dll before using shapely
 import shapely
 import shapely.geometry
@@ -91,6 +94,38 @@ def get_union_polygons_at_the_same_loc(shp_list, out_dir='./', union_save_path =
 
     return union_polygons
 
+def get_image_list_2d_planet(xlsx_list,planet_image_table_list, polygon, polygon_id, cloud_cover_thr):
+    '''
+    get image file path at different time that covers the polygon
+    :param xlsx_list: xlsx_list
+    :param planet_image_table_list: Table list of planet records
+    :param polygon: polygon (latlon) in shapely format
+    :param polygon_id: polygon id
+    :return:
+    '''
+    # images in each table in plant_image_table_list have the similar similar acquisition Date
+    time_count = len(planet_image_table_list)        # the count of time period
+    image_list_2d = []
+
+    for time in range(time_count):
+        xlsx_path = xlsx_list[time]
+        img_folder_this_time = os.path.dirname(xlsx_path)
+        # print(img_folder_this_time)
+        table = planet_image_table_list[time]
+        # get geojson_list based on cloud cover, asset count
+        sel_records = table.loc[(table['asset_count']>=3) & (table['cloud_cover']<=cloud_cover_thr) ]
+        geojson_list = [item for item in  sel_records['geojson'].to_list() if isinstance(item,str) and len(item) > 1]
+        # change relative path to absolute path
+        if len(geojson_list) > 0 and os.path.isfile(geojson_list[0]) is False:
+            geojson_list = [ os.path.join(img_folder_this_time,item)  for item in geojson_list ]
+
+        # [print(item) for item in geojson_list]
+        # print('Done')
+        image_path_list, cloud_cover_list = get_Planet_SR_image_list_overlap_a_polygon(polygon, geojson_list, cloud_cover_thr)
+        # [print(item) for item in image_path_list]
+        image_list_2d.append(image_path_list)
+
+    return image_list_2d
 
 def get_image_list_2d(input_image_dir,image_folder_list, pattern_list):
     '''
@@ -270,55 +305,121 @@ def extract_timeSeries_from_mosaic_multi_polygons(para_file,txt_mosaic_polygons,
     get_time_series_subImage_for_polygons(union_polygons,image_list_2d,out_dir,bufferSize, pre_name,
                                           dstnodata, brectangle=b_rectangle, b_draw=b_draw_scalebar_time)
 
-def extract_timeSeries_from_planet_rgb_images(planet_images_dir,para_file, txt_polygons, bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
+def extract_timeSeries_from_planet_rgb_images(planet_images_dir, cloud_cover_thr, para_file, txt_polygons, bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
 
     # get xlsx files which cotaining plaent scenes information
     # each xlsx contain images in the same period
     xlsx_list = io_function.get_file_list_by_ext('.xlsx',planet_images_dir,bsub_folder=False)
     if len(xlsx_list) < 1:
-        raise IOError('no xlsx files in %s'%planet_images_dir)
-    [ print(item) for item in xlsx_list]
+        raise IOError('no xlsx files in %s, please run get_scene_list_xlsx.sh to generate them'%planet_images_dir)
+    # [ print(item) for item in xlsx_list]
 
+    # read multi-temporal planet image records
+    plant_image_table_list = []
+    for idx, xlsx in enumerate(xlsx_list):
+        basic.outputlogMessage('%d reading %s'%(idx, xlsx))
+        table_pd = pd.read_excel(xlsx)
+        plant_image_table_list.append(table_pd)
+
+    time_count = len(xlsx_list)
 
     poly_shp_list = []
     with open(txt_polygons,'r') as f_obj:
         lines = [item.strip() for item in f_obj.readlines()]
         for idx in range(len(lines)):
             line = lines[idx]
-            polygon_shp = line.split(':')
-            polygon_shp = io_function.get_file_path_new_home_folder(polygon_shp)
+            if len(line) < 1:
+                continue
+            polygon_shp = io_function.get_file_path_new_home_folder(line)
             poly_shp_list.append(polygon_shp)
 
     if len(poly_shp_list) < 1:
         raise IOError('No shape file in the list')
-
-    # check these are EPSG:4326 projection
-    if get_projection_proj4(poly_shp_list[0]).strip() == '+proj=longlat +datum=WGS84 +no_defs':
-        bufferSize = meters_to_degress_onEarth(bufferSize)
 
     if len(poly_shp_list) > 1:
         # get get union of polygons at the same location
         # basic.outputlogMessage('warning, multiple shapefiles are available, get unions of them at the same location')
         # union_polygons = get_union_polygons_at_the_same_loc(poly_shp_list)
         raise IOError('Only support one shapefile')
+    # else:
+        # union_polygons = vector_gpd.read_polygons_gpd(poly_shp_list[0])
 
-    else:
-        union_polygons = vector_gpd.read_polygons_gpd(poly_shp_list[0])
+    poly_shp_path = poly_shp_list[0]
+
+    # check these are EPSG:4326 projection
+    shp_prj = get_projection_proj4(poly_shp_path).strip()
+    if shp_prj == '+proj=longlat +datum=WGS84 +no_defs':
+        bufferSize = meters_to_degress_onEarth(bufferSize)
+
+    polygons_latlon = vector_gpd.read_shape_gpd_to_NewPrj(poly_shp_path,'EPSG:4326')
+    polygon_ids = vector_gpd.read_attribute_values_list(poly_shp_path,'id')
+    if polygon_ids is None:
+        polygon_ids = [ id + 1 for id in range(len(polygons_latlon))]
+
+    pre_name = parameters.get_string_parameters(para_file, 'pre_name')
 
 
-    # 2D list, for a specific time, it may have multi images.
-    image_list_2d = get_image_list_2d(input_image_dir, image_folder_list, image_pattern_list)
+    if b_draw_scalebar_time:
+        plt_obj = plt.figure()
 
-    # need to check: the shape file and raster should have the same projection.
-    for polygons_shp, image_tile_list in zip(poly_shp_list, image_list_2d):
-        if get_projection_proj4(polygons_shp) != get_projection_proj4(image_tile_list[0]):
-            raise ValueError('error, the input raster (e.g., %s) and vector (%s) files don\'t have the same projection' % (image_tile_list[0], polygons_shp))
+    for idx, (id, polygon_latlon) in enumerate(zip(polygon_ids, polygons_latlon)):
+        basic.outputlogMessage('obtaining %dth time series sub-images' % idx)
+        # get image_list_2d, # 2D list, for a specific time, it may have multi images.
+        image_list_2d_a_polygon = get_image_list_2d_planet(xlsx_list,plant_image_table_list,polygon_latlon,id,cloud_cover_thr)
 
+        # convert to RGB images
+        image_list_2d_a_polygon_rgb = []
+        for image_list in image_list_2d_a_polygon:
+            rgb_list = []
+            for img in image_list:
+                rgb_img = convert_planet_to_rgb_images(img)
+                rgb_list.append(rgb_img)
+            image_list_2d_a_polygon_rgb.append(rgb_list)
+        image_list_2d_a_polygon = image_list_2d_a_polygon_rgb
 
+        img_tile_boxes_list = []
+        time_count = len(image_list_2d_a_polygon)
+        for idx in range(time_count):
+            img_tile_boxes = get_image_tile_bound_boxes(image_list_2d_a_polygon[idx])
+            img_tile_boxes_list.append(img_tile_boxes)
 
+        # get sub_images, but need to have the same projection of images, different images may have different projection
+        # especially for the large area,
+        # TODO: reproject them if some of then have different projection
+        raster_prj = None
+        for image_path_list in image_list_2d_a_polygon:
+            check_projection_rasters(image_path_list)  # it will raise errors if found problems
+            if raster_prj is None and len(image_path_list) >0:
+                raster_prj = get_projection_proj4(image_path_list[0]).strip()
+        if shp_prj != raster_prj:
+            polygons_tmp = vector_gpd.read_shape_gpd_to_NewPrj(poly_shp_path, raster_prj)
+        else:
+            polygons_tmp = vector_gpd.read_polygons_gpd(poly_shp_path)
 
+        c_polygon = polygons_tmp[idx]
 
-    pass
+        # get buffer area
+        expansion_polygon = c_polygon.buffer(bufferSize)
+
+        # create a folder
+        poly_save_dir = os.path.join(out_dir, pre_name + '_poly_%d_timeSeries'%idx)
+        io_function.mkdir(poly_save_dir)
+
+        for time in range(time_count):
+            image_tile_list = image_list_2d_a_polygon[time]
+            img_tile_boxes = img_tile_boxes_list[time]
+
+            # get one sub-image based on the buffer areas
+            subimg_shortName = pre_name+'_poly_%d_t_%d.tif'%(idx,time)
+            subimg_saved_path = os.path.join(poly_save_dir, subimg_shortName)
+            if get_sub_image(idx,expansion_polygon,image_tile_list,img_tile_boxes, subimg_saved_path, dstnodata, b_rectangle) is False:
+                basic.outputlogMessage('Warning, skip the %dth polygon'%idx)
+
+            # draw time and scale bar on images (annotate)
+            if b_draw_scalebar_time:
+                draw_annotate_for_a_image(plt_obj, subimg_saved_path, time_str=time_str_list[time])
+
+    return True
 
 def main(options, args):
 
@@ -344,7 +445,10 @@ def main(options, args):
 
     if planet_images_dir is not None:
         txt_polygons = args[0]
-        extract_timeSeries_from_planet_rgb_images(planet_images_dir, para_file, txt_polygons,bufferSize, out_dir, dstnodata,
+
+        cloud_cover_thr = options.cloud_cover  # 0.3
+        cloud_cover_thr = cloud_cover_thr * 100  # in xml, it is percentage
+        extract_timeSeries_from_planet_rgb_images(planet_images_dir, cloud_cover_thr, para_file, txt_polygons,bufferSize, out_dir, dstnodata,
                                                   b_draw_scalebar_time, b_rectangle)
     else:
         txt_mosaic_polygons = args[0]
@@ -371,6 +475,9 @@ if __name__ == "__main__":
                       action="store", dest="planet_images_dir",
                       help="the folder containing Planet original images, if this is set, "
                            "it will extract the timeSeries from the original images")
+    parser.add_option("-c", "--cloud_cover",
+                      action="store", dest="cloud_cover", type=float,default=0.3,
+                      help="the could cover threshold, only accept images with cloud cover less than the threshold")
 
     parser.add_option("-p", "--para_file",
                       action="store", dest="para_file",
