@@ -309,14 +309,21 @@ def extract_timeSeries_from_mosaic_multi_polygons(para_file,txt_mosaic_polygons,
     get_time_series_subImage_for_polygons(union_polygons,image_list_2d,out_dir,bufferSize, pre_name,
                                           dstnodata, brectangle=b_rectangle, b_draw=b_draw_scalebar_time)
 
-def extract_timeSeries_from_planet_rgb_images(planet_images_dir, cloud_cover_thr, para_file, txt_polygons, bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
+def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cloud_cover_thr, para_file, txt_polygons, bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
 
     # get xlsx files which cotaining plaent scenes information
     # each xlsx contain images in the same period
-    xlsx_list = io_function.get_file_list_by_ext('.xlsx',planet_images_dir,bsub_folder=False)
-    if len(xlsx_list) < 1:
-        raise IOError('no xlsx files in %s, please run get_scene_list_xlsx.sh to generate them'%planet_images_dir)
-    # [ print(item) for item in xlsx_list]
+    if os.path.isdir(planet_images_dir_or_xlsx_list):
+        xlsx_list = io_function.get_file_list_by_ext('.xlsx',planet_images_dir_or_xlsx_list,bsub_folder=False)
+        if len(xlsx_list) < 1:
+            raise IOError('no xlsx files in %s, please run get_scene_list_xlsx.sh to generate them'%planet_images_dir_or_xlsx_list)
+        # [ print(item) for item in xlsx_list]
+        # sort, from oldest to newest
+        xlsx_list = sorted(xlsx_list)
+    else:
+        with open(planet_images_dir_or_xlsx_list, 'r') as f_obj:
+            lines = [item.strip() for item in f_obj.readlines()]
+            xlsx_list = [io_function.get_file_path_new_home_folder(line) for line in lines]
 
     # read multi-temporal planet image records
     plant_image_table_list = []
@@ -454,14 +461,14 @@ def main(options, args):
     else:
         b_rectangle = False
 
-    planet_images_dir =  options.planet_images_dir
+    planet_images_dir_or_txt =  options.planet_images_dir_or_xlsxTXT
 
-    if planet_images_dir is not None:
+    if planet_images_dir_or_txt is not None:
         txt_polygons = args[0]
 
         cloud_cover_thr = options.cloud_cover  # 0.3
         cloud_cover_thr = cloud_cover_thr * 100  # in xml, it is percentage
-        extract_timeSeries_from_planet_rgb_images(planet_images_dir, cloud_cover_thr, para_file, txt_polygons,bufferSize, out_dir, dstnodata,
+        extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_txt, cloud_cover_thr, para_file, txt_polygons,bufferSize, out_dir, dstnodata,
                                                   b_draw_scalebar_time, b_rectangle)
     else:
         txt_mosaic_polygons = args[0]
@@ -484,8 +491,8 @@ if __name__ == "__main__":
                       action="store", dest="out_dir", default = './',
                       help="the folder path for saving output files")
 
-    parser.add_option("-i", "--planet_images_dir",
-                      action="store", dest="planet_images_dir",
+    parser.add_option("-i", "--planet_images_dir_or_xlsxTXT",
+                      action="store", dest="planet_images_dir_or_xlsxTXT",
                       help="the folder containing Planet original images, if this is set, "
                            "it will extract the timeSeries from the original images")
     parser.add_option("-c", "--cloud_cover",
