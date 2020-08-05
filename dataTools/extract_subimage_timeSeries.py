@@ -107,6 +107,8 @@ def get_image_list_2d_planet(xlsx_list,planet_image_table_list, polygon, polygon
     time_count = len(planet_image_table_list)        # the count of time period
     image_list_2d = []
 
+    total_count = 0
+
     for time in range(time_count):
         xlsx_path = xlsx_list[time]
         img_folder_this_time = os.path.dirname(xlsx_path)
@@ -125,7 +127,9 @@ def get_image_list_2d_planet(xlsx_list,planet_image_table_list, polygon, polygon
         # [print(item) for item in image_path_list]
         image_list_2d.append(image_path_list)
 
-    return image_list_2d
+        total_count += len(image_path_list)
+
+    return image_list_2d, total_count
 
 def get_image_list_2d(input_image_dir,image_folder_list, pattern_list):
     '''
@@ -363,9 +367,13 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir, cloud_cover_thr
         plt_obj = plt.figure()
 
     for idx, (id, polygon_latlon) in enumerate(zip(polygon_ids, polygons_latlon)):
-        basic.outputlogMessage('obtaining %dth time series sub-images' % idx)
+        basic.outputlogMessage('obtaining %dth time series sub-images (polygon id: %d)' % (idx, id))
         # get image_list_2d, # 2D list, for a specific time, it may have multi images.
-        image_list_2d_a_polygon = get_image_list_2d_planet(xlsx_list,plant_image_table_list,polygon_latlon,id,cloud_cover_thr)
+        image_list_2d_a_polygon, img_count = get_image_list_2d_planet(xlsx_list,plant_image_table_list,polygon_latlon,id,cloud_cover_thr)
+
+        if img_count < 1:
+            basic.outputlogMessage('warning, no images found')
+            continue
 
         # convert to RGB images
         image_list_2d_a_polygon_rgb = []
@@ -379,8 +387,8 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir, cloud_cover_thr
 
         img_tile_boxes_list = []
         time_count = len(image_list_2d_a_polygon)
-        for idx in range(time_count):
-            img_tile_boxes = get_image_tile_bound_boxes(image_list_2d_a_polygon[idx])
+        for time in range(time_count):
+            img_tile_boxes = get_image_tile_bound_boxes(image_list_2d_a_polygon[time])
             img_tile_boxes_list.append(img_tile_boxes)
 
         # get sub_images, but need to have the same projection of images, different images may have different projection
@@ -402,22 +410,27 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir, cloud_cover_thr
         expansion_polygon = c_polygon.buffer(bufferSize)
 
         # create a folder
-        poly_save_dir = os.path.join(out_dir, pre_name + '_poly_%d_timeSeries'%idx)
+        poly_save_dir = os.path.join(out_dir, pre_name + '_poly_%d_timeSeries'%id)
         io_function.mkdir(poly_save_dir)
 
         for time in range(time_count):
             image_tile_list = image_list_2d_a_polygon[time]
+            if len(image_tile_list) < 1:
+                continue
             img_tile_boxes = img_tile_boxes_list[time]
 
             # get one sub-image based on the buffer areas
-            subimg_shortName = pre_name+'_poly_%d_t_%d.tif'%(idx,time)
+            subimg_shortName = pre_name+'_poly_%d_t_%d.tif'%(id,time)
             subimg_saved_path = os.path.join(poly_save_dir, subimg_shortName)
-            if get_sub_image(idx,expansion_polygon,image_tile_list,img_tile_boxes, subimg_saved_path, dstnodata, b_rectangle) is False:
-                basic.outputlogMessage('Warning, skip the %dth polygon'%idx)
+            if get_sub_image(id,expansion_polygon,image_tile_list,img_tile_boxes, subimg_saved_path, dstnodata, b_rectangle) is False:
+                basic.outputlogMessage('Warning, skip the polygon (id: %d) at %d time period'%(id,time))
+                continue
 
+            planet_base_name = os.path.basename(image_tile_list[0])
+            acquired_date_str = planet_base_name[:4] + '-' +planet_base_name[4:6] + '-' + planet_base_name[6:8]
             # draw time and scale bar on images (annotate)
             if b_draw_scalebar_time:
-                draw_annotate_for_a_image(plt_obj, subimg_saved_path, time_str=time_str_list[time])
+                draw_annotate_for_a_image(plt_obj, subimg_saved_path, time_str=acquired_date_str)
 
     return True
 
