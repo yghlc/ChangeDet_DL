@@ -24,9 +24,9 @@ function crop_img(){
     gdal_translate  -projwin ${xmin} ${ymax} ${xmax} ${ymin} $in $out
 }
 
-#crop_img $img2017 2017.tif
-#crop_img $img2018 2018.tif
-#crop_img $img2019 2019.tif
+crop_img $img2017 2017.tif
+crop_img $img2018 2018.tif
+crop_img $img2019 2019.tif
 
 #width=$(expr ${xmax} - ${xmin})
 width=5c  # 5 cm
@@ -85,5 +85,6 @@ gmt begin img_2017_to_2019 tif -Vd
 
 gmt end show
 
+rm 2017.tif 2018.tif 2019.tif
 
 
