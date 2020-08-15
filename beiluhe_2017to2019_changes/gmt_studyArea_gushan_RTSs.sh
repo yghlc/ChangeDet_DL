@@ -19,10 +19,10 @@ qtp_outline=~/Data/Qinghai-Tibet/Qinghai-Tibet_Plateau_shp/Qinghai-Tibet_Plateau
 beiluhe_shp=~/Data/Qinghai-Tibet/beiluhe/beiluhe_reiver_basin_extent/beiluhe_reiver_basin_extent.shp
 
 # get sub image using gdal_translate  (UTM projection, meters)
-xmin=491830
-xmax=492165
-ymin=3856104
-ymax=3856396
+xmin=491770
+xmax=492195
+ymin=3856074
+ymax=3856426
 
 function reproject_crop_img(){
     in=$1
@@ -34,80 +34,182 @@ function reproject_crop_img(){
     rm tmp.tif
 }
 
-#reproject_crop_img $img2017 2017.tif
-#reproject_crop_img $img2018 2018.tif
-#reproject_crop_img $img2019 2019.tif
+reproject_crop_img $img2017 2017.tif
+reproject_crop_img $img2018 2018.tif
+reproject_crop_img $img2019 2019.tif
 
 #width=$(expr ${xmax} - ${xmin})
-width=5c  # 5 cm
+width=14c  # 5 cm
 echo ${width}
 
 qtp=qtp_outline.gmt
 beiluhe=beiluhe.gmt
-#ogr2ogr -f "GMT"  ${qtp} ${qtp_outline}
-#ogr2ogr -f "GMT"  ${beiluhe} ${beiluhe_shp}
+ogr2ogr -f "GMT"  ${qtp} ${qtp_outline}
+ogr2ogr -f "GMT"  ${beiluhe} ${beiluhe_shp}
 
 # get proj4 for projection
 qtp_prj=$(gdalsrsinfo -o proj4 ran.shp "/Users/huanglingcao/Dropbox/Research/09 thermokarst and permafrost mapping/permafrost maps (gis files)/perma_maps_TP/ran/ran.shp")
 
-#echo ${qtp_prj}
+echo ${qtp_prj}
 #gmt info ${qtp} -C
 
-## plot study area
-#gmt begin beilue_study_area tif
+# plot study area
+gmt begin beilue_study_area png
+
+    gmt basemap -J"+proj=aea +lat_1=27.5 +lat_2=37.5 +lat_0=0 +lon_0=90 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"/${width} \
+    -R75/104/26/40 -B5
+    # plot polygon, fill with lightgray (-G)
+    gmt psxy ${qtp} -Glightgray
+    # plot beiluhe, -W pen attributes (width, color, style)
+    gmt psxy ${beiluhe} -W1p,red,solid
+
+    # (x, y[, font, angle, justify], text
+    # font is a font specification with format [size,][font,][color] where size is text size in points,
+    # font is the font to use, and color sets the font color.
+    echo 92,33, Tibetan Plateau  | gmt text -F+f22p,Helvetica-Bold,black
+
+    echo 95.2,34.9, Beiluhe  | gmt text -F+f10p,Helvetica-Bold,black
+
+    # add a label
+    echo 78,39, \(a\)  | gmt text -F+f16p,Helvetica,black
+
+gmt end #show
+
+x_interval=7s
+y_interval=5s
+
+function plot_one_image(){
+    img=$1
+    out_name=$2
+    frame=$3    # -BNElb
+    label=$4
+    ## plot an image
+    gmt begin img_${out_name}_rts_latlon png
+
+        region=$(gmt grdinfo ${img} -Ir)  # get region, return -R/xmin/xmax/ymin/ymax
+        gmt grdimage ${img} -JU46N/${width}
+
+        # FORMAT_GEO_MAP, F: floating point, G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
+        # add frame and axes # -BNElb
+        gmt basemap  ${frame} --FORMAT_GEO_MAP=.xxxxF  -Bx5s -By3s # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
+        # add scale bar
+        gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=15p,Helvetica,black --MAP_SCALE_HEIGHT=10p
+        # add directional rose
+        gmt basemap -Tdn0.9/0.80+w2.5c+lW,E,S,N  --FONT_TITLE=16p,Helvetica,black
+
+        region_draw=-R0/14/0/14
+        # add label
+        echo 1,10.5, ${label}  | gmt text -JX${width} ${region_draw}  -F+f16p,Helvetica,white
+
+        # image acquired time
+        echo 7,10.5, July ${out_name}  | gmt text -JX${width} ${region_draw} -F+f16p,Helvetica-Bold,black
+
+        # upslope angle (vector: start point(x,y), direction (angle), lenght)
+        # W for pen, -Sv for the setting of vector arrow,
+        echo 10 8 270 3 |gmt plot -JX${width} ${region_draw}  -W2p,yellow,solid  -Sv0.45c+eA
+        echo 11.5 6.5 Upslope |gmt text -F+f16p,Helvetica-Bold,yellow
+
+        # a arrow to indicate headwall of thaw slumps
+        if [ ${out_name} == "2017"  ]; then
+            echo 6.2 4.3 30 1.5 |gmt plot -JX${width} ${region_draw}  -W2p,white,solid  -Sv0.45c+eA
+            echo 4.9 4.1 Headwall |gmt text -F+f16p,Helvetica-Bold,white
+        fi
+        if [ ${out_name} == "2018"  ]; then
+            echo 5.7 2.9 30 1.5 |gmt plot -JX${width} ${region_draw}  -W2p,white,solid  -Sv0.45c+eA
+            echo 4.4 2.7 Headwall |gmt text -F+f16p,Helvetica-Bold,white
+        fi
+        if [ ${out_name} == "2019"  ]; then
+            echo 5.7 1.4 30 1.5 |gmt plot -JX${width} ${region_draw}  -W2p,white,solid  -Sv0.45c+eA
+            echo 4.4 1.2 Headwall |gmt text -F+f16p,Helvetica-Bold,white
+        fi
+
+    gmt end #show
+
+}
+
+plot_one_image 2017.tif 2017 -BNElb \(b\)
+plot_one_image 2018.tif 2018 -BWStr \(c\)
+plot_one_image 2019.tif 2019 -BEStl \(d\)
 #
-#    gmt basemap -J"+proj=aea +lat_1=27.5 +lat_2=37.5 +lat_0=0 +lon_0=90 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"/14c \
-#    -R75/104/26/40 -B5
-#    # plot polygon, fill with lightgray (-G)
-#    gmt psxy ${qtp} -Glightgray
-#    # plot beiluhe, -W pen attributes (width, color, style)
-#    gmt psxy ${beiluhe} -W1p,red,solid
 #
-#    # (x, y[, font, angle, justify], text
-#    # font is a font specification with format [size,][font,][color] where size is text size in points,
-#    # font is the font to use, and color sets the font color.
-#    echo 92,33, Tibetan Plateau  | gmt text -F+f22p,Helvetica-Bold,black
-#
-#    echo 95.2,34.9, Beiluhe  | gmt text -F+f10p,Helvetica-Bold,black
-#
-#gmt end show
+## combine there four images, merge the image, and resize them to 967x721 2 by 2
+montage beilue_study_area.png img_2017_rts_latlon.png img_2018_rts_latlon.png img_2019_rts_latlon.png \
+-geometry 967x721+2+2 out.jpg
 
+#open out.tif
+mv out.jpg ~/codes/Texpad/polygon_based_rts_changeDet/figs/rts_multi_images_study_area_v3.jpg
 
-## plot an image
-gmt begin img_2017_rts_latlon tif
-
-    region=$(gmt grdinfo 2017.tif -Ir)  # get region, return -R/xmin/xmax/ymin/ymax
-    gmt grdimage 2017.tif -JU46N/14c
-
-    # FORMAT_GEO_MAP, F: floating point, G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
-    # add frame and axes
-    gmt basemap  -BNElb --FORMAT_GEO_MAP=.xxxxF  -Bx5s -By3s # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
-    # add scale bar
-    gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=15p,Helvetica,black --MAP_SCALE_HEIGHT=10p
-    # add directional rose
-    gmt basemap -Tdn0.9/0.85+w1.5c+lW,E,S,N  --FONT_TITLE=10p,Helvetica,black
-
-gmt end show
+# clean file
+rm *.gmt *.png *.tif
 
 
 
-
-## -V Select verbose mode, d for debug
+##### subplot is hard to adust, especially when the subimage has different extent and projection
+### abandon it, then layout this sub-image in powerpoint or other software
+##
+# -V Select verbose mode, d for debug
 #gmt begin study_area_img_2017_to_2019 tif
 #    # multiple plot # 1 row by 3 col,
 #    # -M margin
 #    # -F size
 #    # -R${xmin}/${xmax}/${ymin}/${ymax}
 #    # -A autolable
-#    gmt subplot begin 2x2 -M0.2c -Fs${width},${width},${width}/?,?,? -JX${width}  -A\(1\) -B -R${xmin}/${xmax}/${ymin}/${ymax} \
-#    --FONT_TAG=10p,red
+#    # -B -R${xmin}/${xmax}/${ymin}/${ymax}
+#    gmt subplot begin 2x2 -M0.1c -Ff13c/12c -A\(a\)  --FONT_TAG=10p,red
 #
-#        gmt grdimage 2017.tif -c
-#        # add scale bar for on the fist subplot
-#        gmt basemap -Ln0.8/0.12+w100+lm --FONT_ANNOT_PRIMARY=10p,Helvetica,red --MAP_SCALE_HEIGHT=5p --MAP_TICK_PEN_PRIMARY=2p,red -c[0,0]
+#        #######################################################
+#        ## qtp map
+##        gmt basemap -J"+proj=aea +lat_1=27.5 +lat_2=37.5 +lat_0=0 +lon_0=90 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"/${width} \
+##        -R75/104/26/40 -B5  -c0,0
+##        # plot polygon, fill with lightgray (-G)
+#        gmt psxy ${qtp} -J"+proj=aea +lat_1=27.5 +lat_2=37.5 +lat_0=0 +lon_0=90 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"/6c\
+#          -Glightgray -R75/104/26/40 -B5 -c0,0
+##        # plot beiluhe, -W pen attributes (width, color, style)
+#        gmt psxy ${beiluhe} -W1p,red,solid -c0,0
 #
-#        gmt grdimage 2018.tif -c
-#        gmt grdimage 2019.tif -c
+#        # (x, y[, font, angle, justify], text
+#        # font is a font specification with format [size,][font,][color] where size is text size in points,
+#        # font is the font to use, and color sets the font color.
+#        echo 92,33, Tibetan Plateau  | gmt text -F+f22p,Helvetica-Bold,black  -c0,0
+#        echo 95.2,34.9, Beiluhe  | gmt text -F+f10p,Helvetica-Bold,black -c0,0
+#
+#
+#        #######################################################
+#        # 2017 images
+#        region=$(gmt grdinfo 2017.tif -Ir)  # get region, return -R/xmin/xmax/ymin/ymax
+#        # FORMAT_GEO_MAP, F: floating point, G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
+#        gmt grdimage 2017.tif -JU46N/${width}  -BNElb --FORMAT_GEO_MAP=.xxxxF  -Bx${x_interval} -By${y_interval} -c0,1
+#        # add scale bar
+#        gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=15p,Helvetica,black --MAP_SCALE_HEIGHT=10p -c0,1
+#        # add directional rose
+#        gmt basemap -Tdn0.9/0.85+w1.5c+lW,E,S,N  --FONT_TITLE=10p,Helvetica,black -c0,1
+#
+#
+#        #######################################################
+#        # 2018 images
+#        region=$(gmt grdinfo 2018.tif -Ir)  # get region, return -R/xmin/xmax/ymin/ymax
+#        gmt grdimage 2018.tif -JU46N/${width} -BWStr --FORMAT_GEO_MAP=.xxxxF  -Bx${x_interval} -By${y_interval} -c1,0
+#
+##        # FORMAT_GEO_MAP, F: floating point, G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
+##        # add frame and axes
+##        gmt basemap  -BNElb --FORMAT_GEO_MAP=.xxxxF  -Bx5s -By3s -c[1,0]  # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
+##        # add scale bar
+##        gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=15p,Helvetica,black --MAP_SCALE_HEIGHT=10p -c[1,0]
+##        # add directional rose
+##        gmt basemap -Tdn0.9/0.85+w1.5c+lW,E,S,N  --FONT_TITLE=10p,Helvetica,black -c[1,0]
+#
+#
+#
+#        #######################################################
+#        # 2019 images
+#        region=$(gmt grdinfo 2019.tif -Ir)  # get region, return -R/xmin/xmax/ymin/ymax
+#        gmt grdimage 2019.tif -JU46N/${width}   -BSEtl --FORMAT_GEO_MAP=.xxxxF  -Bx${x_interval} -By${y_interval} -c1,1
+#
+##        # add scale bar
+##        gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=15p,Helvetica,black --MAP_SCALE_HEIGHT=10p -c[1,1]
+##        # add directional rose
+##        gmt basemap -Tdn0.9/0.85+w1.5c+lW,E,S,N  --FONT_TITLE=10p,Helvetica,black -c[1,1]
+#
 #
 #    gmt subplot end
 #
