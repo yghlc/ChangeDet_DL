@@ -34,18 +34,23 @@ function reproject_crop_img(){
     rm tmp.tif
 }
 
+qtp=qtp_outline.gmt
+beiluhe=beiluhe.gmt
+
+ogr2ogr -f "GMT"  ${qtp} ${qtp_outline}
+ogr2ogr -f "GMT"  ${beiluhe} ${beiluhe_shp}
+
 reproject_crop_img $img2017 2017.tif
 reproject_crop_img $img2018 2018.tif
 reproject_crop_img $img2019 2019.tif
+#
+
+
 
 #width=$(expr ${xmax} - ${xmin})
 width=14c  # 5 cm
 echo ${width}
 
-qtp=qtp_outline.gmt
-beiluhe=beiluhe.gmt
-ogr2ogr -f "GMT"  ${qtp} ${qtp_outline}
-ogr2ogr -f "GMT"  ${beiluhe} ${beiluhe_shp}
 
 # get proj4 for projection
 qtp_prj=$(gdalsrsinfo -o proj4 ran.shp "/Users/huanglingcao/Dropbox/Research/09 thermokarst and permafrost mapping/permafrost maps (gis files)/perma_maps_TP/ran/ran.shp")
@@ -57,7 +62,7 @@ echo ${qtp_prj}
 gmt begin beilue_study_area png
 
     gmt basemap -J"+proj=aea +lat_1=27.5 +lat_2=37.5 +lat_0=0 +lon_0=90 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"/${width} \
-    -R75/104/26/40 -B5
+    -R75/104/26/40 -B5 --FONT_ANNOT_PRIMARY=18p,Helvetica,black
     # plot polygon, fill with lightgray (-G)
     gmt psxy ${qtp} -Glightgray
     # plot beiluhe, -W pen attributes (width, color, style)
@@ -71,7 +76,7 @@ gmt begin beilue_study_area png
     echo 95.2,34.9, Beiluhe  | gmt text -F+f10p,Helvetica-Bold,black
 
     # add a label
-    echo 78,39, \(a\)  | gmt text -F+f16p,Helvetica,black
+    echo 78,39, \(a\)  | gmt text -F+f18p,Helvetica,black
 
 gmt end #show
 
@@ -89,38 +94,39 @@ function plot_one_image(){
         region=$(gmt grdinfo ${img} -Ir)  # get region, return -R/xmin/xmax/ymin/ymax
         gmt grdimage ${img} -JU46N/${width}
 
-        # FORMAT_GEO_MAP, F: floating point, G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
+        # FORMAT_GEO_MAP,  G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
         # add frame and axes # -BNElb
-        gmt basemap  ${frame} --FORMAT_GEO_MAP=.xxxxF  -Bx5s -By3s # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
+        # --FORMAT_FLOAT_OUT=%.6g for D
+        gmt basemap  ${frame}  --FORMAT_GEO_MAP=.xxxxF  -Bx5s -By3s --FONT_ANNOT_PRIMARY=18p,Helvetica,black # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
         # add scale bar
-        gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=15p,Helvetica,black --MAP_SCALE_HEIGHT=10p
+        gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=20p,Helvetica,black --MAP_SCALE_HEIGHT=10p
         # add directional rose
         gmt basemap -Tdn0.9/0.80+w2.5c+lW,E,S,N  --FONT_TITLE=16p,Helvetica,black
 
         region_draw=-R0/14/0/14
         # add label
-        echo 1,10.5, ${label}  | gmt text -JX${width} ${region_draw}  -F+f16p,Helvetica,white
+        echo 1,10.5, ${label}  | gmt text -JX${width} ${region_draw}  -F+f18p,Helvetica,white
 
         # image acquired time
-        echo 7,10.5, July ${out_name}  | gmt text -JX${width} ${region_draw} -F+f16p,Helvetica-Bold,black
+        echo 7,10.5, July ${out_name}  | gmt text -JX${width} ${region_draw} -F+f18p,Helvetica-Bold,black
 
         # upslope angle (vector: start point(x,y), direction (angle), lenght)
         # W for pen, -Sv for the setting of vector arrow,
         echo 10 8 270 3 |gmt plot -JX${width} ${region_draw}  -W2p,yellow,solid  -Sv0.45c+eA
-        echo 11.5 6.5 Upslope |gmt text -F+f16p,Helvetica-Bold,yellow
+        echo 11.5 6.5 Upslope |gmt text -F+f18p,Helvetica-Bold,yellow
 
         # a arrow to indicate headwall of thaw slumps
         if [ ${out_name} == "2017"  ]; then
             echo 6.2 4.3 30 1.5 |gmt plot -JX${width} ${region_draw}  -W2p,white,solid  -Sv0.45c+eA
-            echo 4.9 4.1 Headwall |gmt text -F+f16p,Helvetica-Bold,white
+            echo 4.7 4.1 Headwall |gmt text -F+f18p,Helvetica-Bold,white
         fi
         if [ ${out_name} == "2018"  ]; then
             echo 5.7 2.9 30 1.5 |gmt plot -JX${width} ${region_draw}  -W2p,white,solid  -Sv0.45c+eA
-            echo 4.4 2.7 Headwall |gmt text -F+f16p,Helvetica-Bold,white
+            echo 4.2 2.7 Headwall |gmt text -F+f18p,Helvetica-Bold,white
         fi
         if [ ${out_name} == "2019"  ]; then
             echo 5.7 1.4 30 1.5 |gmt plot -JX${width} ${region_draw}  -W2p,white,solid  -Sv0.45c+eA
-            echo 4.4 1.2 Headwall |gmt text -F+f16p,Helvetica-Bold,white
+            echo 4.2 1.2 Headwall |gmt text -F+f18p,Helvetica-Bold,white
         fi
 
     gmt end #show
@@ -134,7 +140,7 @@ plot_one_image 2019.tif 2019 -BEStl \(d\)
 #
 ## combine there four images, merge the image, and resize them to 967x721 2 by 2
 montage beilue_study_area.png img_2017_rts_latlon.png img_2018_rts_latlon.png img_2019_rts_latlon.png \
--geometry 967x721+2+2 out.jpg
+-geometry 1024x721+2+2 out.jpg
 
 #open out.tif
 mv out.jpg ~/codes/Texpad/polygon_based_rts_changeDet/figs/rts_multi_images_study_area_v3.jpg
