@@ -71,9 +71,9 @@ gmt begin beilue_study_area png
     # (x, y[, font, angle, justify], text
     # font is a font specification with format [size,][font,][color] where size is text size in points,
     # font is the font to use, and color sets the font color.
-    echo 92,33, Tibetan Plateau  | gmt text -F+f22p,Helvetica-Bold,black
+    echo 92,33, Tibetan Plateau  | gmt text -F+f24p,Helvetica-Bold,black
 
-    echo 95.2,34.9, Beiluhe  | gmt text -F+f10p,Helvetica-Bold,black
+    echo 96.5,34.9, Beiluhe  | gmt text -F+f18p,Helvetica-Bold,black
 
     # add a label
     echo 78,39, \(a\)  | gmt text -F+f20p,Helvetica,black
