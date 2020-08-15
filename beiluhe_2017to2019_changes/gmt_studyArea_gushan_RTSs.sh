@@ -76,14 +76,16 @@ qtp_prj=$(gdalsrsinfo -o proj4 ran.shp "/Users/huanglingcao/Dropbox/Research/09 
 ## plot an image
 gmt begin img_2017_rts_latlon tif
 
+    region=$(gmt grdinfo 2017.tif -Ir)  # get region, return -R/xmin/xmax/ymin/ymax
     gmt grdimage 2017.tif -JU46N/14c
 
     # FORMAT_GEO_MAP, F: floating point, G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
-    gmt basemap  -BNE --FORMAT_GEO_MAP=.xxxxF -B3s # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
-#    gmt basemap -Ln0.8/0.1+c92.910:34.847N+w100+lm+f --FONT_ANNOT_PRIMARY=15p,Helvetica,red --MAP_SCALE_HEIGHT=10p --MAP_TICK_PEN_PRIMARY=2p,red
-#    gmt basemap -LjBR+w100+lm+f --FONT_ANNOT_PRIMARY=15p,Helvetica,red --MAP_SCALE_HEIGHT=10p --MAP_TICK_PEN_PRIMARY=2p,red
-
-#    gmt basemap --FONT_ANNOT_PRIMARY=9p -LjRB+c19:23N+f+w5k+l1:160,000+u+o0.5c --FONT_LABEL=10p
+    # add frame and axes
+    gmt basemap  -BNElb --FORMAT_GEO_MAP=.xxxxF  -Bx5s -By3s # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
+    # add scale bar
+    gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=15p,Helvetica,black --MAP_SCALE_HEIGHT=10p
+    # add directional rose
+    gmt basemap -Tdn0.9/0.85+w1.5c+lW,E,S,N  --FONT_TITLE=10p,Helvetica,black
 
 gmt end show
 
