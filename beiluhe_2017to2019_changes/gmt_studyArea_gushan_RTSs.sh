@@ -76,7 +76,7 @@ gmt begin beilue_study_area png
     echo 95.2,34.9, Beiluhe  | gmt text -F+f10p,Helvetica-Bold,black
 
     # add a label
-    echo 78,39, \(a\)  | gmt text -F+f18p,Helvetica,black
+    echo 78,39, \(a\)  | gmt text -F+f20p,Helvetica,black
 
 gmt end #show
 
@@ -97,18 +97,18 @@ function plot_one_image(){
         # FORMAT_GEO_MAP,  G: suffix (E, N,W)  # interval: 3 second, .xxxx for four digits
         # add frame and axes # -BNElb
         # --FORMAT_FLOAT_OUT=%.6g for D
-        gmt basemap  ${frame}  --FORMAT_GEO_MAP=.xxxxF  -Bx5s -By3s --FONT_ANNOT_PRIMARY=18p,Helvetica,black # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
+        gmt basemap  ${frame}  --FORMAT_FLOAT_OUT=%.5g --FORMAT_GEO_MAP=D  -Bx5s -By3s --FONT_ANNOT_PRIMARY=18p,Helvetica,black # -B+D"ddd:xxx"  #-BWSne -B5mg5m -B5g5+u"@:8:000m@::"
         # add scale bar
         gmt basemap -Ln0.75/0.1+c35N+w100e+u+f ${region} --FONT_ANNOT_PRIMARY=20p,Helvetica,black --MAP_SCALE_HEIGHT=10p
         # add directional rose
-        gmt basemap -Tdn0.9/0.80+w2.5c+lW,E,S,N  --FONT_TITLE=16p,Helvetica,black
+        gmt basemap -Tdn0.9/0.80+w2.5c+lW,E,S,N  --FONT_TITLE=18p,Helvetica,black
 
         region_draw=-R0/14/0/14
         # add label
-        echo 1,10.5, ${label}  | gmt text -JX${width} ${region_draw}  -F+f18p,Helvetica,white
+        echo 1,10.5, ${label}  | gmt text -JX${width} ${region_draw}  -F+f20p,Helvetica,white
 
         # image acquired time
-        echo 7,10.5, July ${out_name}  | gmt text -JX${width} ${region_draw} -F+f18p,Helvetica-Bold,black
+        echo 7,10.5, July ${out_name}  | gmt text -JX${width} ${region_draw} -F+f20p,Helvetica-Bold,black
 
         # upslope angle (vector: start point(x,y), direction (angle), lenght)
         # W for pen, -Sv for the setting of vector arrow,
@@ -140,7 +140,7 @@ plot_one_image 2019.tif 2019 -BEStl \(d\)
 #
 ## combine there four images, merge the image, and resize them to 967x721 2 by 2
 montage beilue_study_area.png img_2017_rts_latlon.png img_2018_rts_latlon.png img_2019_rts_latlon.png \
--geometry 1024x721+2+2 out.jpg
+-geometry 977x729+2+2 out.jpg
 
 #open out.tif
 mv out.jpg ~/codes/Texpad/polygon_based_rts_changeDet/figs/rts_multi_images_study_area_v3.jpg
