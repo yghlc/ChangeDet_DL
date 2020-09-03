@@ -99,33 +99,48 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
     # get union of polygons at the same location
     union_polygons, occurrence_list, occur_time_list = polygons_change_analyze.get_polygon_union_occurrence_same_loc(polygons_list_2d)
 
-    time_iou_1st = shapefile_list[0]['time_iou']
     rm_polygon_idx_2d = []
-    for idx, t_iou_value_1st in enumerate(time_iou_1st): # shapefile_list[0].geometry.values
-        # read time iou
-        time_iou_values = [t_iou_value_1st]
-        idx_list = [idx]
-        polygon = shapefile_list[0].geometry.values[idx]
 
-        # find the union polygon
-        cor_union_poly = None
-        for union_poly in union_polygons:
-            intersection = polygon.intersection(union_poly)
-            if intersection.is_empty is False:
-                cor_union_poly = union_poly
-                break
-        if cor_union_poly is None:
-            raise ValueError('Error, The union is None')
+    ################ read time index based on the first t0 polygon and assume all location has the same number of polygons  ####
+    # time_iou_1st = shapefile_list[0]['time_iou']
+    # for idx, t_iou_value_1st in enumerate(time_iou_1st): # shapefile_list[0].geometry.values
+    #     # read time iou
+    #     time_iou_values = [t_iou_value_1st]
+    #     idx_list = [idx]
+    #     polygon = shapefile_list[0].geometry.values[idx]
+    #
+    #     # find the union polygon
+    #     cor_union_poly = None
+    #     for union_poly in union_polygons:
+    #         intersection = polygon.intersection(union_poly)
+    #         if intersection.is_empty is False:
+    #             cor_union_poly = union_poly
+    #             break
+    #     if cor_union_poly is None:
+    #         raise ValueError('Error, The union is None')
+    #
+    #     # read other polygon and time_iou in other shape file
+    #     for time in range(1, normal_occurrence):
+    #         t_idx, t_iou, t_polygon = get_polygon_idx_and_time_iou(cor_union_poly,shapefile_list[time])
+    #         time_iou_values.append(t_iou)
+    #         idx_list.append(t_idx)
+    #
+    #     if None in idx_list:
+    #         basic.outputlogMessage('Warning, None in the index list: %s '%str(idx_list))
+    #         continue
 
-        # read other polygon and time_iou in other shape file
-        for time in range(1, normal_occurrence):
-            t_idx, t_iou, t_polygon = get_polygon_idx_and_time_iou(cor_union_poly,shapefile_list[time])
+    # based on each union polygons, to read time_iou, allow each location has various polygons #
+    for idx, union_poly in enumerate(union_polygons):  # shapefile_list[0].geometry.values
+        time_iou_values = []
+        idx_list = []
+        for time in range(0, normal_occurrence):
+            t_idx, t_iou, t_polygon = get_polygon_idx_and_time_iou(union_poly,shapefile_list[time])
             time_iou_values.append(t_iou)
             idx_list.append(t_idx)
 
+        # remove none value
         if None in idx_list:
-            basic.outputlogMessage('Warning, None in the index list: %s '%str(idx_list))
-            continue
+            time_iou_values.remove(None)
 
         # check if time iou is monotonically increasing
         time_iou_array = np.array(time_iou_values, dtype=np.float64)       # specify the dtype to avoid unexpected error
@@ -143,6 +158,8 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
             #         errors : {'ignore', 'raise'}, default 'raise'
             #             If 'ignore', suppress error and only existing labels are
             #             dropped.
+            if rm_idx is None:
+                continue
             shapefile.drop(rm_idx,inplace=True,errors='ignore')     # some rm_idx many have been dropped previously
 
     # save to files
