@@ -83,7 +83,7 @@ def remove_non_active_thaw_slumps(shp_list,para_file):
         if 'time_iou' not in shapefile.keys():
             raise ValueError('error, %s do not have time_iou, please conduct polygon_change_analyze first'%shp)
         shapefile_list.append(shapefile)
-        polygons_list_2d.append(vector_gpd.fix_invalid_polygons(shapefile.geometry.values, shp))  # read the polygons and also check the invalidity
+        polygons_list_2d.append(vector_gpd.fix_invalid_polygons(shapefile.geometry.values))  # read the polygons and also check the invalidity
 
         # print(shapefile.keys())
         # print(shapefile['time_iou'])
