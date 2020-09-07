@@ -30,11 +30,11 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', save_org_dir=No
     if os.path.isdir(save_dir) is False:
         io_function.mkdir(save_dir)
 
-    if save_org_dir is not None and os.path.isdir(save_dir) is False:
+    if save_org_dir is not None and os.path.isdir(save_org_dir) is False:
         io_function.mkdir(save_org_dir)
 
     if save_org_dir is not None:
-        copied_org_img_path = os.path.join(save_dir,os.path.basename(tif_path))
+        copied_org_img_path = os.path.join(save_org_dir,os.path.basename(tif_path))
         io_function.copy_file_to_dst(tif_path,copied_org_img_path)
 
     # filename_no_ext
