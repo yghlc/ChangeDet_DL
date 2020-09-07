@@ -25,10 +25,17 @@ from  get_planet_image_list import  get_Planet_SR_image_list_overlap_a_polygon
 
 prePlanetImage = os.path.expanduser('~/codes/PycharmProjects/Landuse_DL/planetScripts/prePlanetImage.py')
 
-def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images'):
+def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', save_org_dir=None):
 
     if os.path.isdir(save_dir) is False:
         io_function.mkdir(save_dir)
+
+    if save_org_dir is not None and os.path.isdir(save_dir) is False:
+        io_function.mkdir(save_org_dir)
+
+    if save_org_dir is not None:
+        copied_org_img_path = os.path.join(save_dir,os.path.basename(tif_path))
+        io_function.copy_file_to_dst(tif_path,copied_org_img_path)
 
     # filename_no_ext
     output = os.path.splitext(os.path.basename(tif_path))[0]
@@ -83,7 +90,7 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images'):
     return fin_output
 
 
-def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, cloud_cover_thr, geojson_list, save_dir, to_rgb=True, nodata=0):
+def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, cloud_cover_thr, geojson_list, save_dir, to_rgb=True, nodata=0, save_org_dir=None):
     '''
     create mosaic for Planet images within a grid
     :param polygon:
@@ -110,7 +117,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     rgb_image_list = []
     if to_rgb:
         for tif_path in planet_img_list:
-            rgb_img = convert_planet_to_rgb_images(tif_path)
+            rgb_img = convert_planet_to_rgb_images(tif_path,save_org_dir=save_org_dir)
             rgb_image_list.append(rgb_img)
     if len(rgb_image_list) > 0:
         planet_img_list = rgb_image_list
@@ -181,6 +188,8 @@ def main(options, args):
         # read polygons and reproject to 4326 projection
         grid_polygons_latlon = vector_gpd.read_shape_gpd_to_NewPrj(grid_polygon_shp,'EPSG:4326')
 
+    original_img_copy_dir = options.original_img_copy_dir
+
     # create mosaic of each grid
     cloud_cover_thr = options.cloud_cover
     cloud_cover_thr = cloud_cover_thr * 100         # for Planet image, it is percentage
@@ -191,7 +200,7 @@ def main(options, args):
     io_function.mkdir(save_dir)
     for id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon):
         create_moasic_of_each_grid_polygon(id, polygon, poly_latlon, out_res,
-                                           cloud_cover_thr, geojson_list,save_dir)
+                                           cloud_cover_thr, geojson_list,save_dir,save_org_dir=original_img_copy_dir)
 
         pass
 
@@ -217,6 +226,9 @@ if __name__ == "__main__":
     parser.add_option("-r", "--out_res",
                       action="store", dest="out_res", type=float,default=30,
                       help="the output resolution of mosaic")
+    parser.add_option("-o", "--original_img_copy_dir",
+                      action="store", dest="original_img_copy_dir",
+                      help="the folder to copy and save original images")
     # parser.add_option("-i", "--item_types",
     #                   action="store", dest="item_types",default='PSScene4Band',
     #                   help="the item types, e.g., PSScene4Band,PSOrthoTile")
