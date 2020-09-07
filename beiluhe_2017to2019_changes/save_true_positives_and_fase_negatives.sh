@@ -15,9 +15,12 @@ py=~/codes/PycharmProjects/DeeplabforRS/save_FP_FN_polygons.py
 
 # exp11
 
-res_dir=~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July/BLH_change_deeplabV3+_4_exp11_iter30000_2017_2019_bufferArea300_tiles
-testid=BLH_change_deeplabV3+_4_exp11_iter30000
-test_name=2017_2019_bufferArea300
+testid=BLH_change_deeplabV3+_4_exp12_iter30000
+test_name=2017_2019
+
+
+dir=~/Data/Qinghai-Tibet/beiluhe/result/result_multi_temporal_changes_17-19July
+res_dir=${dir}/${testid}_${test_name}_tiles
 
 para_file=para_qtp.ini
 
