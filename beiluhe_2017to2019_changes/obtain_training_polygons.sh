@@ -17,8 +17,9 @@ py=~/codes/PycharmProjects/ChangeDet_DL/dataTools/merge_neg_pos_polygons.py
 #gt_201807=${dir}/train_polygons_for_planet_201707/blh_manu_RTS_utm_201807.shp
 #gt_201907=${dir}/train_polygons_for_planet_201707/blh_manu_RTS_utm_201907.shp
 
-neg_shp=${dir}/train_polygons_for_planet_201907/blh_train_neg_polygons_201907.shp
-version=v5
+#neg_shp=${dir}/train_polygons_for_planet_201907/blh_train_neg_polygons_201907.shp
+#version=v5
+version=v5_noNEG
 
 for year in  2017 2018 2019 ; do
     echo $year

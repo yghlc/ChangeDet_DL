@@ -73,8 +73,14 @@ def merge_pos_neg_polygons_files(pos_polygon_shp, neg_polygon_shp, save_path):
 
 def main(options, args):
 
-    pos_polygon_shp = args[0]
-    neg_polygon_shp = args[1]
+    if len(args) == 1:
+        pos_polygon_shp = args[0]
+        neg_polygon_shp = ""
+    elif len(args) == 2:
+        pos_polygon_shp = args[0]
+        neg_polygon_shp = args[1]
+    else:
+        raise ValueError('incorrect input')
 
     out_shp = options.output
 
