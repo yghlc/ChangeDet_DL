@@ -238,7 +238,7 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
         df.to_excel(writer)
         basic.outputlogMessage('write records of downloaded scenes to %s'%save_xlsx)
 
-    scene_folder_no_assets_txt = os.path.splitext(save_xlsx) + 'scenes_noAsset_.txt'
+    scene_folder_no_assets_txt = os.path.splitext(save_xlsx)[0] + 'scenes_noAsset_.txt'
     with open(scene_folder_no_assets_txt, 'w') as f_obj:
         for scene_dir in scene_without_asset:
             f_obj.writelines(scene_dir + '\n')
