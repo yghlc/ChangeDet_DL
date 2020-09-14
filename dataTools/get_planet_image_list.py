@@ -189,6 +189,8 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
     image_type_list = []    # 'analytic_sr' (surface reflectance) or 'analytic'
     modife_time_list = []
 
+    scene_without_asset = []       # find scene folders without asset
+
     for a_scene_file_dir in scene_geojson_folders:
         # print(id)
         scene_id, cloud_cover, acquisitionDate, geojson_path, scene_folder, asset_count, image_type,asset_files, modified_time = \
@@ -206,6 +208,10 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
         asset_files_list.append(asset_files)
         image_type_list.append(image_type)
         modife_time_list.append(modified_time)
+
+        if asset_count == 0:
+            scene_without_asset.append(a_scene_file_dir)
+
 
     add_scene_count = len(scene_id_list) - old_scene_count
     if add_scene_count < 1:
@@ -231,6 +237,11 @@ def save_planet_images_to_excel(image_dir,save_xlsx):
     with pd.ExcelWriter(save_xlsx) as writer:
         df.to_excel(writer)
         basic.outputlogMessage('write records of downloaded scenes to %s'%save_xlsx)
+
+    scene_folder_no_assets_txt = os.path.splitext(save_xlsx) + 'scenes_noAsset_.txt'
+    with open('scene_folder_no_assets_txt', 'w') as f_obj:
+        for scene_dir in scene_without_asset:
+            f_obj.writelines(scene_dir + '\n')
 
     return True
 
