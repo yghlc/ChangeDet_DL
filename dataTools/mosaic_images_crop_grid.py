@@ -125,6 +125,10 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     # create mosaic using gdal_merge.py
     # because in gdal_merge.py, a later image will replace one, so we put image with largest cloud cover first
     file_name = os.path.basename(save_dir)
+    fin_out = os.path.join(save_dir, file_name + '_sub_%d.tif' % id)
+    if os.path.isfile(fin_out):
+        basic.outputlogMessage('Warning, skip %s because it already exists, remove it if want to regenerate it')
+        return fin_out
     out = os.path.join(save_dir,file_name + '_sub_%d_tmp.tif'%id)
     if os.path.isfile(out):
         io_function.delete_file_or_dir(out)
@@ -145,7 +149,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
         sys.exit(status)
 
     # crop
-    fin_out = os.path.join(save_dir,file_name + '_sub_%d.tif'%id)
+
     # #  polygon.exterior.coords
     minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
     print(minx, miny, maxx, maxy)
