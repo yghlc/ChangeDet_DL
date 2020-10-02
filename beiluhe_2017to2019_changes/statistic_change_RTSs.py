@@ -387,15 +387,15 @@ def statistic_using_manu_results():
 
     #
     # # plot histogram on the change polygons (based on manual delineation) of thaw slumps in Beiluhe
-    out_dir=os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
-    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019')
-    manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201707_vs_201807.shp')
-    manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_T_201807_vs_201907.shp')
+    out_dir=os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019_v2')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/manu_blh_2017To2019_v2')
+    manu_cd_2017vs2018 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_v2_T_201707_vs_201807.shp')
+    manu_cd_2018vs2019 = os.path.join(shp_dir, 'change_manu_blh_2017To2019_v2_T_201807_vs_201907.shp')
 
     c_RTS_info_2017vs2018 = group_change_polygons(manu_cd_2017vs2018,ground_truth_201707,ground_truth_201807,
-                                                  save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
+                                                  save_path=os.path.join(out_dir,'rts_change_2017vs2018_v2.shp'))
     c_RTS_info_2018vs2019 = group_change_polygons(manu_cd_2018vs2019,ground_truth_201807,ground_truth_201907,
-                                                  save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
+                                                  save_path=os.path.join(out_dir,'rts_change_2018vs2019_v2.shp'))
 
 
     ############################################################################################################
@@ -469,13 +469,13 @@ def statistic_using_auto_exp7_results():
 if __name__ == "__main__":
 
 
-    # statistic_using_manu_results()
+    statistic_using_manu_results()
 
     # statistic_using_auto_exp3_results()
 
     # statistic_using_auto_exp5_results()
 
-    statistic_using_auto_exp7_results()
+    # statistic_using_auto_exp7_results()
 
 
 
