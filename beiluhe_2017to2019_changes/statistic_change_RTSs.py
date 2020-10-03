@@ -466,10 +466,22 @@ def statistic_using_auto_exp7_results():
     c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp7_cd_2018vs2019,save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
 
 
+def statistic_using_auto_exp14_allPoly_results():
+
+    ##########################################################################################
+    # plot histogram on the change polygons (based on exp7) of thaw slumps in Beiluhe
+    out_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp14_allPoly_2017to2019')
+    shp_dir = os.path.expanduser('~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/polygon_based_ChangeDet/autoMap_exp14_allPoly_2017to2019')
+    autoMap_exp7_cd_2017vs2018 = os.path.join(shp_dir, 'change_autoMap_exp14_allPoly_2017to2019_T_I0_vs_I1.shp')
+    autoMap_exp7_cd_2018vs2019 = os.path.join(shp_dir, 'change_autoMap_exp14_allPoly_2017to2019_T_I1_vs_I2.shp')
+
+    c_RTS_info_2017vs2018 = group_change_polygons(autoMap_exp7_cd_2017vs2018,save_path=os.path.join(out_dir,'rts_change_2017vs2018.shp'))
+    c_RTS_info_2018vs2019 = group_change_polygons(autoMap_exp7_cd_2018vs2019,save_path=os.path.join(out_dir,'rts_change_2018vs2019.shp'))
+
 if __name__ == "__main__":
 
 
-    statistic_using_manu_results()
+    # statistic_using_manu_results()
 
     # statistic_using_auto_exp3_results()
 
@@ -477,7 +489,7 @@ if __name__ == "__main__":
 
     # statistic_using_auto_exp7_results()
 
-
+    statistic_using_auto_exp14_allPoly_results()
 
     pass
 
