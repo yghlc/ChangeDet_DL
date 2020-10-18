@@ -8,10 +8,15 @@
 #add time: 18 October, 2020
 
 img_dir=~/Data/Qinghai-Tibet/beiluhe/beiluhe_planet/beiluhe_basin
+shp_dir=~/Data/Qinghai-Tibet/beiluhe/thaw_slumps
 
 img2017=${img_dir}/201707/20170719_3B_AnalyticMS_SR_mosaic_8bit_rgb_sharpen_new_warp.tif
 img2018=${img_dir}/201807/20180725_3B_AnalyticMS_SR_mosaic_8bit_rgb_sharpen_new_warp.tif
 img2019=${img_dir}/201907/20190730_3B_AnalyticMS_SR_mosaic_8bit_rgb_sharpen_new_warp.tif
+
+shp2017=${shp_dir}/train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp
+shp2018=${shp_dir}/train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp
+shp2019=${shp_dir}/train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp
 
 # get sub image using gdal_translate
 xmin=461396
@@ -33,7 +38,16 @@ reproject_crop_img $img2017 2017.tif
 reproject_crop_img $img2018 2018.tif
 reproject_crop_img $img2019 2019.tif
 
+# crop a polygon
+function get_polygon(){
+    in=$1
+    out=$2
+    ogr2ogr -spat ${xmin} ${ymin} ${xmax} 3869900 -f GMT -t_srs EPSG:4326 ${out} ${1}
+}
 
+get_polygon $shp2017 2017.gmt
+get_polygon $shp2018 2018.gmt
+get_polygon $shp2019 2019.gmt
 
 #width=$(expr ${xmax} - ${xmin})
 width=5c  # 5 cm
@@ -57,16 +71,19 @@ gmt begin img_2017_to_2019_ex1 jpg
     --FONT_TAG=10p,red
 
         gmt grdimage 2017.tif -c
+#        gmt psxy 2017.gmt -W0.5p,black,solid -c0,0
         # add scale bar for on the fist subplot
-        gmt basemap -Ln0.15/0.15+c35N+w100e ${extlatlon} --FONT_ANNOT_PRIMARY=10p,Helvetica,black --MAP_SCALE_HEIGHT=5p -c[0,0]
+        gmt basemap -Ln0.15/0.15+c35N+w100e ${extlatlon} --FONT_ANNOT_PRIMARY=10p,Helvetica,black --MAP_SCALE_HEIGHT=5p -c0,0
 
-        echo 11,11, July 2017  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black
+        echo 11,11, July 2017  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black -c0,0
 #
-        gmt grdimage 2018.tif -c
-        echo 11,11, July 2018  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black
+        gmt grdimage 2018.tif -c0,1
+#        gmt psxy 2018.gmt -W0.5p,blue,solid -c0,1
+        echo 11,11, July 2018  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black  -c0,1
 
-        gmt grdimage 2019.tif -c
-        echo 11,11, July 2019  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black # Helvetica-Bold
+        gmt grdimage 2019.tif -c0,2
+#        gmt psxy 2019.gmt -W0.5p,red,solid -c0,2  # this boundaries is not accurate
+        echo 11,11, July 2019  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black -c0,2 # Helvetica-Bold
 
     gmt subplot end
 
@@ -74,4 +91,5 @@ gmt end show
 
 rm 2017.tif 2018.tif 2019.tif
 rm 2017.*
+rm *.gmt
 
