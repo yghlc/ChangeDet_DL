@@ -58,7 +58,7 @@ gmt begin img_2017_to_2019_ex1 jpg
 
         gmt grdimage 2017.tif -c
         # add scale bar for on the fist subplot
-        gmt basemap -Ln0.15/0.2+c35N+w100e ${extlatlon} --FONT_ANNOT_PRIMARY=10p,Helvetica,black --MAP_SCALE_HEIGHT=5p -c[0,0]
+        gmt basemap -Ln0.15/0.15+c35N+w100e ${extlatlon} --FONT_ANNOT_PRIMARY=10p,Helvetica,black --MAP_SCALE_HEIGHT=5p -c[0,0]
 
         echo 11,11, July 2017  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black
 #
