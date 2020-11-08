@@ -25,14 +25,33 @@ from shapely.geometry import mapping        # transform to GeJSON format
 
 import math
 
-# input earth engine, used: ~/programs/anaconda3/envs/ee/bin/python, or change to ee by "source activate ee"
+# input earth engine, used: ~/programs/anaconda3/envs/gee/bin/python, or change to ee by "source activate gee"
 # need shapely, geopandas, gdal
 import ee
 
 # re-project
-from pyproj import Proj, transform
+from functools import partial
+import pyproj
+from shapely.ops import transform
 
 shp_polygon_projection = None
+
+# image specification
+img_speci = { # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_SR
+            'landsat8_rgb':{'product':'LANDSAT/LC08/C01/T1_SR', 'bands':['B4', 'B3', 'B2'], 'res':30},
+              # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_TOA
+             'landsat8_pan':{'product':'LANDSAT/LC08/C01/T1_TOA', 'bands':['B8'], 'res':15},
+              # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LE07_C01_T1_SR
+              'landsat7_rgb':{'product':'LANDSAT/LE07/C01/T1_SR', 'bands':['B4', 'B3', 'B2'], 'res':30},
+              # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LE07_C01_T1_TOA
+              'landsat7_pan':{'product':'LANDSAT/LE07/C01/T1_TOA', 'bands':['B8'], 'res':15},
+              # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LT05_C01_T1_SR
+               'landsat5_rgb':{'product':'LANDSAT/LT05/C01/T1_SR', 'bands':['B3', 'B2', 'B1'], 'res':30},
+              # https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2
+                'sentinel2_rgb':{'product':'COPERNICUS/S2', 'bands':['B4', 'B3', 'B2'], 'res':10},
+              # https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR#description
+                 'sentinel2_rgb_sr': {'product': 'COPERNICUS/S2_SR', 'bands': ['B4', 'B3', 'B2'], 'res': 10}
+            }
 
 def get_projection_proj4(geo_file):
     import basic_src.map_projection as map_projection
@@ -40,6 +59,58 @@ def get_projection_proj4(geo_file):
 
 def meters_to_degress_onEarth(distance):
     return (distance/6371000.0)*180.0/math.pi
+
+def reproject_shapely_polygon(in_polygon_shapely,src_prj, new_projection):
+    project = partial(
+        pyproj.transform,
+        pyproj.Proj(src_prj),  # source coordinate system
+        pyproj.Proj(new_projection))  # destination coordinate system
+
+    out_polygon = transform(project, in_polygon_shapely)  # apply projection
+    # polygon_shapely = transform(project, polygon_shapely)
+    return out_polygon
+
+def get_image_name(image_info):
+
+    if image_info['type'] != 'Image':
+        raise ValueError('input is a information of an image')
+    satellite = image_info['properties']['SPACECRAFT_NAME']
+
+    #  timestamp in miliseconds (like in JavaScript), but fromtimestamp() expects Unix timestamp, in seconds
+    fromtimestamp = image_info['properties']['system:time_start'] / 1000  #
+    acquire_time = datetime.fromtimestamp(fromtimestamp)
+    acquire_time_str = acquire_time.strftime('%Y-%m-%d')
+    bands_str = '_'.join([item['id'] for item in image_info['bands']])
+
+    out_name = satellite +'_' + bands_str + '_' +acquire_time_str
+    return out_name
+
+def get_crop_region(polygon_shapely,img_crs, buffer_size):
+
+
+    # re-projection if necessary (no need to reproject, GEE only accept lat lon to crop)
+    # but need to do conduct buffer operation in XY coordinates
+
+    if img_crs != 'epsg:4326':
+        polygon_prj = reproject_shapely_polygon(polygon_shapely,shp_polygon_projection, img_crs)
+        expansion_polygon = polygon_prj.buffer(buffer_size)
+        # projection back
+        expansion_polygon = reproject_shapely_polygon(expansion_polygon,img_crs, shp_polygon_projection)
+    else:
+        # change buffer area from meters to degree
+        buffer_size = meters_to_degress_onEarth(buffer_size)
+        expansion_polygon = polygon_shapely.buffer(buffer_size)
+
+    # defined a crop region (# this cause an  Internal error )
+    # expansion_polygon_json = mapping(expansion_polygon)
+    # crop_region = ee.Geometry(expansion_polygon_json)
+
+    polygon_env = expansion_polygon.envelope
+    x, y = polygon_env.exterior.coords.xy
+    crop_region_list = [min(x),min(y), max(x), max(y)]
+    crop_region = ee.Geometry.Rectangle(crop_region_list)
+
+    return crop_region
 
 # quick test
 def environment_test():
@@ -88,20 +159,19 @@ def test_download():
         time.sleep(30)
     print('Done with the Export to the Drive')
 
-def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_type, polygon_shapely, polygon_idx, save_dir, buffer_size):
+def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_speci, polygon_shapely, polygon_idx, save_dir, buffer_size):
     '''
     python time lapse image using google earth engine
     :param start_date: start date, e.g., 2019-12-31
     :param end_date: e.g., 2019-12-31
     :param cloud_cover_thr: e.g., 0.3
-    :param img_type: e.g., 'LANDSAT/LC08/C01/T1' or 'COPERNICUS/S2 or COPERNICUS/S2_SR'
+    :param img_speci: defined product, bands, resolution e.g., 'LANDSAT/LC08/C01/T1' or 'COPERNICUS/S2 or COPERNICUS/S2_SR'
     :param polygon_bound: the extent
     :param polygon_idx: the index of the polygon in the original folder
     :param buffer_size: buffer_size
     :return:
     '''
 
-    # point = ee.Geometry.Point(-122.262, 37.8719)
     start = ee.Date(start_date)  # '%Y-%m-%d'
     finish = ee.Date(end_date)
 
@@ -113,116 +183,124 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_ty
                                          [x[2], y[2]],
                                          [x[3], y[3]]])
 
-    filtercollection = ee.ImageCollection(img_type). \
+    filtercollection = ee.ImageCollection(img_speci['product']). \
         filterBounds(polygon_bound). \
         filterDate(start, finish). \
         filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_cover_thr*100)). \
         sort('CLOUD_COVER', True)
-    # print(filtercollection)                 # print serialized request instructions
-    print(filtercollection.getInfo())       # print object information
 
-    select_image = ee.Image(filtercollection.first()).select(['B4','B3','B2'])
-    print(select_image.getInfo())
+    # check count  # getInfo can get python number (not ee.Number)
+    count = filtercollection.size().getInfo()
+    if count < 1:
+        basic.outputlogMessage('No results for %dth polygon with %s'%(polygon_idx,str(img_speci)))
+        return False
+
+    print('Image count %d'%count)
+    # print(filtercollection)                 # print serialized request instructions
+    # print(filtercollection.getInfo())       # print object information
+
+    select_image = ee.Image(filtercollection.first()).select(img_speci['bands'])
+
+    image_info = select_image.getInfo()
+    save_file_name = get_image_name(image_info) + '_poly_%d'%polygon_idx
+
 
     # polygon_idx
-    export_dir = 'gee_saved' # os.path.join(save_dir,'sub_images_of_%d_polygon'%polygon_idx)
+    # export_dir = 'gee_saved' # os.path.join(save_dir,'sub_images_of_%d_polygon'%polygon_idx)
+    # export_dir = ee.String(os.path.join(save_dir,'images_of_%d_polygon'%polygon_idx))
+    # cannot have a sub folder in Google Drive.
+    export_dir = 'images_of_%d_polygon'%polygon_idx
 
-    projI = select_image.select('B4').projection().getInfo()  # Exporting the whole image takes time, therefore, roughly select the center region of the image
+    projI = select_image.select(img_speci['bands'][0]).projection().getInfo()  # Exporting the whole image takes time, therefore, roughly select the center region of the image
     img_crs = projI['crs']
 
-    expansion_polygon = polygon_shapely.buffer(buffer_size)
-    # re-projection if necessary
-    img_projection = img_crs
-    if img_projection != 'epsg:4326':
-        from functools import partial
-        import pyproj
-        from shapely.ops import transform
+    crop_region = get_crop_region(polygon_shapely,img_crs, buffer_size)
 
-        project = partial(
-            pyproj.transform,
-            pyproj.Proj(shp_polygon_projection),  # source coordinate system
-            pyproj.Proj(img_projection))  # destination coordinate system
 
-        expansion_polygon = transform(project, expansion_polygon)  # apply projection
-        # polygon_shapely = transform(project, polygon_shapely)
 
-    # export to google drive
-
-    # expansion_polygon_json = mapping(expansion_polygon)
-    x, y = expansion_polygon.envelope.exterior.coords.xy
-    polygon_crop = ee.Geometry.Polygon([[x[0], y[0]],
-                                         [x[1], y[1]],
-                                         [x[2], y[2]],
-                                         [x[3], y[3]]])
-    print(polygon_crop.getInfo()['coordinates'])
-
-    # config = {
-    #     'description': 's2_test_image',
-    #
-    #     'region': polygon_crop.getInfo()['coordinates'],
-    #     'scale': 10,  # the image is exported with 15m resolution
-    #     'fileFormat': 'GeoTIFF',
-    #     'maxPixels': 1e12
-    # }
-    #
-    # exp = ee.batch.Export.image.toDrive(select_image, **config)
-
-    # fileNamePrefix='myFilePrefix',
-    # crs=myCRS
-    # region = polygon_crop.getInfo()['coordinates'],
-    #  folder=export_dir,
     task = ee.batch.Export.image.toDrive(image=select_image,
-                                         description='s2_image_test_3',
-                                         scale=10)
+                                         region=crop_region,
+                                         description=save_file_name,
+                                         folder=export_dir,
+                                         scale=img_speci['res'])
+
+    # region=crop_region,
 
     task.start()
-    print(task.status())
-    print(ee.batch.Task.list())
+    # print(task.status())
+    # print(ee.batch.Task.list())
     import time
+    print('%s: Start transferring %s to Drive..................' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
     while task.active():
-        print('Transferring Data to Drive..................')
+        print('%s: Transferring %s to Drive..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
         time.sleep(30)
-    print('Done with the Export to the Drive')
+    print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
 
     return True
 
 
+def download_time_series_for_a_polygon(start_date, end_date, cloud_cover_thr, image_type, polygon_shapely, polygon_idx, save_dir, buffer_size):
+
+    if image_type not in img_speci.keys():
+        raise ValueError('%s not in the key of img_speci: %s'%(image_type, str(img_speci.keys())))
+
+    if image_type is None:
+        # download all image products
+
+        for image_type in img_speci.keys():
+            gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr,
+                                       img_speci[image_type], polygon_shapely, polygon_idx, save_dir, buffer_size)
+    else:
+
+        gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr,
+                                       img_speci[image_type], polygon_shapely, polygon_idx, save_dir, buffer_size)
+
 
 def main(options, args):
 
+
+    # initialize earth engine environment
+    ee.Initialize()
+    # environment_test()  # for each computer, need to run "earthengine authenticate" first.
+    # test_download()
+    # return False
+
     polygons_shp = args[0]
+
+    # all images will save to Google Drive first, then move them to the below folder.
     time_lapse_save_folder = args[1]  # folder for saving downloaded images
 
     # check training polygons
     assert io_function.is_file_exist(polygons_shp)
     os.system('mkdir -p ' + time_lapse_save_folder)
 
-    # initialize earth engine environment
-    ee.Initialize()
-    # environment_test()
-    # test_download()
 
     # # check these are EPSG:4326 projection
     global shp_polygon_projection
     shp_polygon_projection = get_projection_proj4(polygons_shp).strip()
-    if shp_polygon_projection == '+proj=longlat +datum=WGS84 +no_defs':
-        crop_buffer = meters_to_degress_onEarth(options.buffer_size)
-    else:
-        crop_buffer = options.buffer_size
 
+    if shp_polygon_projection != '+proj=longlat +datum=WGS84 +no_defs':
+        raise ValueError('Only accept %s, please check projection of %s'%(shp_polygon_projection,polygons_shp))
+
+    # no need to convert, keep meters.
+    # if shp_polygon_projection == '+proj=longlat +datum=WGS84 +no_defs':
+    #     crop_buffer = meters_to_degress_onEarth(options.buffer_size)
+    # else:
+    #     crop_buffer = options.buffer_size
+    crop_buffer = options.buffer_size
 
     # read polygons, not json format, but shapely format
     polygons = vector_gpd.read_polygons_json(polygons_shp, no_json=True)
 
     for idx, geom in enumerate(polygons):
 
-        basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygons'%
-                               (idx+1, len(polygons)))
+        basic.outputlogMessage('downloading and cropping images for %dth polygon, total: %d polygon(s)' %
+                               (idx, len(polygons)))
 
-        gee_download_time_lapse_images(options.start_date, options.end_date, options.cloud_cover,
-                                       options.image_type, geom, idx, time_lapse_save_folder,crop_buffer)
+        download_time_series_for_a_polygon(options.start_date, options.end_date, options.cloud_cover,
+                                   options.image_type, geom, idx, time_lapse_save_folder, crop_buffer)
 
         break
 
@@ -246,11 +324,11 @@ if __name__ == "__main__":
                       action="store", dest="cloud_cover", type=float, default = 0.1,
                       help="the could cover threshold, only accept images with cloud cover less than the threshold")
     parser.add_option("-b", "--buffer_size",
-                      action="store", dest="buffer_size", type=int, default = 500,
+                      action="store", dest="buffer_size", type=int, default = 3000,
                       help="the buffer size to crop image in meters")
     parser.add_option("-i", "--image_type",
-                      action="store", dest="image_type",default='Sentinel-2',
-                      help="the image types available on GEE, e.g., COPERNICUS/S2 or COPERNICUS/S2_SR")
+                      action="store", dest="image_type",
+                      help="the image types want to download (contain product, bands, resolution), more find 'img_speci' in the head of this script")
 
 
     (options, args) = parser.parse_args()
