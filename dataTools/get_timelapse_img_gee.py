@@ -113,6 +113,29 @@ def get_crop_region(polygon_shapely,img_crs, buffer_size):
 
     return crop_region
 
+# /**
+#  * Function to mask clouds using the Sentinel-2 QA band
+#  * @param {ee.Image} image Sentinel-2 image
+#  * @return {ee.Image} cloud masked Sentinel-2 image
+#  */
+def maskS2clouds(image):
+    qa = image.select('QA60')
+    #// Bits 10 and 11 are clouds and cirrus, respectively.
+    cloudBitMask = 1 << 10
+    cirrusBitMask = 1 << 11
+    #// Both flags should be set to zero, indicating clear conditions.
+    mask = qa.bitwiseAnd(cloudBitMask).eq(0).And(qa.bitwiseAnd(cirrusBitMask).eq(0))
+    return image.updateMask(mask).divide(10000)
+
+
+def get_cloud_mask_function(product):
+
+    if 'S2' in product:
+        return maskS2clouds
+    else:
+        raise ValueError('%s not supported yet in cloud mask')
+
+
 # quick test
 def environment_test():
     # https://www.earthdatascience.org/tutorials/intro-google-earth-engine-python-api/
@@ -184,11 +207,14 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
                                          [x[2], y[2]],
                                          [x[3], y[3]]])
 
+    cloud_mask = get_cloud_mask_function(img_speci['product'])
+
     filtercollection = ee.ImageCollection(img_speci['product']). \
         filterBounds(polygon_bound). \
         filterDate(start, finish). \
         filter(ee.Filter.calendarRange(month_range[0], month_range[1], 'month')). \
         filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_cover_thr*100)). \
+        map(maskS2clouds). \
         sort('CLOUD_COVER', True)
 
     # check count  # getInfo can get python number (not ee.Number)
@@ -196,6 +222,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     if count < 1:
         basic.outputlogMessage('No results for %dth polygon with %s'%(polygon_idx,str(img_speci)))
         return False
+
 
     print('Image count %d'%count)
     # print(filtercollection)                 # print serialized request instructions
