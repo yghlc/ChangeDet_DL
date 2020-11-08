@@ -125,7 +125,8 @@ def maskS2clouds(image):
     cirrusBitMask = 1 << 11
     #// Both flags should be set to zero, indicating clear conditions.
     mask = qa.bitwiseAnd(cloudBitMask).eq(0).And(qa.bitwiseAnd(cirrusBitMask).eq(0))
-    return image.updateMask(mask).divide(10000)
+    # return image.updateMask(mask).divide(10000)  # divide (10000) would lose some properties
+    return image.updateMask(mask)
 
 
 def get_cloud_mask_function(product):
@@ -214,7 +215,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
         filterDate(start, finish). \
         filter(ee.Filter.calendarRange(month_range[0], month_range[1], 'month')). \
         filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_cover_thr*100)). \
-        map(maskS2clouds). \
+        map(cloud_mask). \
         sort('CLOUD_COVER', True)
 
     # check count  # getInfo can get python number (not ee.Number)
@@ -230,6 +231,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
 
     select_image = ee.Image(filtercollection.first()).select(img_speci['bands'])
 
+    # map(cloud_mask).
     image_info = select_image.getInfo()
     save_file_name = get_image_name(image_info) + '_poly_%d'%polygon_idx
 
@@ -246,6 +248,8 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     crop_region = get_crop_region(polygon_shapely,img_crs, buffer_size)
 
 
+    # apply cloud mask
+    # select_image = cloud_mask(select_image)
 
     task = ee.batch.Export.image.toDrive(image=select_image,
                                          region=crop_region,
