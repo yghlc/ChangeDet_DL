@@ -24,6 +24,7 @@ import vector_gpd
 from shapely.geometry import mapping        # transform to GeJSON format
 
 import math
+import time
 
 # input earth engine, used: ~/programs/anaconda3/envs/gee/bin/python, or change to ee by "source activate gee"
 # need shapely, geopandas, gdal
@@ -136,6 +137,46 @@ def get_cloud_mask_function(product):
     else:
         raise ValueError('%s not supported yet in cloud mask')
 
+def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, res,wait2finished=True):
+
+    # map(cloud_mask).
+    image_info = select_image.getInfo()
+    save_file_name = get_image_name(image_info) + '_poly_%d'%polygon_idx
+
+
+    task = ee.batch.Export.image.toDrive(image=select_image,
+                                         region=crop_region,
+                                         description=save_file_name,
+                                         folder=save_folder,
+                                         scale=res)
+    # region=crop_region,
+
+    task.start()
+    # print(task.status())
+    # print(ee.batch.Task.list())
+    if wait2finished:
+        import time
+        print('%s: Start transferring %s to Drive..................' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
+        while task.active():
+            print('%s: Transferring %s to Drive..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
+            time.sleep(20)
+        print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+        return True
+    else:
+        return task
+
+def wait_all_task_finished(all_tasks, polygon_idx):
+
+    ###backup##
+
+
+    print('%s: Start transferring %s to Drive..................' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    while task.active():
+        print('%s: Transferring %s to Drive..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        time.sleep(20)
+    print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
 
 # quick test
 def environment_test():
@@ -229,45 +270,43 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     # print(filtercollection)                 # print serialized request instructions
     # print(filtercollection.getInfo())       # print object information
 
-    select_image = ee.Image(filtercollection.first()).select(img_speci['bands'])
-
-    # map(cloud_mask).
-    image_info = select_image.getInfo()
-    save_file_name = get_image_name(image_info) + '_poly_%d'%polygon_idx
-
-
     # polygon_idx
     # export_dir = 'gee_saved' # os.path.join(save_dir,'sub_images_of_%d_polygon'%polygon_idx)
     # export_dir = ee.String(os.path.join(save_dir,'images_of_%d_polygon'%polygon_idx))
     # cannot have a sub folder in Google Drive.
     export_dir = 'images_of_%d_polygon'%polygon_idx
 
-    projI = select_image.select(img_speci['bands'][0]).projection().getInfo()  # Exporting the whole image takes time, therefore, roughly select the center region of the image
+    # Make a list of images
+    img_list = filtercollection.toList(filtercollection.size())
+
+    first_image = ee.Image(filtercollection.first()).select(img_speci['bands'])
+
+    projI = first_image.select(img_speci['bands'][0]).projection().getInfo()  # Exporting the whole image takes time, therefore, roughly select the center region of the image
     img_crs = projI['crs']
 
     crop_region = get_crop_region(polygon_shapely,img_crs, buffer_size)
 
 
-    # apply cloud mask
-    # select_image = cloud_mask(select_image)
+    # only export first image
+    # export_one_imagetoDrive(first_image,export_dir,polygon_idx,crop_region, img_speci['res'])
 
-    task = ee.batch.Export.image.toDrive(image=select_image,
-                                         region=crop_region,
-                                         description=save_file_name,
-                                         folder=export_dir,
-                                         scale=img_speci['res'])
+    # export all
+    n = 0
+    tasklist = []
+    while True:
+        try:
+            img = ee.Image(img_list.get(n))
+            task = export_one_imagetoDrive(img, export_dir, polygon_idx, crop_region, img_speci['res'], wait2finished=False)
+            tasklist.append(task)
+            n += 1
+        except Exception as e:
+            error = str(e).split(':')
+            if error[0] == 'List.get':
+                break
+            else:
+                raise e
 
-    # region=crop_region,
-
-    task.start()
-    # print(task.status())
-    # print(ee.batch.Task.list())
-    import time
-    print('%s: Start transferring %s to Drive..................' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
-    while task.active():
-        print('%s: Transferring %s to Drive..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
-        time.sleep(20)
-    print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    # wait all task filished
 
 
 
