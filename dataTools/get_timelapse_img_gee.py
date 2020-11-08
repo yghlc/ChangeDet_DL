@@ -168,15 +168,22 @@ def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, 
 
 def wait_all_task_finished(all_tasks, polygon_idx):
 
-    ###backup##
+    all_count = len(all_tasks)
 
-
-    print('%s: Start transferring %s to Drive..................' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    while task.active():
-        print('%s: Transferring %s to Drive..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    finished_count = 0
+    # print('%s: Start transferring %d images covering %d th polygon to Drive..........' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),all_count,polygon_idx))
+    while finished_count < all_count:
+        finished_count = 0
+        for task in all_tasks:
+            if task.active():
+                continue
+            else:
+                finished_count += 1
         time.sleep(20)
-    print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        print('%s: Transferring %d images to Drive, finished %d ones..........' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),all_count, finished_count) )
 
+    print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    return True
 
 # quick test
 def environment_test():
@@ -295,10 +302,11 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     tasklist = []
     while True:
         try:
-            img = ee.Image(img_list.get(n))
+            img = ee.Image(img_list.get(n)).select(img_speci['bands'])
             task = export_one_imagetoDrive(img, export_dir, polygon_idx, crop_region, img_speci['res'], wait2finished=False)
             tasklist.append(task)
             n += 1
+            print('%s: Start %dth task to download images covering %dth polygon'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), n, polygon_idx))
         except Exception as e:
             error = str(e).split(':')
             if error[0] == 'List.get':
@@ -307,7 +315,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
                 raise e
 
     # wait all task filished
-
+    wait_all_task_finished(tasklist,polygon_idx)
 
 
     return True
