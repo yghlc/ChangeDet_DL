@@ -35,6 +35,7 @@ import pyproj
 from shapely.ops import transform
 
 shp_polygon_projection = None
+month_range = [7,8]
 
 # image specification
 img_speci = { # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_SR
@@ -186,6 +187,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     filtercollection = ee.ImageCollection(img_speci['product']). \
         filterBounds(polygon_bound). \
         filterDate(start, finish). \
+        filter(ee.Filter.calendarRange(month_range[0], month_range[1], 'month')). \
         filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_cover_thr*100)). \
         sort('CLOUD_COVER', True)
 
@@ -233,7 +235,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     print('%s: Start transferring %s to Drive..................' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
     while task.active():
         print('%s: Transferring %s to Drive..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
-        time.sleep(30)
+        time.sleep(20)
     print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
@@ -271,6 +273,10 @@ def main(options, args):
 
     # all images will save to Google Drive first, then move them to the below folder.
     time_lapse_save_folder = args[1]  # folder for saving downloaded images
+
+    months_range_str = options.month_range
+    global month_range
+    month_range = [ int(item) for item in months_range_str.split(',') ]
 
     # check training polygons
     assert io_function.is_file_exist(polygons_shp)
@@ -320,6 +326,9 @@ if __name__ == "__main__":
     parser.add_option("-e", "--end_date",default='2019-12-31',
                       action="store", dest="end_date",
                       help="the end date for inquiry, with format year-month-day, e.g., 2019-12-31")
+    parser.add_option("-m", "--month_range",default='7,8',
+                      action="store", dest="month_range",
+                      help="selected months for inquiring images, the start and end month")
     parser.add_option("-c", "--cloud_cover",
                       action="store", dest="cloud_cover", type=float, default = 0.1,
                       help="the could cover threshold, only accept images with cloud cover less than the threshold")
