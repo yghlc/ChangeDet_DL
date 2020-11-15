@@ -110,7 +110,7 @@ function plot_one_image(){
         # image acquired time
         echo 7,10.5, July ${out_name}  | gmt text -JX${width} ${region_draw} -F+f20p,Helvetica-Bold,black
 
-        # upslope angle (vector: start point(x,y), direction (angle), lenght)
+        # upslope angle (vector: start point(x,y), direction (angle), length)
         # W for pen, -Sv for the setting of vector arrow,
         echo 10 8 270 3 |gmt plot -JX${width} ${region_draw}  -W2p,yellow,solid  -Sv0.45c+eA
         echo 11.5 6.5 Upslope |gmt text -F+f18p,Helvetica-Bold,yellow
