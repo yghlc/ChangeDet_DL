@@ -76,6 +76,11 @@ gmt begin img_2017_to_2019_ex1 jpg
         gmt basemap -Ln0.15/0.15+c35N+w100e ${extlatlon} --FONT_ANNOT_PRIMARY=10p,Helvetica,black --MAP_SCALE_HEIGHT=5p -c0,0
 
         echo 11,11, July 2017  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black -c0,0
+
+        # upslope arrow (vector: start point(x,y), direction (angle), lenght)
+        # W for pen, -Sv for the setting of vector arrow,
+        echo 11.0 4.5 130 1.5 |gmt plot -JX${width} ${region_draw}  -W1p,yellow,solid  -Sv0.45c+eA  -c0,0
+        echo 11.6 8 Upslope |gmt text -F+f10p,Helvetica,yellow   -c0,0
 #
         gmt grdimage 2018.tif -c0,1
 #        gmt psxy 2018.gmt -W0.5p,blue,solid -c0,1
