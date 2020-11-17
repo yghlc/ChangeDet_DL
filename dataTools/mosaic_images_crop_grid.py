@@ -25,7 +25,7 @@ from  get_planet_image_list import  get_Planet_SR_image_list_overlap_a_polygon
 
 prePlanetImage = os.path.expanduser('~/codes/PycharmProjects/Landuse_DL/planetScripts/prePlanetImage.py')
 
-def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', save_org_dir=None):
+def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_max=3000, save_org_dir=None):
 
     if os.path.isdir(save_dir) is False:
         io_function.mkdir(save_dir)
@@ -45,8 +45,8 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', save_org_dir=No
         return fin_output
 
     # use fix min and max to make the color be consistent to sentinel-images
-    src_min=0
-    src_max=3000
+    src_min=sr_min
+    src_max=sr_max
     dst_min=1       # 0 is the nodata, so set as 1
     dst_max=255
 
@@ -89,8 +89,43 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', save_org_dir=No
 
     return fin_output
 
+def reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir='planet_images_reproj'):
+    '''
+    reprojection of images
+    :param tif_path: image path
+    :param new_prj_wkt: new projection in wkt format (more accurate)
+    :param new_prj_proj4: new projection in proj format (not accurate, but good for comparision)
+    :param save_dir: output save folder.
+    :return:
+    '''
 
-def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, cloud_cover_thr, geojson_list, save_dir, to_rgb=True, nodata=0, save_org_dir=None):
+    if os.path.isdir(save_dir) is False:
+        io_function.mkdir(save_dir)
+
+    # filename_no_ext
+    output = os.path.splitext(os.path.basename(tif_path))[0]
+    fin_output= os.path.join(save_dir, output + '_prj.tif')
+    if os.path.isfile(fin_output):
+        basic.outputlogMessage("Skip, because File %s exists in current folder: %s"%(fin_output,os.getcwd()))
+        return fin_output
+
+    tif_prj4 = map_projection.get_raster_or_vector_srs_info_proj4(tif_path).strip()
+    # if they have the same projection, then return False, no need to reproject
+    if tif_prj4 == new_prj_proj4:
+        return False
+
+    # reproject to the new projection
+    # gdalwarp -t_srs EPSG:4326  -overwrite tmp.tif $out
+    cmd_str = 'gdalwarp -t_srs %s %s %s'%(new_prj_wkt,tif_path,fin_output)
+    status, result = basic.exec_command_string(cmd_str)
+    if status != 0:
+        print(result)
+        sys.exit(status)
+
+    return fin_output
+
+def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, cloud_cover_thr, geojson_list, save_dir,
+                                       new_prj_wkt=None,new_prj_proj4=None, sr_min=0, sr_max=3000,to_rgb=True, nodata=0, save_org_dir=None):
     '''
     create mosaic for Planet images within a grid
     :param polygon:
@@ -99,6 +134,10 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     :param cloud_cover_thr:
     :param geojson_list:
     :param save_dir:
+    :param new_prj_wkt:
+    :param new_prj_proj4:
+    :param sr_min:
+    :param sr_max:
     :param to_rgb:
     :param nodata:
     :return:
@@ -123,7 +162,14 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     rgb_image_list = []
     if to_rgb:
         for tif_path in planet_img_list:
-            rgb_img = convert_planet_to_rgb_images(tif_path,save_org_dir=save_org_dir)
+            rgb_img = convert_planet_to_rgb_images(tif_path,save_org_dir=save_org_dir, sr_min=sr_min, sr_max=sr_max)
+            # reproject if necessary
+            if new_prj_wkt != None and new_prj_proj4 != None:
+                prj_out = reproject_planet_image(rgb_img,new_prj_wkt,new_prj_proj4,save_dir='planet_rgb_images_reproj')
+                # replace the rgb image
+                if prj_out is not False and os.path.isfile(prj_out):
+                    rgb_img = prj_out
+
             rgb_image_list.append(rgb_img)
     if len(rgb_image_list) > 0:
         planet_img_list = rgb_image_list
@@ -159,7 +205,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     print(results)
 
     if results is False:
-        basic.outputlogMessage('Crop %s failed, keep the one without cropping'%out)
+        basic.outputlogMessage('Warning, Crop %s failed, keep the one without cropping'%out)
         io_function.move_file_to_dst(out,fin_out)
     else:
         io_function.delete_file_or_dir(out)
@@ -194,6 +240,13 @@ def main(options, args):
     if shp_prj != '+proj=longlat +datum=WGS84 +no_defs':
         # read polygons and reproject to 4326 projection
         grid_polygons_latlon = vector_gpd.read_shape_gpd_to_NewPrj(grid_polygon_shp,'EPSG:4326')
+    # else:
+    #     raise ValueError(' %s should be in projection of Cartesian coordinate system'%grid_polygon_shp)
+
+    shp_prj_wkt = map_projection.get_raster_or_vector_srs_info_wkt(grid_polygon_shp)
+
+    max_sr = options.max_sr
+    min_sr = options.min_sr
 
     original_img_copy_dir = options.original_img_copy_dir
 
@@ -207,7 +260,10 @@ def main(options, args):
     io_function.mkdir(save_dir)
     for id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon):
         create_moasic_of_each_grid_polygon(id, polygon, poly_latlon, out_res,
-                                           cloud_cover_thr, geojson_list,save_dir,save_org_dir=original_img_copy_dir)
+                                           cloud_cover_thr, geojson_list,save_dir,
+                                           new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
+                                           sr_min=min_sr, sr_max=max_sr,
+                                           save_org_dir=original_img_copy_dir)
 
         pass
 
@@ -227,6 +283,13 @@ if __name__ == "__main__":
     # parser.add_option("-e", "--end_date",default='2018-06-30',
     #                   action="store", dest="end_date",
     #                   help="the end date for inquiry, with format year-month-day, e.g., 2018-05-23")
+    parser.add_option("-u", "--upper_sr",
+                      action="store", dest="max_sr", type=float,default=3000,
+                      help="the upper limit of surface reflectance (maximum of surface reflectance)")
+    parser.add_option("-l", "--lower_sr",
+                      action="store", dest="min_sr", type=float,default=0,
+                      help="the lower limit of surface reflectance (minimum of surface reflectance) ")
+
     parser.add_option("-c", "--cloud_cover",
                       action="store", dest="cloud_cover", type=float,default=0.3,
                       help="the could cover threshold, only accept images with cloud cover less than the threshold")
