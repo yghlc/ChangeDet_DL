@@ -63,7 +63,7 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
 
     # the third band is red, second is green, and first is blue
     #gdal_translate -b 3 -b 2 -b 1  ${output}_8bit.tif ${output}_8bit_rgb.tif
-    cmd_str = 'gdal_translate -b 3 -b 2 -b 1  %s_8bit.tif %s_8bit_rgb.tif'%(output,output)
+    cmd_str = 'gdal_translate -b 3 -b 2 -b 1 -of VRT %s_8bit.tif %s_8bit_rgb.tif'%(output,output)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
@@ -190,7 +190,8 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     tifs = [img_path for (img_path,cloud)  in img_cloud_list ]
     tifs_str = ' '.join(tifs)
 
-    cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
+    # cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
+    cmd_str = 'gdalbuildvrt -resolution user -tr %d %d -srcnodata %d -vrtnodata %d  %s %s'%(out_res,out_res,nodata,nodata,out,tifs_str)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
