@@ -52,7 +52,7 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
 
     # gdal_translate -ot Byte -scale ${src_min} ${src_max} ${dst_min} ${dst_max} ${image_path} ${output}_8bit.tif
     if 'SR.tif' in tif_path:
-        cmd_str = 'gdal_translate -ot Byte -scale %d %d %d %d %s %s_8bit.tif'%(src_min,src_max,dst_min,dst_max,tif_path,output)
+        cmd_str = 'gdal_translate -ot Byte -scale %d %d %d %d -of VRT %s %s_8bit.tif'%(src_min,src_max,dst_min,dst_max,tif_path,output)
     else:
         # gdal_contrast_stretch -percentile-range 0.01 0.99 ${output}.tif ${output}_8bit.tif
         cmd_str = 'gdal_contrast_stretch -percentile-range 0.01 0.99 %s %s_8bit.tif' % (tif_path, output)
@@ -63,7 +63,7 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
 
     # the third band is red, second is green, and first is blue
     #gdal_translate -b 3 -b 2 -b 1  ${output}_8bit.tif ${output}_8bit_rgb.tif
-    cmd_str = 'gdal_translate -b 3 -b 2 -b 1  %s_8bit.tif %s_8bit_rgb.tif'%(output,output)
+    cmd_str = 'gdal_translate -b 3 -b 2 -b 1  -of VRT %s_8bit.tif %s_8bit_rgb.tif'%(output,output)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
@@ -116,7 +116,7 @@ def reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir='plane
 
     # reproject to the new projection
     # gdalwarp -t_srs EPSG:4326  -overwrite tmp.tif $out
-    cmd_str = 'gdalwarp -t_srs %s %s %s'%(new_prj_wkt,tif_path,fin_output)
+    cmd_str = 'gdalwarp -t_srs %s -of VRT %s %s'%(new_prj_wkt,tif_path,fin_output)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
@@ -190,7 +190,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     tifs = [img_path for (img_path,cloud)  in img_cloud_list ]
     tifs_str = ' '.join(tifs)
 
-    cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
+    cmd_str = 'gdal_merge.py -o %s -of VRT -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
