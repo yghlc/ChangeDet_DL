@@ -31,6 +31,8 @@ prePlanetImage = os.path.expanduser('~/codes/PycharmProjects/Landuse_DL/planetSc
 
 def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_max=3000, save_org_dir=None):
 
+    #TODO: if multiple processes try to derive the same rgb images, it may have problem.
+
     if os.path.isdir(save_dir) is False:
         io_function.mkdir(save_dir)
 
