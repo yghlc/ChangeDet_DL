@@ -19,6 +19,7 @@ import basic_src.RSImageProcess as RSImageProcess
 import vector_gpd
 from datetime import datetime
 
+import time
 
 # sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/ChangeDet_DL/dataTools'))
 from  get_planet_image_list import  get_Planet_SR_image_list_overlap_a_polygon
@@ -142,6 +143,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     :param nodata:
     :return:
     '''
+    time0 = time.time()
     file_name = os.path.basename(save_dir)
     fin_out = os.path.join(save_dir, file_name + '_sub_%d.tif' % id)
     if os.path.isfile(fin_out):
@@ -212,12 +214,15 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
         io_function.delete_file_or_dir(out)
 
     # sys.exit(0)
+    cost_time_sec = time.time() - time0
+    basic.outputlogMessage('finished creating %s cost %.2f seconds (%.2f minutes)' % (fin_out,cost_time_sec,cost_time_sec/60))
 
     return fin_out
 
 
 def main(options, args):
 
+    time0 = time.time()
     image_dir = args[0]
     geojson_list = io_function.get_file_list_by_ext('.geojson',image_dir,bsub_folder=True)
     if len(geojson_list) < 1:
@@ -268,7 +273,8 @@ def main(options, args):
 
         pass
 
-    #
+    cost_time_sec = time.time() - time0
+    basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
 
 
     pass
