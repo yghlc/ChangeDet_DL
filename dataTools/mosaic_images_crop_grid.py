@@ -21,6 +21,9 @@ from datetime import datetime
 
 import time
 
+import multiprocessing
+from multiprocessing import Pool
+
 # sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/ChangeDet_DL/dataTools'))
 from  get_planet_image_list import  get_Planet_SR_image_list_overlap_a_polygon
 
@@ -219,6 +222,13 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
 
     return fin_out
 
+def create_moasic_of_each_grid_polygon_one_proc(parameters):
+
+    return create_moasic_of_each_grid_polygon(parameters[0], parameters[1], parameters[2], parameters[3],
+                                       parameters[4], parameters[5], parameters[6],
+                                       new_prj_wkt=parameters[7], new_prj_proj4=parameters[8],
+                                       sr_min=parameters[9], sr_max=parameters[10],
+                                       save_org_dir=parameters[11])
 
 def main(options, args):
 
@@ -232,6 +242,8 @@ def main(options, args):
 
     grid_polygon_shp = args[1]      # the polygon should be in projection Cartesian coordinate system (e.g., UTM )
     basic.outputlogMessage('Image grid polygon shapefile: %s' % grid_polygon_shp)
+    process_num = options.process_num
+    basic.outputlogMessage('The number of processes for creating the mosaic is: %d' % process_num)
 
     # read grid polygons
     grid_polygons = vector_gpd.read_polygons_gpd(grid_polygon_shp)
@@ -264,14 +276,22 @@ def main(options, args):
     save_dir = os.path.basename(cur_dir) + '_mosaic_' + str(out_res)
     # print(save_dir)
     io_function.mkdir(save_dir)
-    for id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon):
-        create_moasic_of_each_grid_polygon(id, polygon, poly_latlon, out_res,
-                                           cloud_cover_thr, geojson_list,save_dir,
-                                           new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
-                                           sr_min=min_sr, sr_max=max_sr,
-                                           save_org_dir=original_img_copy_dir)
+    if process_num == 1:
+        for id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon):
+            create_moasic_of_each_grid_polygon(id, polygon, poly_latlon, out_res,
+                                               cloud_cover_thr, geojson_list,save_dir,
+                                               new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
+                                               sr_min=min_sr, sr_max=max_sr,
+                                               save_org_dir=original_img_copy_dir)
+    elif process_num > 1:
+        theadPool = Pool(process_num)  # multi processes
 
-        pass
+        parameters_list = [
+            (id, polygon, poly_latlon, out_res,cloud_cover_thr, geojson_list,save_dir,shp_prj_wkt,shp_prj,min_sr,max_sr,original_img_copy_dir) for
+            id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon)]
+        results = theadPool.starmap(create_moasic_of_each_grid_polygon, parameters_list)  # need python3
+    else:
+        raise ValueError('incorrect process number: %d'% process_num)
 
     cost_time_sec = time.time() - time0
     basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
@@ -306,6 +326,10 @@ if __name__ == "__main__":
     parser.add_option("-o", "--original_img_copy_dir",
                       action="store", dest="original_img_copy_dir",
                       help="the folder to copy and save original images")
+
+    parser.add_option("-p", "--process_num",
+                      action="store", dest="process_num",type=int,default=1,
+                      help="number of processes to create the mosaic")
     # parser.add_option("-i", "--item_types",
     #                   action="store", dest="item_types",default='PSScene4Band',
     #                   help="the item types, e.g., PSScene4Band,PSOrthoTile")
