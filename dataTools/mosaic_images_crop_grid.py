@@ -131,7 +131,8 @@ def reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir='plane
     return fin_output
 
 def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, cloud_cover_thr, geojson_list, save_dir,
-                                       new_prj_wkt=None,new_prj_proj4=None, sr_min=0, sr_max=3000,to_rgb=True, nodata=0, save_org_dir=None):
+                                       new_prj_wkt=None,new_prj_proj4=None, sr_min=0, sr_max=3000,to_rgb=True, nodata=0, save_org_dir=None,
+                                       resampling_method='min'):
     '''
     create mosaic for Planet images within a grid
     :param polygon:
@@ -197,20 +198,26 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     tifs = [img_path for (img_path,cloud)  in img_cloud_list ]
     tifs_str = ' '.join(tifs)
 
-    # cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
-    cmd_str = 'gdalbuildvrt -resolution user -tr %d %d -srcnodata %d -vrtnodata %d  %s %s'%(out_res,out_res,nodata,nodata,out,tifs_str)
-    status, result = basic.exec_command_string(cmd_str)
-    if status != 0:
-        print(result)
-        sys.exit(status)
+    # # cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
+    # cmd_str = 'gdalbuildvrt -resolution user -tr %d %d -srcnodata %d -vrtnodata %d  %s %s'%(out_res,out_res,nodata,nodata,out,tifs_str)
+    # status, result = basic.exec_command_string(cmd_str)
+    # if status != 0:
+    #     print(result)
+    #     sys.exit(status)
 
     # crop
 
-    # #  polygon.exterior.coords
+    # # #  polygon.exterior.coords
+    # minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
+    # print(minx, miny, maxx, maxy)
+    # results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
+    # print(results)
+
+    ## mosaic and crop at the same time together
     minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
     print(minx, miny, maxx, maxy)
-    results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
-    print(results)
+    results = RSImageProcess.mosaic_crop_images_gdalwarp(tifs,fin_out,src_nodata=nodata,min_x=minx,min_y=miny,max_x=maxx,max_y=maxy,
+                                                         xres=out_res,yres=out_res,resampling_method=resampling_method)
 
     if results is False:
         basic.outputlogMessage('Warning, Crop %s failed, keep the one without cropping'%out)
@@ -230,7 +237,7 @@ def create_moasic_of_each_grid_polygon_one_proc(parameters):
                                        parameters[4], parameters[5], parameters[6],
                                        new_prj_wkt=parameters[7], new_prj_proj4=parameters[8],
                                        sr_min=parameters[9], sr_max=parameters[10],
-                                       save_org_dir=parameters[11])
+                                       save_org_dir=parameters[11],resampling_method=parameters[12])
 
 def main(options, args):
 
@@ -275,6 +282,7 @@ def main(options, args):
     cloud_cover_thr = cloud_cover_thr * 100         # for Planet image, it is percentage
     out_res = options.out_res
     cur_dir = os.getcwd()
+    resampling_method = options.merged_method
     save_dir = os.path.basename(cur_dir) + '_mosaic_' + str(out_res)
     # print(save_dir)
     io_function.mkdir(save_dir)
@@ -284,7 +292,8 @@ def main(options, args):
                                                cloud_cover_thr, geojson_list,save_dir,
                                                new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
                                                sr_min=min_sr, sr_max=max_sr,
-                                               save_org_dir=original_img_copy_dir)
+                                               save_org_dir=original_img_copy_dir,
+                                               resampling_method=resampling_method)
     elif process_num > 1:
         theadPool = Pool(process_num)  # multi processes
 
@@ -328,6 +337,10 @@ if __name__ == "__main__":
     parser.add_option("-o", "--original_img_copy_dir",
                       action="store", dest="original_img_copy_dir",
                       help="the folder to copy and save original images")
+
+    parser.add_option("-m", "--merged_method",
+                      action="store", dest="merged_method", default='min',
+                      help="the method to merge pixels at the same location, such as min, max, or med, etc")
 
     parser.add_option("-p", "--process_num",
                       action="store", dest="process_num",type=int,default=1,
