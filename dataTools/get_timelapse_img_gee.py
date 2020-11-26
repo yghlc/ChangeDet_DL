@@ -129,11 +129,49 @@ def maskS2clouds(image):
     # return image.updateMask(mask).divide(10000)  # divide (10000) would lose some properties
     return image.updateMask(mask)
 
+def maskL578clouds_SR(image):
+    qa = image.select('pixel_qa')
+    # The cloud layer is represented as the forth place, the cloud layer confidence is 5-6, and the cloud shadow confidence is the 7-8 place
+    # Select the pixels that have clouds and the cloud confidence is medium, and are covered by cloud shadows.
+    cloud = qa.bitwiseAnd(1 << 4).And (qa.bitwiseAnd(1 << 6)).Or (qa.bitwiseAnd(1 << 8))
+    # remove boundary pixels
+    mask = image.mask().reduce(ee.Reducer.min())
+
+    return image.updateMask(cloud.Not()).updateMask(mask)
+
+def maskL578clouds(image):
+    qa = image.select('pixel_qa')
+    # The cloud layer is represented as the 5 place, the cloud layer confidence is 6-7, and the cloud shadow is the 3 place
+    # Select the pixels that have clouds and the cloud confidence is medium, and are covered by cloud shadows.
+    cloud = qa.bitwiseAnd(1 << 5).And(qa.bitwiseAnd(1 << 7)).Or(qa.bitwiseAnd(1 << 3))
+    # remove boundary pixels
+    mask = image.mask().reduce(ee.Reducer.min())
+
+    return image.updateMask(cloud.Not()).updateMask(mask)
+    # cloudShadowBitMask = 1 << 3
+    # cloudsBitMask = 1 << 5
+    # #// 3 cloudshadow, 5 cloud
+    # qa = image.select('pixel_qa')
+    # #// Both flags should be set to zero
+    # mask = qa.bitwiseAnd(cloudShadowBitMask).eq(0).And (qa.bitwiseAnd(cloudsBitMask).eq(0));
+    # #//
+    # return image.updateMask(mask)
+    # #.divide(10000).select("B[0-9]*").copyProperties(image, ["system:time_start"]);
 
 def get_cloud_mask_function(product):
 
     if 'S2' in product:
         return maskS2clouds
+    if 'LC08/C01/T1_SR' in product:
+        return maskL578clouds_SR
+    if 'LE07/C01/T1_SR' in product:
+        return maskL578clouds_SR
+    if 'LT05/C01/T1_SR' in product:
+        return maskL578clouds_SR
+    if 'LC08/C01/T1_TOA' in product:
+        return maskL578clouds
+    if 'LE07/C01/T1_TOA' in product:
+        return maskL578clouds
     else:
         raise ValueError('%s not supported yet in cloud mask')
 
@@ -193,6 +231,7 @@ def environment_test():
     print(image.getInfo())
 
 def test_download():
+    ee.Initialize()
     from pyproj import Proj, transform
     image = ee.Image(
         'LANDSAT/LE07/C01/T1/LE07_149035_20010930')  # change the name of this image if testing on another image is required
@@ -344,6 +383,7 @@ def main(options, args):
     # initialize earth engine environment
     ee.Initialize()
     # environment_test()  # for each computer, need to run "earthengine authenticate" first.
+    # environment_test()
     # test_download()
     # return False
 
