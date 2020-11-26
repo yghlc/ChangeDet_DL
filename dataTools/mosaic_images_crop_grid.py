@@ -213,6 +213,12 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     # results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
     # print(results)
 
+    # if results is False:
+    #     basic.outputlogMessage('Warning, Crop %s failed, keep the one without cropping'%out)
+    #     io_function.move_file_to_dst(out,fin_out)
+    # else:
+    #     io_function.delete_file_or_dir(out)
+
     ## mosaic and crop at the same time together
     minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
     print(minx, miny, maxx, maxy)
@@ -220,10 +226,8 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
                                                          xres=out_res,yres=out_res,resampling_method=resampling_method)
 
     if results is False:
-        basic.outputlogMessage('Warning, Crop %s failed, keep the one without cropping'%out)
-        io_function.move_file_to_dst(out,fin_out)
-    else:
-        io_function.delete_file_or_dir(out)
+        basic.outputlogMessage('Warning, create %s failed' % fin_out)
+        return False
 
     # sys.exit(0)
     cost_time_sec = time.time() - time0
