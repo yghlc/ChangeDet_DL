@@ -299,8 +299,8 @@ def main(options, args):
     io_function.mkdir(save_dir)
     if process_num == 1:
         for id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon):
-            if id != 34:
-                continue
+            # if id != 34:
+            #     continue
             create_moasic_of_each_grid_polygon(id, polygon, poly_latlon, out_res,
                                                cloud_cover_thr, geojson_list,save_dir,
                                                new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
