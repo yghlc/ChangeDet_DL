@@ -205,36 +205,34 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     tifs = [img_path for (img_path,cloud)  in img_cloud_list ]
     tifs_str = ' '.join(tifs)
 
-    # # cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
-    # cmd_str = 'gdalbuildvrt -resolution user -tr %d %d -srcnodata %d -vrtnodata %d  %s %s'%(out_res,out_res,nodata,nodata,out,tifs_str)
-    # status, result = basic.exec_command_string(cmd_str)
-    # if status != 0:
-    #     print(result)
-    #     sys.exit(status)
+    # cmd_str = 'gdal_merge.py -o %s -n %d -init %d -ps %d %d %s'%(out,nodata,nodata,out_res,out_res,tifs_str)
+    cmd_str = 'gdalbuildvrt -resolution user -tr %d %d -srcnodata %d -vrtnodata %d  %s %s'%(out_res,out_res,nodata,nodata,out,tifs_str)
+    status, result = basic.exec_command_string(cmd_str)
+    if status != 0:
+        print(result)
+        sys.exit(status)
 
-    # crop
-
-    # # #  polygon.exterior.coords
-    # minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
-    # print(minx, miny, maxx, maxy)
-    # results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
-    # print(results)
-
-    # if results is False:
-    #     basic.outputlogMessage('Warning, Crop %s failed, keep the one without cropping'%out)
-    #     io_function.move_file_to_dst(out,fin_out)
-    # else:
-    #     io_function.delete_file_or_dir(out)
-
-    ## mosaic and crop at the same time together
+    # #  polygon.exterior.coords
     minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
     print(minx, miny, maxx, maxy)
-    results = RSImageProcess.mosaic_crop_images_gdalwarp(tifs,fin_out,src_nodata=nodata,min_x=minx,min_y=miny,max_x=maxx,max_y=maxy,
-                                                         xres=out_res,yres=out_res,resampling_method=resampling_method)
+    results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
+    print(results)
 
     if results is False:
-        basic.outputlogMessage('Warning, create %s failed' % fin_out)
-        return False
+        basic.outputlogMessage('Warning, Crop %s failed, keep the one without cropping'%out)
+        io_function.move_file_to_dst(out,fin_out)
+    else:
+        io_function.delete_file_or_dir(out)
+
+    # ## mosaic and crop at the same time together
+    # minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
+    # print(minx, miny, maxx, maxy)
+    # results = RSImageProcess.mosaic_crop_images_gdalwarp(tifs,fin_out,src_nodata=nodata,min_x=minx,min_y=miny,max_x=maxx,max_y=maxy,
+    #                                                      xres=out_res,yres=out_res,resampling_method=resampling_method)
+    #
+    # if results is False:
+    #     basic.outputlogMessage('Warning, create %s failed' % fin_out)
+    #     return False
 
     # sys.exit(0)
     cost_time_sec = time.time() - time0
