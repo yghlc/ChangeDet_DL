@@ -171,16 +171,23 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     if to_rgb:
         for tif_path in planet_img_list:
             rgb_img = convert_planet_to_rgb_images(tif_path,save_org_dir=save_org_dir, sr_min=sr_min, sr_max=sr_max)
-            # reproject if necessary
-            if new_prj_wkt != None and new_prj_proj4 != None:
-                prj_out = reproject_planet_image(rgb_img,new_prj_wkt,new_prj_proj4,save_dir='planet_rgb_images_reproj')
-                # replace the rgb image
-                if prj_out is not False and os.path.isfile(prj_out):
-                    rgb_img = prj_out
-
             rgb_image_list.append(rgb_img)
     if len(rgb_image_list) > 0:
         planet_img_list = rgb_image_list
+
+    reproj_img_list = []
+    # reproject if necessary
+    if new_prj_wkt != None and new_prj_proj4 != None:
+        for tif_path in planet_img_list:
+            prj_out = reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir='planet_images_reproj')
+            # replace the image
+            if prj_out is not False and os.path.isfile(prj_out):
+                reproj_img_list.append(prj_out)
+            else:
+                # if not reproject, then append the original image.
+                reproj_img_list.append(tif_path)
+    if len(reproj_img_list) > 0:
+        planet_img_list = reproj_img_list
 
     # create mosaic using gdal_merge.py
     # because in gdal_merge.py, a later image will replace one, so we put image with largest cloud cover first
@@ -280,6 +287,8 @@ def main(options, args):
     min_sr = options.min_sr
 
     original_img_copy_dir = options.original_img_copy_dir
+    b_to_rgb_8bit = options.to_rgb
+    basic.outputlogMessage('Convert to 8bit RGB images: %s'%str(b_to_rgb_8bit))
 
     # create mosaic of each grid
     cloud_cover_thr = options.cloud_cover
@@ -296,13 +305,14 @@ def main(options, args):
                                                cloud_cover_thr, geojson_list,save_dir,
                                                new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
                                                sr_min=min_sr, sr_max=max_sr,
+                                               to_rgb = b_to_rgb_8bit,
                                                save_org_dir=original_img_copy_dir,
                                                resampling_method=resampling_method)
     elif process_num > 1:
         theadPool = Pool(process_num)  # multi processes
 
         parameters_list = [
-            (id, polygon, poly_latlon, out_res,cloud_cover_thr, geojson_list,save_dir,shp_prj_wkt,shp_prj,min_sr,max_sr,True,0,original_img_copy_dir) for
+            (id, polygon, poly_latlon, out_res,cloud_cover_thr, geojson_list,save_dir,shp_prj_wkt,shp_prj,min_sr,max_sr,b_to_rgb_8bit,0,original_img_copy_dir) for
             id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon)]
         results = theadPool.starmap(create_moasic_of_each_grid_polygon, parameters_list)  # need python3
     else:
@@ -349,6 +359,11 @@ if __name__ == "__main__":
     parser.add_option("-p", "--process_num",
                       action="store", dest="process_num",type=int,default=1,
                       help="number of processes to create the mosaic")
+
+    parser.add_option("-t", "--to_rgb",
+                      action="store_true", dest="to_rgb",default=False,
+                      help="true to convert all images to 8 bit rgb")
+
     # parser.add_option("-i", "--item_types",
     #                   action="store", dest="item_types",default='PSScene4Band',
     #                   help="the item types, e.g., PSScene4Band,PSOrthoTile")
@@ -359,6 +374,7 @@ if __name__ == "__main__":
 
 
     (options, args) = parser.parse_args()
+    # print(options.to_rgb)
     if len(sys.argv) < 2 or len(args) < 1:
         parser.print_help()
         sys.exit(2)
