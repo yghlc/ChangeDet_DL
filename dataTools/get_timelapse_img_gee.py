@@ -72,11 +72,36 @@ def reproject_shapely_polygon(in_polygon_shapely,src_prj, new_projection):
     # polygon_shapely = transform(project, polygon_shapely)
     return out_polygon
 
-def get_image_name(image_info):
+def get_image_name(image_info,product):
 
     if image_info['type'] != 'Image':
         raise ValueError('input is a information of an image')
-    satellite = image_info['properties']['SPACECRAFT_NAME']
+    # elif 'LC08/C01/T1_SR' in product:
+    #     return maskL578clouds_SR
+    # elif 'LE07/C01/T1_SR' in product:
+    #     return maskL578clouds_SR
+    # elif 'LT05/C01/T1_SR' in product:
+    #     return maskL578clouds_SR
+    # elif 'LC08/C01/T1_TOA' in product:
+    #     return maskL578clouds
+    # elif 'LE07/C01/T1_TOA' in product:
+    #     return maskL578clouds
+    elif 'S2' in product:
+        name = 'SPACECRAFT_NAME'
+        satellite = image_info['properties'][name]
+        # return name
+    elif 'T1_SR' in product:
+        name = 'SATELLITE'
+        satellite = image_info['properties'][name]
+        # return name
+    elif 'LC08/C01/T1_TOA' in product:
+        satellite = 'Landsat_8_TOA'
+    elif 'LE07/C01/T1_TOA' in product:
+        satellite = 'Landsat_7_TOA'
+    else:
+        raise ValueError('%s not supported yet'%(product))
+
+    # satellite = image_info['properties'][name]
 
     #  timestamp in miliseconds (like in JavaScript), but fromtimestamp() expects Unix timestamp, in seconds
     fromtimestamp = image_info['properties']['system:time_start'] / 1000  #
@@ -131,19 +156,25 @@ def maskS2clouds(image):
 
 def maskL578clouds_SR(image):
     qa = image.select('pixel_qa')
-    # The cloud layer is represented as the forth place, the cloud layer confidence is 5-6, and the cloud shadow confidence is the 7-8 place
-    # Select the pixels that have clouds and the cloud confidence is medium, and are covered by cloud shadows.
-    cloud = qa.bitwiseAnd(1 << 4).And (qa.bitwiseAnd(1 << 6)).Or (qa.bitwiseAnd(1 << 8))
-    # remove boundary pixels
-    mask = image.mask().reduce(ee.Reducer.min())
-
-    return image.updateMask(cloud.Not()).updateMask(mask)
-
-def maskL578clouds(image):
-    qa = image.select('pixel_qa')
     # The cloud layer is represented as the 5 place, the cloud layer confidence is 6-7, and the cloud shadow is the 3 place
     # Select the pixels that have clouds and the cloud confidence is medium, and are covered by cloud shadows.
-    cloud = qa.bitwiseAnd(1 << 5).And(qa.bitwiseAnd(1 << 7)).Or(qa.bitwiseAnd(1 << 3))
+    cloudBitMask = 1 << 5
+    cloudConfi = 1 << 7
+    cloudShadow = 1 <<3
+    mask = qa.bitwiseAnd(cloudBitMask).eq(0).And(qa.bitwiseAnd(cloudShadow).eq(0))
+    #.Or(qa.bitwiseAnd(cloudConfi).eq(0))
+    return image.updateMask(mask)
+    # cloud = qa.bitwiseAnd(1 << 3).And (qa.bitwiseAnd(1 << 5)).Or (qa.bitwiseAnd(1 << 7))
+    # # remove boundary pixels
+    # mask = image.mask().reduce(ee.Reducer.min())
+    #
+    # return image.updateMask(cloud.Not()).updateMask(mask)
+
+def maskL578clouds(image):
+    qa = image.select('BQA')
+    # The cloud layer is represented as the 4 place, the cloud layer confidence is 5-6, and the cloud shadow is the 7-8 place
+    # Select the pixels that have clouds and the cloud confidence is medium, and are covered by cloud shadows.
+    cloud = qa.bitwiseAnd(1 << 4).And(qa.bitwiseAnd(1 << 6)).Or(qa.bitwiseAnd(1 << 8))
     # remove boundary pixels
     mask = image.mask().reduce(ee.Reducer.min())
 
@@ -162,24 +193,24 @@ def get_cloud_mask_function(product):
 
     if 'S2' in product:
         return maskS2clouds
-    if 'LC08/C01/T1_SR' in product:
+    elif 'LC08/C01/T1_SR' in product:
         return maskL578clouds_SR
-    if 'LE07/C01/T1_SR' in product:
+    elif 'LE07/C01/T1_SR' in product:
         return maskL578clouds_SR
-    if 'LT05/C01/T1_SR' in product:
+    elif 'LT05/C01/T1_SR' in product:
         return maskL578clouds_SR
-    if 'LC08/C01/T1_TOA' in product:
+    elif 'LC08/C01/T1_TOA' in product:
         return maskL578clouds
-    if 'LE07/C01/T1_TOA' in product:
+    elif 'LE07/C01/T1_TOA' in product:
         return maskL578clouds
     else:
-        raise ValueError('%s not supported yet in cloud mask')
+        raise ValueError('%s not supported yet',product)
 
-def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, res,wait2finished=True):
+def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, res, product, wait2finished=True):
 
     # map(cloud_mask).
     image_info = select_image.getInfo()
-    save_file_name = get_image_name(image_info) + '_poly_%d'%polygon_idx
+    save_file_name = get_image_name(image_info,product) + '_poly_%d'%polygon_idx
 
 
     task = ee.batch.Export.image.toDrive(image=select_image,
@@ -196,9 +227,9 @@ def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, 
         import time
         print('%s: Start transferring %s to Drive..................' % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
         while task.active():
-            print('%s: Transferring %s to Drive..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
+            print('%s: Transferring %s to Drive_..................'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'),save_file_name))
             time.sleep(20)
-        print('%s: Done with the Export to the Drive'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        print('%s: Done with the Export to the Drive_'%datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
         return True
     else:
@@ -230,46 +261,46 @@ def environment_test():
     image = ee.Image('srtm90_v4')
     print(image.getInfo())
 
-def test_download():
-    ee.Initialize()
-    from pyproj import Proj, transform
-    image = ee.Image(
-        'LANDSAT/LE07/C01/T1/LE07_149035_20010930')  # change the name of this image if testing on another image is required
-    projI = image.select(
-        'B1').projection().getInfo()  # Exporting the whole image takes time, therefore, roughly select the center region of the image
-    crs = projI['crs']
-    outProj = Proj(init='epsg:4326')
-    inProj = Proj(init=crs)
-    kk = projI['transform']
-    print(projI)
-    lon1, lat1 = transform(inProj, outProj, kk[2] + (2000 * 30), kk[5] - (2000 * 30))
-    lon2, lat2 = transform(inProj, outProj, kk[2] + (5000 * 30),
-                           kk[5] - (5000 * 30))  # change these coordinates to increase or decrease image size
-
-    bounds = [lon1, lat2, lon2, lat1]
-    print(bounds, lon1, lat1)
-
-    # imageL7=imageL7.select(['B1','B2','B3','B4','B5','B6_VCID_2','B7','B8'])
-    imageL7 = image.select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6_VCID_2', 'B7', 'B8'])  # bug fix -Lingcao
-    geometry = ([lon1, lat1], [lon1, lat2], [lon2, lat2], [lon2, lat1])
-    config = {
-        'description': 'Landsat07image',
-        'region': geometry,
-        'scale': 15,  # the image is exported with 15m resolution
-        'fileFormat': 'GeoTIFF'
-    }
-    #        'maxPixels': 1e12
-
-    exp = ee.batch.Export.image.toDrive(imageL7, **config);
-
-    exp.start()  # It takes around 5-10 minutes for 6000 * 6000 * 8 image to be exported
-    print(exp.status())
-    print(ee.batch.Task.list())
-    import time
-    while exp.active():
-        print('Transferring Data to Drive..................')
-        time.sleep(30)
-    print('Done with the Export to the Drive')
+# def test_download():
+#     ee.Initialize()
+#     from pyproj import Proj, transform
+#     image = ee.Image(
+#         'LANDSAT/LE07/C01/T1/LE07_149035_20010930')  # change the name of this image if testing on another image is required
+#     projI = image.select(
+#         'B1').projection().getInfo()  # Exporting the whole image takes time, therefore, roughly select the center region of the image
+#     crs = projI['crs']
+#     outProj = Proj(init='epsg:4326')
+#     inProj = Proj(init=crs)
+#     kk = projI['transform']
+#     print(projI)
+#     lon1, lat1 = transform(inProj, outProj, kk[2] + (2000 * 30), kk[5] - (2000 * 30))
+#     lon2, lat2 = transform(inProj, outProj, kk[2] + (5000 * 30),
+#                            kk[5] - (5000 * 30))  # change these coordinates to increase or decrease image size
+#
+#     bounds = [lon1, lat2, lon2, lat1]
+#     print(bounds, lon1, lat1)
+#
+#     # imageL7=imageL7.select(['B1','B2','B3','B4','B5','B6_VCID_2','B7','B8'])
+#     imageL7 = image.select(['B1', 'B2', 'B3', 'B4', 'B5', 'B6_VCID_2', 'B7', 'B8'])  # bug fix -Lingcao
+#     geometry = ([lon1, lat1], [lon1, lat2], [lon2, lat2], [lon2, lat1])
+#     config = {
+#         'description': 'Landsat07image',
+#         'region': geometry,
+#         'scale': 15,  # the image is exported with 15m resolution
+#         'fileFormat': 'GeoTIFF'
+#     }
+#     #        'maxPixels': 1e12
+#
+#     exp = ee.batch.Export.image.toDrive(imageL7, **config);
+#
+#     exp.start()  # It takes around 5-10 minutes for 6000 * 6000 * 8 image to be exported
+#     print(exp.status())
+#     print(ee.batch.Task.list())
+#     import time
+#     while exp.active():
+#         print('Transferring Data to Drive..................')
+#         time.sleep(30)
+#     print('Done with the Export to the Drive')
 
 def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_speci, polygon_shapely, polygon_idx, save_dir, buffer_size):
     '''
@@ -297,11 +328,22 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
 
     cloud_mask = get_cloud_mask_function(img_speci['product'])
 
+    product = img_speci['product']
+    print(product)
+
+    if 'S2' in product:
+        cloud_cover = 'CLOUDY_PIXEL_PERCENTAGE'
+        # return cloud_cover
+    elif 'LANDSAT' in product:
+        cloud_cover = 'CLOUD_COVER'
+        # return cloud_cover
+    else:
+        raise ValueError('%s not supported yet in cloud mask'%(product))
     filtercollection = ee.ImageCollection(img_speci['product']). \
         filterBounds(polygon_bound). \
         filterDate(start, finish). \
         filter(ee.Filter.calendarRange(month_range[0], month_range[1], 'month')). \
-        filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_cover_thr*100)). \
+        filter(ee.Filter.lt(cloud_cover, cloud_cover_thr*100)). \
         map(cloud_mask). \
         sort('CLOUD_COVER', True)
 
@@ -315,7 +357,6 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     print('Image count %d'%count)
     # print(filtercollection)                 # print serialized request instructions
     # print(filtercollection.getInfo())       # print object information
-
     # polygon_idx
     # export_dir = 'gee_saved' # os.path.join(save_dir,'sub_images_of_%d_polygon'%polygon_idx)
     # export_dir = ee.String(os.path.join(save_dir,'images_of_%d_polygon'%polygon_idx))
@@ -342,7 +383,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
     while True:
         try:
             img = ee.Image(img_list.get(n)).select(img_speci['bands'])
-            task = export_one_imagetoDrive(img, export_dir, polygon_idx, crop_region, img_speci['res'], wait2finished=False)
+            task = export_one_imagetoDrive(img, export_dir, polygon_idx, crop_region, img_speci['res'], img_speci['product'], wait2finished=False)
             tasklist.append(task)
             n += 1
             print('%s: Start %dth task to download images covering %dth polygon'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), n, polygon_idx))
@@ -426,7 +467,7 @@ def main(options, args):
         download_time_series_for_a_polygon(options.start_date, options.end_date, options.cloud_cover,
                                    options.image_type, geom, idx, time_lapse_save_folder, crop_buffer)
 
-        break
+        #break
 
 
     pass
