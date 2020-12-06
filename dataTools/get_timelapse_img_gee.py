@@ -403,9 +403,6 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
 
 def download_time_series_for_a_polygon(start_date, end_date, cloud_cover_thr, image_type, polygon_shapely, polygon_idx, save_dir, buffer_size):
 
-    if image_type not in img_speci.keys():
-        raise ValueError('%s not in the key of img_speci: %s'%(image_type, str(img_speci.keys())))
-
     if image_type is None:
         # download all image products
 
@@ -413,6 +410,8 @@ def download_time_series_for_a_polygon(start_date, end_date, cloud_cover_thr, im
             gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr,
                                        img_speci[image_type], polygon_shapely, polygon_idx, save_dir, buffer_size)
     else:
+        if image_type not in img_speci.keys():
+            raise ValueError('%s not in the key of img_speci: %s' % (image_type, str(img_speci.keys())))
 
         gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr,
                                        img_speci[image_type], polygon_shapely, polygon_idx, save_dir, buffer_size)
