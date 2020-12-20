@@ -16,7 +16,8 @@ img2019=${img_dir}/201907/20190730_3B_AnalyticMS_SR_mosaic_8bit_rgb_sharpen_new_
 
 shp2017=${shp_dir}/train_polygons_for_planet_201707/blh_manu_RTS_utm_201707.shp
 shp2018=${shp_dir}/train_polygons_for_planet_201807/blh_manu_RTS_utm_201807.shp
-shp2019=${shp_dir}/train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp
+#shp2019=${shp_dir}/train_polygons_for_planet_201907/blh_manu_RTS_utm_201907.shp
+shp2019=${shp_dir}/train_polygons_for_planet_201907/blh_manu_RTS_utm_201907_modify.shp
 
 # get sub image using gdal_translate
 xmin=461396
@@ -71,7 +72,7 @@ gmt begin img_2017_to_2019_ex1 jpg
     --FONT_TAG=10p,red
 
         gmt grdimage 2017.tif -c
-#        gmt psxy 2017.gmt -W0.5p,black,solid -c0,0
+        gmt psxy 2017.gmt -W0.5p,black,solid -c0,0
         # add scale bar for on the fist subplot
         gmt basemap -Ln0.15/0.15+c35N+w100e ${extlatlon} --FONT_ANNOT_PRIMARY=10p,Helvetica,black --MAP_SCALE_HEIGHT=5p -c0,0
 
@@ -83,11 +84,11 @@ gmt begin img_2017_to_2019_ex1 jpg
         echo 11.6 8 Upslope |gmt text -F+f10p,Helvetica,yellow   -c0,0
 #
         gmt grdimage 2018.tif -c0,1
-#        gmt psxy 2018.gmt -W0.5p,blue,solid -c0,1
+        gmt psxy 2018.gmt -W0.5p,blue,solid -c0,1
         echo 11,11, July 2018  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black  -c0,1
 
         gmt grdimage 2019.tif -c0,2
-#        gmt psxy 2019.gmt -W0.5p,red,solid -c0,2  # this boundaries is not accurate
+        gmt psxy 2019.gmt -W0.5p,red,solid -c0,2  # this boundaries is not accurate (the boundary has been modified)
         echo 11,11, July 2019  | gmt text -JX${width} ${region_draw} -F+f10p,Helvetica,black -c0,2 # Helvetica-Bold
 
     gmt subplot end
