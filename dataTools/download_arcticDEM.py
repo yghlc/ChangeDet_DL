@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     usage = "usage: %prog [options] extent_shp dem_indexes_shp"
     parser = OptionParser(usage=usage, version="1.0 2020-12-25")
-    parser.description = 'Introduction: get data list within an extent  '
+    parser.description = 'Introduction: download ArcticDEM within an extent  '
     # parser.add_option("-x", "--save_xlsx_path",
     #                   action="store", dest="save_xlsx_path",
     #                   help="save the sence lists to xlsx file")
