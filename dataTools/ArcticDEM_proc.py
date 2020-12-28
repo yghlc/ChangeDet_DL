@@ -24,6 +24,92 @@ import basic_src.RSImageProcess as RSImageProcess
 import re
 re_stripID='[0-9]{8}_[0-9A-F]{16}_[0-9A-F]{16}'
 
+def process_dem_tarball(tar_list, work_dir,tif_save_dir, extent_shp=None, b_rm_inter=True):
+    '''
+    process dem tarball one by one
+    :param tar_list: tarball list
+    :param work_dir: working dir, saving the unpacked results
+    :param tif_save_dir: folder to save the final tif
+    :param extent_shp: a shape file to crop tif, if None, then skip
+    :param b_rm_inter: True to remove intermediate files
+    :return: a list of final tif files
+    '''
+
+    dem_tif_list = []
+    for targz in tar_list:
+        # file existence check
+        tar_base = os.path.basename(targz)[:-7]
+        files = io_function.get_file_list_by_pattern(tif_save_dir, tar_base + '*')
+        if len(files) == 1:
+            basic.outputlogMessage('%s exist, skip processing tarball %s' % (files[0], targz))
+            dem_tif_list.append(files[0])
+            continue
+
+        out_dir = io_function.unpack_tar_gz_file(targz, work_dir)
+        if out_dir is not False:
+            dem_tif = os.path.join(out_dir, os.path.basename(out_dir) + '_dem.tif')
+            if os.path.isfile(dem_tif):
+                #TODO: registration for each DEM using dx, dy, dz in *reg.txt file
+                reg_tif = dem_tif
+
+                # crop
+                if extent_shp is None:
+                    crop_tif = reg_tif
+                else:
+                    crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp)
+                    if crop_tif is False:
+                        basic.outputlogMessage('warning, crop %s faild' % reg_tif)
+                        continue
+                # move to a new folder
+                new_crop_tif = os.path.join(tif_save_dir, os.path.basename(crop_tif))
+                io_function.move_file_to_dst(crop_tif, new_crop_tif)
+                dem_tif_list.append(new_crop_tif)
+
+            else:
+                basic.outputlogMessage('warning, no *_dem.tif in %s' % out_dir)
+
+            # remove intermediate results
+            if b_rm_inter:
+                io_function.delete_file_or_dir(out_dir)
+
+        # break
+
+    return dem_tif_list
+
+
+def group_demTif_strip_pair_ID(demTif_list):
+    '''
+    group dem tif based on the same pair ID, such as 20170226_1030010066648800_1030010066CDE700 (did not include satellite name)
+    :param demTif_list:
+    :return:
+    '''
+
+    dem_groups = {}
+    for tif in demTif_list:
+        strip_ids = re.findall(re_stripID, os.path.basename(tif))
+        if len(strip_ids) != 1:
+            print(strip_ids)
+            raise ValueError('found zero or multiple strip IDs in %s, expect one'%tif)
+        strip_id = strip_ids[0]
+        if strip_id in dem_groups.keys():
+            dem_groups[strip_id].append(tif)
+        else:
+            dem_groups[strip_id] = [tif]
+
+    return dem_groups
+
+def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method):
+    mosaic_list = []
+    for key in demTif_groups.keys():
+        save_mosaic = os.path.join(save_tif_dir, key+'.tif')
+        if len(demTif_groups[key]) == 1:
+            io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
+        else:
+            # RSImageProcess.mosaics_images(dem_groups[key],save_mosaic)
+            RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method)
+        mosaic_list.append(save_mosaic)
+
+    return mosaic_list
 
 def main(options, args):
 
@@ -43,77 +129,29 @@ def main(options, args):
     # get tarball list
     tar_list = io_function.get_file_list_by_ext('.gz',tar_dir,bsub_folder=False)
 
-    dem_folder_list = []
-    dem_tif_list = []
+
     # unzip all of them, then  registration, crop
     crop_dir = os.path.join(save_dir, 'dem_stripID_crop')
     io_function.mkdir(crop_dir)
-    for targz in tar_list:
-        # file existence check
-        tar_base = os.path.basename(targz)[:-7]
-        files =  io_function.get_file_list_by_pattern(crop_dir,tar_base + '*')
-        if len(files) == 1:
-            basic.outputlogMessage('%s exist, skip processing tarball %s'%(files[0],targz))
-            dem_tif_list.append(files[0])
-            continue
 
-        out_dir = io_function.unpack_tar_gz_file(targz,save_dir)
-        if out_dir is not False:
-            dem_folder_list.append(out_dir)
-            dem_tif = os.path.join(out_dir, os.path.basename(out_dir) + '_dem.tif')
-            if os.path.isfile(dem_tif):
-                # registration for each DEM using dx, dy, dz in *reg.txt file
-                reg_tif = dem_tif
-
-
-                # crop and move to a new folder
-                crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp)
-                if crop_tif is False:
-                    basic.outputlogMessage('warning, crop %s faild'%reg_tif)
-                else:
-                    new_crop_tif = os.path.join(crop_dir, os.path.basename(crop_tif))
-                    io_function.move_file_to_dst(crop_tif,new_crop_tif)
-                    dem_tif_list.append(new_crop_tif)
-            else:
-                basic.outputlogMessage('warning, no *_dem.tif in %s'%out_dir)
-
-            # remove intermediate results
-            if b_rm_inter:
-                io_function.delete_file_or_dir(out_dir)
-
-        # break
-
+    dem_tif_list = process_dem_tarball(tar_list,save_dir,crop_dir,extent_shp=extent_shp, b_rm_inter=b_rm_inter)
 
     # groups DEM
-    dem_groups = {}
-    for tif in dem_tif_list:
-        strip_ids = re.findall(re_stripID, os.path.basename(tif))
-        if len(strip_ids) != 1:
-            print(strip_ids)
-            raise ValueError('found zero or multiple strip IDs in %s, expect one'%tif)
-        strip_id = strip_ids[0]
-        if strip_id in dem_groups.keys():
-            dem_groups[strip_id].append(tif)
-        else:
-            dem_groups[strip_id] = [tif]
+    dem_groups = group_demTif_strip_pair_ID(dem_tif_list)
 
-
-
-    # create mosaic:
+    # create mosaic (dem with the same strip pair ID)
     mosaic_dir = os.path.join(save_dir,'dem_stripID_mosaic')
     if b_mosaic:
         io_function.mkdir(mosaic_dir)
-        for key in dem_groups.keys():
-            save_mosaic = os.path.join(mosaic_dir, key+'.tif')
-            if len(dem_groups[key]) == 1:
-                io_function.copy_file_to_dst(dem_groups[key][0],save_mosaic)
-            else:
-                # RSImageProcess.mosaics_images(dem_groups[key],save_mosaic)
-                RSImageProcess.mosaic_crop_images_gdalwarp(dem_groups[key],save_mosaic,resampling_method='average')
+        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,'average')
+        dem_tif_list = mosaic_list
 
-        pass
+    # get valid pixel percentage
+
+
 
     # co-registration
+
 
     pass
 
