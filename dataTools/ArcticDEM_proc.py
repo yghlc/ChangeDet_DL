@@ -20,6 +20,9 @@ import basic_src.io_function as io_function
 import basic_src.basic as basic
 
 import basic_src.RSImageProcess as RSImageProcess
+import basic_src.RSImage as RSImage
+
+import operator
 
 import re
 re_stripID='[0-9]{8}_[0-9A-F]{16}_[0-9A-F]{16}'
@@ -102,6 +105,14 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method):
     mosaic_list = []
     for key in demTif_groups.keys():
         save_mosaic = os.path.join(save_tif_dir, key+'.tif')
+        # check file existence
+        # if os.path.isfile(save_mosaic):
+        b_save_mosaic = io_function.is_file_exist_subfolder(save_tif_dir,key+'.tif')
+        if b_save_mosaic is not False:
+            basic.outputlogMessage('warning, mosaic file: %s exist, skip'%b_save_mosaic)
+            mosaic_list.append(b_save_mosaic)
+            continue
+
         if len(demTif_groups[key]) == 1:
             io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
         else:
@@ -110,6 +121,10 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method):
         mosaic_list.append(save_mosaic)
 
     return mosaic_list
+
+
+def coregistration_dem():
+    pass
 
 def main(options, args):
 
@@ -125,6 +140,7 @@ def main(options, args):
     save_dir = options.save_dir
     b_mosaic = options.create_mosaic
     b_rm_inter = options.remove_inter_data
+    keep_dem_percent = options.keep_dem_percent
 
     # get tarball list
     tar_list = io_function.get_file_list_by_ext('.gz',tar_dir,bsub_folder=False)
@@ -147,6 +163,25 @@ def main(options, args):
         dem_tif_list = mosaic_list
 
     # get valid pixel percentage
+    dem_tif_valid_per = {}
+    for tif in dem_tif_list:
+        # RSImage.get_valid_pixel_count(tif)
+        per = RSImage.get_valid_pixel_percentage(tif)
+        dem_tif_valid_per[tif] = per
+    # sort
+    dem_tif_valid_per_d = dict(sorted(dem_tif_valid_per.items(), key=operator.itemgetter(1), reverse=True))
+    percent_txt = os.path.join(mosaic_dir,'dem_valid_percent.txt')
+    with open(percent_txt,'w') as f_obj:
+        for key in dem_tif_valid_per_d:
+            f_obj.writelines('%s %.4f\n'%(os.path.basename(key),dem_tif_valid_per_d[key]))
+        basic.outputlogMessage('save dem valid pixel percentage to %s'%percent_txt)
+
+    # only keep dem with valid pixel greater than a threshold
+    mosaic_dir_rm = os.path.join(mosaic_dir,'dem_valid_lt_%.2f'%keep_dem_percent)
+    io_function.mkdir(mosaic_dir_rm)
+    for tif in dem_tif_valid_per.keys():
+        if dem_tif_valid_per[tif] < keep_dem_percent:
+            io_function.movefiletodir(tif,mosaic_dir_rm)
 
 
 
@@ -173,6 +208,10 @@ if __name__ == "__main__":
     parser.add_option("-d", "--save_dir",
                       action="store", dest="save_dir",default='./',
                       help="the folder to save pre-processed results")
+
+    parser.add_option("-p", "--keep_dem_percent",
+                      action="store", dest="keep_dem_percent",type=float,default=30.0,
+                      help="keep dem with valid percentage greater than this value")
 
     parser.add_option("-m", "--create_mosaic",
                       action="store_true", dest="create_mosaic",default=False,
