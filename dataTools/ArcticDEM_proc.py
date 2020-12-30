@@ -123,7 +123,7 @@ def group_demTif_strip_pair_ID(demTif_list):
 
     return dem_groups
 
-def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method):
+def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, save_source=False):
     mosaic_list = []
     for key in demTif_groups.keys():
         save_mosaic = os.path.join(save_tif_dir, key+'.tif')
@@ -134,6 +134,10 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method):
             basic.outputlogMessage('warning, mosaic file: %s exist, skip'%b_save_mosaic)
             mosaic_list.append(b_save_mosaic)
             continue
+        # save the source file for producing the mosaic
+        if save_source:
+            save_mosaic_source_txt = os.path.join(save_tif_dir, key + '_src.txt')
+            io_function.save_list_to_txt(save_mosaic_source_txt,demTif_groups[key])
 
         if len(demTif_groups[key]) == 1:
             io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
@@ -144,7 +148,7 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method):
 
     return mosaic_list
 
-def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method):
+def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,save_source=False):
 
     # convert the key in demTif_date_groups to string
     date_groups = {}
@@ -153,7 +157,7 @@ def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method):
         date_groups[new_key] = demTif_date_groups[key]
 
     # becuase the tifs have been grouped, so we can use mosaic_dem_same_stripID
-    return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method)
+    return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method,save_source=save_source)
 
 def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None):
     '''
@@ -248,7 +252,7 @@ def main(options, args):
     mosaic_yeardate_dir = os.path.join(save_dir,'dem_date_mosaic')
     if b_mosaic_date:
         io_function.mkdir(mosaic_yeardate_dir)
-        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,'average')
+        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,'average', save_source=True)
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
