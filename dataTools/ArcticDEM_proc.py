@@ -28,27 +28,28 @@ import operator
 import re
 re_stripID='[0-9]{8}_[0-9A-F]{16}_[0-9A-F]{16}'
 
-def process_dem_tarball(tar_list, work_dir,tif_save_dir, extent_shp=None, b_rm_inter=True):
+def process_dem_tarball(tar_list, work_dir,inter_format, extent_shp=None):
     '''
     process dem tarball one by one
     :param tar_list: tarball list
     :param work_dir: working dir, saving the unpacked results
-    :param tif_save_dir: folder to save the final tif
+    :param inter_format: format for saving files
     :param extent_shp: a shape file to crop tif, if None, then skip
-    :param b_rm_inter: True to remove intermediate files
     :return: a list of final tif files
     '''
 
     dem_tif_list = []
+    tar_folder_list = []
     for targz in tar_list:
         # file existence check
         tar_base = os.path.basename(targz)[:-7]
-        files = io_function.get_file_list_by_pattern(tif_save_dir, tar_base + '*')
-        if len(files) == 1:
-            basic.outputlogMessage('%s exist, skip processing tarball %s' % (files[0], targz))
-            dem_tif_list.append(files[0])
-            continue
+        # files = io_function.get_file_list_by_pattern(tif_save_dir, tar_base + '*')
+        # if len(files) == 1:
+        #     basic.outputlogMessage('%s exist, skip processing tarball %s' % (files[0], targz))
+        #     dem_tif_list.append(files[0])
+        #     continue
 
+        # unpack, it can check whether it has been unpacked
         out_dir = io_function.unpack_tar_gz_file(targz, work_dir)
         if out_dir is not False:
             dem_tif = os.path.join(out_dir, os.path.basename(out_dir) + '_dem.tif')
@@ -61,25 +62,25 @@ def process_dem_tarball(tar_list, work_dir,tif_save_dir, extent_shp=None, b_rm_i
                     crop_tif = reg_tif
                 else:
                     # because later, we move the file to another foldeer, so we should not use 'VRT' format
-                    crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format='GTiff')
+                    crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format=inter_format)
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
                         continue
-                # move to a new folder
-                new_crop_tif = os.path.join(tif_save_dir, os.path.basename(crop_tif))
-                io_function.move_file_to_dst(crop_tif, new_crop_tif)
-                dem_tif_list.append(new_crop_tif)
-
+                # # move to a new folder
+                # new_crop_tif = os.path.join(tif_save_dir, os.path.basename(crop_tif))
+                # io_function.move_file_to_dst(crop_tif, new_crop_tif)
+                # dem_tif_list.append(new_crop_tif)
+                dem_tif_list.append(crop_tif)
             else:
                 basic.outputlogMessage('warning, no *_dem.tif in %s' % out_dir)
 
-            # remove intermediate results
-            if b_rm_inter:
-                io_function.delete_file_or_dir(out_dir)
+            tar_folder_list.append(out_dir)
+        else:
+            basic.outputlogMessage('warning, unpack %s faild' % targz)
 
         # break
 
-    return dem_tif_list
+    return dem_tif_list, tar_folder_list
 
 def group_demTif_yearmonthDay(demTif_list, diff_days=30):
     '''
@@ -140,11 +141,14 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, save_so
             save_mosaic_source_txt = os.path.join(save_tif_dir, key + '_src.txt')
             io_function.save_list_to_txt(save_mosaic_source_txt,demTif_groups[key])
 
-        if len(demTif_groups[key]) == 1:
-            io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
-        else:
-            # RSImageProcess.mosaics_images(dem_groups[key],save_mosaic)
-            RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method,o_format=o_format)
+        # if len(demTif_groups[key]) == 1:
+        #     io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
+        # else:
+        #     # RSImageProcess.mosaics_images(dem_groups[key],save_mosaic)
+        #     RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method,o_format=o_format)
+
+        # create mosaic, can handle only input one file
+        RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key], save_mosaic, resampling_method=resample_method,o_format=o_format)
         mosaic_list.append(save_mosaic)
 
     return mosaic_list
@@ -217,16 +221,13 @@ def main(options, args):
     b_mosaic_date = options.create_mosaic_date
     b_rm_inter = options.remove_inter_data
     keep_dem_percent = options.keep_dem_percent
+    inter_format = options.format
 
     # get tarball list
     tar_list = io_function.get_file_list_by_ext('.gz',tar_dir,bsub_folder=False)
 
 
-    # unzip all of them, then  registration, crop
-    crop_dir = os.path.join(save_dir, 'dem_stripID_crop')
-    io_function.mkdir(crop_dir)
-
-    dem_tif_list = process_dem_tarball(tar_list,save_dir,crop_dir,extent_shp=extent_shp, b_rm_inter=b_rm_inter)
+    dem_tif_list,tar_folders = process_dem_tarball(tar_list,save_dir,inter_format,extent_shp=extent_shp)
 
     # groups DEM
     dem_groups = group_demTif_strip_pair_ID(dem_tif_list)
@@ -235,7 +236,7 @@ def main(options, args):
     mosaic_dir = os.path.join(save_dir,'dem_stripID_mosaic')
     if b_mosaic_id:
         io_function.mkdir(mosaic_dir)
-        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,'average',o_format='VRT')
+        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,'average',o_format=inter_format)
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
@@ -264,6 +265,11 @@ def main(options, args):
 
     # co-registration
 
+
+    # remove intermediate files
+    if b_rm_inter:
+        for folder in tar_folders:
+            io_function.delete_file_or_dir(folder)
 
     pass
 
@@ -301,6 +307,10 @@ if __name__ == "__main__":
     parser.add_option("-r", "--remove_inter_data",
                       action="store_true", dest="remove_inter_data",default=False,
                       help="True to keep intermediate data")
+
+    parser.add_option("-f", "--format",
+                      action="store", dest="format",default='VRT',
+                      help="the data format for middle intermediate files")
 
     (options, args) = parser.parse_args()
     # print(options.create_mosaic)
