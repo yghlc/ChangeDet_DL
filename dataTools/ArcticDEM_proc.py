@@ -60,7 +60,8 @@ def process_dem_tarball(tar_list, work_dir,tif_save_dir, extent_shp=None, b_rm_i
                 if extent_shp is None:
                     crop_tif = reg_tif
                 else:
-                    crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp)
+                    # because later, we move the file to another foldeer, so we should not use 'VRT' format
+                    crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format='GTiff')
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
                         continue
@@ -123,7 +124,7 @@ def group_demTif_strip_pair_ID(demTif_list):
 
     return dem_groups
 
-def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, save_source=False):
+def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, save_source=False, o_format='GTiff'):
     mosaic_list = []
     for key in demTif_groups.keys():
         save_mosaic = os.path.join(save_tif_dir, key+'.tif')
@@ -143,12 +144,12 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, save_so
             io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
         else:
             # RSImageProcess.mosaics_images(dem_groups[key],save_mosaic)
-            RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method)
+            RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method,o_format=o_format)
         mosaic_list.append(save_mosaic)
 
     return mosaic_list
 
-def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,save_source=False):
+def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,save_source=False,o_format='GTiff'):
 
     # convert the key in demTif_date_groups to string
     date_groups = {}
@@ -157,7 +158,7 @@ def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,save_source
         date_groups[new_key] = demTif_date_groups[key]
 
     # becuase the tifs have been grouped, so we can use mosaic_dem_same_stripID
-    return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method,save_source=save_source)
+    return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method,save_source=save_source,o_format=o_format)
 
 def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None):
     '''
@@ -234,7 +235,7 @@ def main(options, args):
     mosaic_dir = os.path.join(save_dir,'dem_stripID_mosaic')
     if b_mosaic_id:
         io_function.mkdir(mosaic_dir)
-        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,'average')
+        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,'average',o_format='VRT')
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
@@ -252,7 +253,7 @@ def main(options, args):
     mosaic_yeardate_dir = os.path.join(save_dir,'dem_date_mosaic')
     if b_mosaic_date:
         io_function.mkdir(mosaic_yeardate_dir)
-        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,'average', save_source=True)
+        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,'average', save_source=True, o_format='GTiff')
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
