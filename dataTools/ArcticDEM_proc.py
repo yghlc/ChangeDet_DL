@@ -254,6 +254,7 @@ def main(options, args):
     mosaic_yeardate_dir = os.path.join(save_dir,'dem_date_mosaic')
     if b_mosaic_date:
         io_function.mkdir(mosaic_yeardate_dir)
+        # this is the last output of mosaic, save to 'GTiff' format.
         mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,'average', save_source=True, o_format='GTiff')
         dem_tif_list = mosaic_list
 
@@ -308,8 +309,10 @@ if __name__ == "__main__":
                       action="store_true", dest="remove_inter_data",default=False,
                       help="True to keep intermediate data")
 
+    # there is one mosaic: Failed to compute statistics, no valid pixels found in sampling, other are ok,
+    # so, may still use GTiff format.
     parser.add_option("-f", "--format",
-                      action="store", dest="format",default='VRT',
+                      action="store", dest="format", default='GTiff',  #default='VRT',
                       help="the data format for middle intermediate files")
 
     (options, args) = parser.parse_args()
