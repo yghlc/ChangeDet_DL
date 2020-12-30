@@ -269,6 +269,7 @@ def main(options, args):
 
     # remove intermediate files
     if b_rm_inter:
+        basic.outputlogMessage('remove intermediate files')
         for folder in tar_folders:
             io_function.delete_file_or_dir(folder)
 
