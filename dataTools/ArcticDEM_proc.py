@@ -21,6 +21,7 @@ import basic_src.basic as basic
 
 import basic_src.RSImageProcess as RSImageProcess
 import basic_src.RSImage as RSImage
+import basic_src.timeTools as timeTools
 
 import operator
 
@@ -79,6 +80,27 @@ def process_dem_tarball(tar_list, work_dir,tif_save_dir, extent_shp=None, b_rm_i
 
     return dem_tif_list
 
+def group_demTif_yearmonthDay(demTif_list, diff_days=30):
+    '''
+    groups DEM tif if the acquisition of their raw images is close (less than 30 days or others)
+    :param demTif_list:
+    :return:
+    '''
+    dem_groups = {}
+    for tif in demTif_list:
+        yeardate =  timeTools.get_yeardate_yyyymmdd(os.path.basename(tif))
+
+        b_assgined = False
+        for time in dem_groups.keys():
+            if timeTools.diff_yeardate(time,yeardate) <= diff_days:
+                dem_groups[time].append(tif)
+                b_assgined = True
+                break
+        if b_assgined is False:
+            dem_groups[yeardate] = [tif]
+
+    return dem_groups
+
 
 def group_demTif_strip_pair_ID(demTif_list):
     '''
@@ -122,6 +144,54 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method):
 
     return mosaic_list
 
+def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method):
+
+    # convert the key in demTif_date_groups to string
+    date_groups = {}
+    for key in demTif_date_groups.keys():
+        new_key = key.strftime('%Y%m%d') + '_dem'
+        date_groups[new_key] = demTif_date_groups[key]
+
+    # becuase the tifs have been grouped, so we can use mosaic_dem_same_stripID
+    return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method)
+
+def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None):
+    '''
+    get the valid pixel percentage for each DEM
+    :param dem_tif_list:
+    :param work_dir:
+    :param move_dem_threshold: move a DEM to a sub-folder if its valid percentage small then the threshold
+    :return:
+    '''
+
+    keep_dem_list = []
+
+    dem_tif_valid_per = {}
+    for tif in dem_tif_list:
+        # RSImage.get_valid_pixel_count(tif)
+        per = RSImage.get_valid_pixel_percentage(tif)
+        dem_tif_valid_per[tif] = per
+        keep_dem_list.append(tif)
+    # sort
+    dem_tif_valid_per_d = dict(sorted(dem_tif_valid_per.items(), key=operator.itemgetter(1), reverse=True))
+    percent_txt = os.path.join(work_dir,'dem_valid_percent.txt')
+    with open(percent_txt,'w') as f_obj:
+        for key in dem_tif_valid_per_d:
+            f_obj.writelines('%s %.4f\n'%(os.path.basename(key),dem_tif_valid_per_d[key]))
+        basic.outputlogMessage('save dem valid pixel percentage to %s'%percent_txt)
+
+    # only keep dem with valid pixel greater than a threshold
+    if move_dem_threshold is not None:  # int or float
+        keep_dem_list = []      # reset the list
+        mosaic_dir_rm = os.path.join(work_dir,'dem_valid_lt_%.2f'%move_dem_threshold)
+        io_function.mkdir(mosaic_dir_rm)
+        for tif in dem_tif_valid_per.keys():
+            if dem_tif_valid_per[tif] < move_dem_threshold:
+                io_function.movefiletodir(tif,mosaic_dir_rm)
+            else:
+                keep_dem_list.append(tif)
+
+    return keep_dem_list
 
 def coregistration_dem():
     pass
@@ -138,7 +208,8 @@ def main(options, args):
 
     tar_dir = options.ArcticDEM_dir
     save_dir = options.save_dir
-    b_mosaic = options.create_mosaic
+    b_mosaic_id = options.create_mosaic_id
+    b_mosaic_date = options.create_mosaic_date
     b_rm_inter = options.remove_inter_data
     keep_dem_percent = options.keep_dem_percent
 
@@ -157,31 +228,32 @@ def main(options, args):
 
     # create mosaic (dem with the same strip pair ID)
     mosaic_dir = os.path.join(save_dir,'dem_stripID_mosaic')
-    if b_mosaic:
+    if b_mosaic_id:
         io_function.mkdir(mosaic_dir)
         mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,'average')
         dem_tif_list = mosaic_list
 
-    # get valid pixel percentage
-    dem_tif_valid_per = {}
-    for tif in dem_tif_list:
-        # RSImage.get_valid_pixel_count(tif)
-        per = RSImage.get_valid_pixel_percentage(tif)
-        dem_tif_valid_per[tif] = per
-    # sort
-    dem_tif_valid_per_d = dict(sorted(dem_tif_valid_per.items(), key=operator.itemgetter(1), reverse=True))
-    percent_txt = os.path.join(mosaic_dir,'dem_valid_percent.txt')
-    with open(percent_txt,'w') as f_obj:
-        for key in dem_tif_valid_per_d:
-            f_obj.writelines('%s %.4f\n'%(os.path.basename(key),dem_tif_valid_per_d[key]))
-        basic.outputlogMessage('save dem valid pixel percentage to %s'%percent_txt)
+        # get valid pixel percentage
+        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_dir,move_dem_threshold = keep_dem_percent)
 
-    # only keep dem with valid pixel greater than a threshold
-    mosaic_dir_rm = os.path.join(mosaic_dir,'dem_valid_lt_%.2f'%keep_dem_percent)
-    io_function.mkdir(mosaic_dir_rm)
-    for tif in dem_tif_valid_per.keys():
-        if dem_tif_valid_per[tif] < keep_dem_percent:
-            io_function.movefiletodir(tif,mosaic_dir_rm)
+    # groups DEM with original images acquired at the same year months
+    dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=31)
+    # sort based on yeardate in accending order : operator.itemgetter(0)
+    dem_groups_date = dict(sorted(dem_groups_date.items(), key=operator.itemgetter(0)))
+    # save to txt (json format)
+    year_date_txt = os.path.join(mosaic_dir, 'year_date_tif.txt')
+    io_function.save_dict_to_txt_json(year_date_txt,dem_groups_date)
+
+    # merge DEM with close acquisition date
+    mosaic_yeardate_dir = os.path.join(save_dir,'dem_date_mosaic')
+    if b_mosaic_date:
+        io_function.mkdir(mosaic_yeardate_dir)
+        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,'average')
+        dem_tif_list = mosaic_list
+
+        # get valid pixel percentage
+        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_yeardate_dir,move_dem_threshold = keep_dem_percent)
+
 
 
 
@@ -213,9 +285,13 @@ if __name__ == "__main__":
                       action="store", dest="keep_dem_percent",type=float,default=30.0,
                       help="keep dem with valid percentage greater than this value")
 
-    parser.add_option("-m", "--create_mosaic",
-                      action="store_true", dest="create_mosaic",default=False,
+    parser.add_option("-m", "--create_mosaic_id",
+                      action="store_true", dest="create_mosaic_id",default=False,
                       help="for a small region, if true, then get a mosaic of dem with the same ID (date_catalogID_catalogID)")
+
+    parser.add_option("-t", "--create_mosaic_date",
+                      action="store_true", dest="create_mosaic_date",default=False,
+                      help="for a small region, if true, then get a mosaic of dem with close acquisition date ")
 
     parser.add_option("-r", "--remove_inter_data",
                       action="store_true", dest="remove_inter_data",default=False,
