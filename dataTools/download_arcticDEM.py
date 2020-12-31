@@ -83,7 +83,7 @@ def main(options, args):
         if len(urls) > 0:
 
             total_size_GB = get_total_size(urls)
-            basic.outputlogMessage('the size of files will be downloaded is %.4lf GB for %d th extent '%(total_size_GB,(idx+1)))
+            basic.outputlogMessage('the size of files will be downloaded is %.4lf GB for the %d th extent '%(total_size_GB,(idx+1)))
             # time.sleep(5)   # wait 5 seconds
 
             # download them using wget one by one
