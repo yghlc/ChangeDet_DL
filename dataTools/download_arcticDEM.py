@@ -20,6 +20,16 @@ import basic_src.basic as basic
 
 from urllib.parse import urlparse
 
+import time
+
+def get_total_size(url_list):
+    total_size = 0
+    for url in url_list:
+        size = io_function.get_url_file_size(url)       # bytes
+        if size is not False:
+            total_size += size
+    return total_size/(1024.0*1024.0*1024.0)    # GB
+
 def main(options, args):
 
     extent_shp = args[0]
@@ -71,6 +81,11 @@ def main(options, args):
             basic.outputlogMessage('save dem urls to %s' % save_txt_path)
 
         if len(urls) > 0:
+
+            total_size_GB = get_total_size(urls)
+            basic.outputlogMessage('the size of files will be downloaded is %.4lf GB for %d th extent '%(total_size_GB,(idx+1)))
+            # time.sleep(5)   # wait 5 seconds
+
             # download them using wget one by one
             for ii, url in enumerate(urls):
                 tmp = urlparse(url)
