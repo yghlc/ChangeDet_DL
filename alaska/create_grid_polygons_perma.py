@@ -60,7 +60,12 @@ def main():
                 for tmp in inte_res_multi:
                     # remove holes if they exist
                     small_ones = vector_gpd.fill_holes_in_a_polygon(tmp)
+                    #################################
+                    # we should remove some really small polygons (< 1 km^2)
                     small_perma_areas_list.append(small_ones)
+
+    ##############################
+    # have to merge small polygons in QGIS to its adjacent ones.
 
 
     # save
