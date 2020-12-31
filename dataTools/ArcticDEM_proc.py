@@ -28,6 +28,14 @@ import operator
 import re
 re_stripID='[0-9]{8}_[0-9A-F]{16}_[0-9A-F]{16}'
 
+def get_dem_path_in_unpack_tarball(out_dir):
+    file_end = ['_dem.tif','_reg_dem.tif']   # Arctic strip and tile (mosaic) version
+    for end in file_end:
+        dem_tif = os.path.join(out_dir, os.path.basename(out_dir) + end)
+        if os.path.isfile(dem_tif):
+            return dem_tif
+    return False
+
 def process_dem_tarball(tar_list, work_dir,inter_format, extent_shp=None):
     '''
     process dem tarball one by one
@@ -52,7 +60,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, extent_shp=None):
         # unpack, it can check whether it has been unpacked
         out_dir = io_function.unpack_tar_gz_file(targz, work_dir)
         if out_dir is not False:
-            dem_tif = os.path.join(out_dir, os.path.basename(out_dir) + '_dem.tif')
+            dem_tif = get_dem_path_in_unpack_tarball(out_dir)
             if os.path.isfile(dem_tif):
                 #TODO: registration for each DEM using dx, dy, dz in *reg.txt file
                 reg_tif = dem_tif
@@ -205,6 +213,57 @@ def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None):
 def coregistration_dem():
     pass
 
+def process_arcticDEM_tiles(tar_list,save_dir,inter_format, resample_method, extent_shp=None, b_rm_inter=True):
+    '''
+    process the mosaic (not multi-temporal) version of ArcticDEM
+    :param tar_list:
+    :param save_dir:
+    :param inter_format:
+    :param extent_shp:
+    :param b_rm_inter:
+    :return:
+    '''
+
+    # unpackage and crop to extent
+    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, extent_shp=extent_shp)
+    if len(dem_tif_list) < 1:
+        raise ValueError('No DEM extracted from tarballs')
+
+    # create mosaic for a relative small area with a extent
+    if extent_shp is not None:
+        dem_name = os.path.basename(tar_folders[0])[-7:]
+        region_base = os.path.splitext(os.path.basename(extent_shp))[0]
+        save_path = os.path.join(save_dir,region_base + '_' + dem_name + '_ArcticTileDEM.tif')
+
+        RSImageProcess.mosaic_crop_images_gdalwarp(dem_tif_list, save_path, resampling_method=resample_method,o_format=inter_format)
+        pass
+
+    # remove intermediate files
+    if b_rm_inter:
+        basic.outputlogMessage('remove intermediate files')
+        for folder in tar_folders:
+            io_function.delete_file_or_dir(folder)
+
+    return True
+
+def is_Arctic_tiles(tar_list):
+    '''
+    check whether it is mosaic version (tiles) of DEM
+    :param tar_list:
+    :return:
+    '''
+    tile_pattern = '^\d{2}_\d{2}_'
+    for tar in tar_list:
+        tar_base = os.path.basename(tar)
+        tiles = re.findall(tile_pattern,tar_base)
+        if len(tiles) == 1:
+            pass
+        else:
+            basic.outputlogMessage('%s is not a tile of ArcticDEM'%tar)
+            return False
+
+    return True
+
 def main(options, args):
 
     extent_shp = args[0]
@@ -225,6 +284,12 @@ def main(options, args):
 
     # get tarball list
     tar_list = io_function.get_file_list_by_ext('.gz',tar_dir,bsub_folder=False)
+    if len(tar_list) < 1:
+        raise ValueError('No input tar.gz files in %s'%tar_dir)
+
+    if is_Arctic_tiles(tar_list):
+        basic.outputlogMessage('Input is the mosaic version of ArcticDEM')
+        return process_arcticDEM_tiles(tar_list,save_dir,inter_format,'average',extent_shp=extent_shp,b_rm_inter=True)
 
 
     dem_tif_list,tar_folders = process_dem_tarball(tar_list,save_dir,inter_format,extent_shp=extent_shp)
