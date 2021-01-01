@@ -39,8 +39,8 @@ def get_dem_path_in_unpack_tarball(out_dir):
             return dem_tif
     return False
 
-def subset_image_by_polygon_box(in_img, out_img, polygon, out_res=None):
-    return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,xres=out_res,yres=out_res)
+def subset_image_by_polygon_box(in_img, out_img, polygon,resample_m='bilinear', out_res=None):
+    return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
 
 def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=None):
     '''
@@ -79,7 +79,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
                     # because later, we move the file to another foldeer, so we should not use 'VRT' format
                     # crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format=inter_format)
                     save_crop_path = io_function.get_name_by_adding_tail(reg_tif,'sub')
-                    crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, out_res = out_res)
+                    crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res)
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
                         continue
