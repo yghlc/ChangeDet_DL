@@ -307,20 +307,28 @@ def proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sav
 
     pass
 
-def proc_ArcticDEM_strip_one_grid_polygon(tar_list,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,
-                                    extent_poly, extent_id):
+def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,
+                                    extent_poly, extent_id,keep_dem_percent,resample_method='average'):
 
+    # get file in the tar_dir
+    tar_list = get_tar_list_sub(tar_dir, dem_polygons,dem_urls,extent_poly)
+    if len(tar_list) < 1:
+        basic.outputlogMessage('Warning, no tarball for the extent (id=%d) in %s'%(extent_id,tar_dir))
+        return False
 
-    dem_tif_list,tar_folders = process_dem_tarball(tar_list,save_dir,inter_format,extent_shp=extent_shp)
+    # unpackage and crop to extent
+    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, o_res, extent_poly=extent_poly)
+    if len(dem_tif_list) < 1:
+        raise ValueError('No DEM extracted from tarballs')
 
     # groups DEM
     dem_groups = group_demTif_strip_pair_ID(dem_tif_list)
 
     # create mosaic (dem with the same strip pair ID)
-    mosaic_dir = os.path.join(save_dir,'dem_stripID_mosaic')
+    mosaic_dir = os.path.join(save_dir,'dem_stripID_mosaic_sub_%d'%extent_id)
     if b_mosaic_id:
         io_function.mkdir(mosaic_dir)
-        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,'average',o_format=inter_format)
+        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format=inter_format)
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
@@ -335,11 +343,11 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_list,save_dir,inter_format,b_mosai
     io_function.save_dict_to_txt_json(year_date_txt,dem_groups_date)
 
     # merge DEM with close acquisition date
-    mosaic_yeardate_dir = os.path.join(save_dir,'dem_date_mosaic')
+    mosaic_yeardate_dir = os.path.join(save_dir,'dem_date_mosaic_sub_%d'%extent_id)
     if b_mosaic_date:
         io_function.mkdir(mosaic_yeardate_dir)
         # this is the last output of mosaic, save to 'GTiff' format.
-        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,'average', save_source=True, o_format='GTiff')
+        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,resample_method, save_source=True, o_format='GTiff')
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
@@ -395,12 +403,13 @@ def main(options, args):
 
     extPolys_ids = vector_gpd.read_attribute_values_list(extent_shp,'id')
     if extPolys_ids is None:
-        basic.outputlogMessage('Warning, field: id is extent_polys in %s, will create default ID for each grid'%extent_shp)
+        basic.outputlogMessage('Warning, field: id is not in %s, will create default ID for each grid'%extent_shp)
         extPolys_ids = [ id + 1 for id in range(len(extent_polys))]
 
     # read dem polygons and url
     dem_polygons = vector_gpd.read_polygons_gpd(arcticDEM_shp)
     dem_urls = vector_gpd.read_attribute_values_list(arcticDEM_shp,'fileurl')
+    basic.outputlogMessage('%d dem polygons in %s' % (len(dem_polygons), extent_shp))
 
     # get tarball list
     tar_list = io_function.get_file_list_by_ext('.gz',tar_dir,bsub_folder=False)
@@ -418,8 +427,9 @@ def main(options, args):
         if b_ArcticDEM_tiles:
             proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_rm_inter,ext_poly, idx,extent_shp_base)
         else:
-            # proc_ArcticDEM_one_grid_polygon(tar_list,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,ext_poly,idx)
-            pass
+            proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons, dem_urls, o_res,save_dir,inter_format,
+                                                  b_mosaic_id,b_mosaic_date,b_rm_inter,
+                                                  ext_poly,idx,keep_dem_percent, resample_method='average')
 
 
 
