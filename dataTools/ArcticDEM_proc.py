@@ -246,7 +246,7 @@ def process_arcticDEM_tiles(tar_list,save_dir,inter_format, resample_method, ext
 
     return True
 
-def is_Arctic_tiles(tar_list):
+def is_ArcticDEM_tiles(tar_list):
     '''
     check whether it is mosaic version (tiles) of DEM
     :param tar_list:
@@ -287,7 +287,7 @@ def main(options, args):
     if len(tar_list) < 1:
         raise ValueError('No input tar.gz files in %s'%tar_dir)
 
-    if is_Arctic_tiles(tar_list):
+    if is_ArcticDEM_tiles(tar_list):
         basic.outputlogMessage('Input is the mosaic version of ArcticDEM')
         return process_arcticDEM_tiles(tar_list,save_dir,inter_format,'average',extent_shp=extent_shp,b_rm_inter=True)
 
