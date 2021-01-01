@@ -65,7 +65,7 @@ def main():
                     small_perma_areas_list.append(small_ones)
 
     ##############################
-    # have to merge small polygons in QGIS to its adjacent ones.
+    # have to manually merge small polygons in QGIS to its adjacent ones.
 
 
     # save
