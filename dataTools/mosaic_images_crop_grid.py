@@ -215,11 +215,12 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
         print(result)
         sys.exit(status)
 
-    # #  polygon.exterior.coords
-    minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
-    print(minx, miny, maxx, maxy)
-    results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
-    print(results)
+    # # #  polygon.exterior.coords
+    # minx, miny, maxx, maxy =  polygon.bounds    # (minx, miny, maxx, maxy)
+    # print(minx, miny, maxx, maxy)
+    # results = RSImageProcess.subset_image_projwin(fin_out,out,minx, maxy, maxx, miny, xres=out_res,yres=out_res)
+    # print(results)
+    results = RSImageProcess.subset_image_by_polygon_box_image_min(fin_out,out,polygon, xres=out_res,yres=out_res)
 
     if results is False:
         basic.outputlogMessage('Warning, Crop %s failed, keep the one without cropping'%out)
