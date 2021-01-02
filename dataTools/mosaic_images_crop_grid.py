@@ -108,6 +108,8 @@ def reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir='plane
     :return:
     '''
 
+    # TODO: if multiple processes try to derive the same rgb images, it may have problem.
+
     if os.path.isdir(save_dir) is False:
         io_function.mkdir(save_dir)
 
