@@ -40,7 +40,9 @@ def get_dem_path_in_unpack_tarball(out_dir):
     return False
 
 def subset_image_by_polygon_box(in_img, out_img, polygon,resample_m='bilinear', out_res=None):
-    return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
+    # return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
+    # crop to the min extent (polygon or the image)
+    return RSImageProcess.subset_image_by_polygon_box_image_min(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
 
 def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=None):
     '''
