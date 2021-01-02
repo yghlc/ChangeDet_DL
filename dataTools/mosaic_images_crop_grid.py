@@ -16,6 +16,7 @@ import basic_src.io_function as io_function
 import basic_src.basic as basic
 import basic_src.map_projection as map_projection
 import basic_src.RSImageProcess as RSImageProcess
+import basic_src.timeTools as timeTools
 import vector_gpd
 from datetime import datetime
 
@@ -248,6 +249,38 @@ def create_moasic_of_each_grid_polygon_one_proc(parameters):
                                        sr_min=parameters[9], sr_max=parameters[10],
                                        save_org_dir=parameters[11],resampling_method=parameters[12])
 
+def group_planet_images_date(geojson_list,diff_days=0):
+    '''
+    group image based on their acquisition date
+    :param geojson_list:
+    :param diff_days:
+    :return: a dict
+    '''
+
+    # e.g., 20200830_222236_71_1057.geojson
+    img_groups = {}
+    for item in geojson_list:
+        yeardate =  timeTools.get_yeardate_yyyymmdd(os.path.basename(item))
+
+        b_assgined = False
+        for time in img_groups.keys():
+            if timeTools.diff_yeardate(time,yeardate) <= diff_days:
+                img_groups[time].append(item)
+                b_assgined = True
+                break
+        if b_assgined is False:
+            img_groups[yeardate] = [item]
+
+
+    # convert the key from datetime to string.
+    strKey_dict = {}
+    for key in img_groups.keys():
+        # key.strftime(key,'%Y%m%d')
+        strKey_dict[datetime.strftime(key,'%Y%m%d')] = img_groups[key]
+
+    return strKey_dict
+
+
 def main(options, args):
 
     time0 = time.time()
@@ -288,35 +321,52 @@ def main(options, args):
     b_to_rgb_8bit = options.to_rgb
     basic.outputlogMessage('Convert to 8bit RGB images: %s'%str(b_to_rgb_8bit))
 
+    # group planet image based on acquisition date
+    b_group_date = options.group_date
+    basic.outputlogMessage('Group Planet image based on acquisition date: %s' % str(b_group_date))
+    if b_group_date:
+        # diff_days as 0, group images acquired at the same date
+        geojson_groups = group_planet_images_date(geojson_list, diff_days=0)
+
+        save_group_txt = 'geojson_groups.txt'
+        basic.outputlogMessage('images are divided into %d groups, save to %s' % (len(geojson_groups.keys()),save_group_txt))
+        io_function.save_dict_to_txt_json(save_group_txt, geojson_groups)
+    else:
+        geojson_groups = {'all':geojson_list}
+
     # create mosaic of each grid
     cloud_cover_thr = options.cloud_cover
     cloud_cover_thr = cloud_cover_thr * 100         # for Planet image, it is percentage
     out_res = options.out_res
     cur_dir = os.getcwd()
     resampling_method = options.merged_method
-    save_dir = os.path.basename(cur_dir) + '_mosaic_' + str(out_res)
-    # print(save_dir)
-    io_function.mkdir(save_dir)
-    if process_num == 1:
-        for id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon):
-            # if id != 34:
-            #     continue
-            create_moasic_of_each_grid_polygon(id, polygon, poly_latlon, out_res,
-                                               cloud_cover_thr, geojson_list,save_dir,
-                                               new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
-                                               sr_min=min_sr, sr_max=max_sr,
-                                               to_rgb = b_to_rgb_8bit,
-                                               save_org_dir=original_img_copy_dir,
-                                               resampling_method=resampling_method)
-    elif process_num > 1:
-        theadPool = Pool(process_num)  # multi processes
 
-        parameters_list = [
-            (id, polygon, poly_latlon, out_res,cloud_cover_thr, geojson_list,save_dir,shp_prj_wkt,shp_prj,min_sr,max_sr,b_to_rgb_8bit,0,original_img_copy_dir) for
-            id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon)]
-        results = theadPool.starmap(create_moasic_of_each_grid_polygon, parameters_list)  # need python3
-    else:
-        raise ValueError('incorrect process number: %d'% process_num)
+    for key in geojson_groups.keys():
+
+        geojson_list = geojson_groups[key]
+        save_dir = os.path.basename(cur_dir) + '_mosaic_' + str(out_res) + '_' + key
+        # print(save_dir)
+        io_function.mkdir(save_dir)
+        if process_num == 1:
+            for id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon):
+                # if id != 34:
+                #     continue
+                create_moasic_of_each_grid_polygon(id, polygon, poly_latlon, out_res,
+                                                   cloud_cover_thr, geojson_list,save_dir,
+                                                   new_prj_wkt=shp_prj_wkt, new_prj_proj4=shp_prj,
+                                                   sr_min=min_sr, sr_max=max_sr,
+                                                   to_rgb = b_to_rgb_8bit,
+                                                   save_org_dir=original_img_copy_dir,
+                                                   resampling_method=resampling_method)
+        elif process_num > 1:
+            theadPool = Pool(process_num)  # multi processes
+
+            parameters_list = [
+                (id, polygon, poly_latlon, out_res,cloud_cover_thr, geojson_list,save_dir,shp_prj_wkt,shp_prj,min_sr,max_sr,b_to_rgb_8bit,0,original_img_copy_dir) for
+                id, polygon, poly_latlon in zip(grid_ids,grid_polygons,grid_polygons_latlon)]
+            results = theadPool.starmap(create_moasic_of_each_grid_polygon, parameters_list)  # need python3
+        else:
+            raise ValueError('incorrect process number: %d'% process_num)
 
     cost_time_sec = time.time() - time0
     basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
@@ -363,6 +413,10 @@ if __name__ == "__main__":
     parser.add_option("-t", "--to_rgb",
                       action="store_true", dest="to_rgb",default=False,
                       help="true to convert all images to 8 bit rgb")
+
+    parser.add_option("-g", "--group_date",
+                      action="store_true", dest="group_date",default=False,
+                      help="true to group image if their acquisition date is the same")
 
     # parser.add_option("-i", "--item_types",
     #                   action="store", dest="item_types",default='PSScene4Band',
