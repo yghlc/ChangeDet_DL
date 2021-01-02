@@ -287,11 +287,16 @@ def main(options, args):
 
     time0 = time.time()
     image_dir = args[0]
-    geojson_list = io_function.get_file_list_by_ext('.geojson',image_dir,bsub_folder=True)
+    geojson_list = io_function.get_file_list_by_ext('.geojson',image_dir,bsub_folder=False)
+    # remove some scenes, or maybe we should set bsub_folder=False
+    # geojson_list = [item for item in geojson_list if 'incomplete_scenes' not in item ]  # remove those in "incomplete_scenes"
+    # geojson_list = [item for item in geojson_list if 'scenes_high_cloud_cover' not in item ]  # remove those in "scenes_high_cloud_cover"
+
     if len(geojson_list) < 1:
         raise ValueError('There is no geojson files in %s'%image_dir)
 
     basic.outputlogMessage('Image Dir: %s'%image_dir)
+    basic.outputlogMessage("Number of geojson files: %d" % len(geojson_list))
 
     grid_polygon_shp = args[1]      # the polygon should be in projection Cartesian coordinate system (e.g., UTM )
     basic.outputlogMessage('Image grid polygon shapefile: %s' % grid_polygon_shp)
