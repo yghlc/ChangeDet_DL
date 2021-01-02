@@ -22,6 +22,8 @@ from datetime import datetime
 
 import time
 
+import operator
+
 import multiprocessing
 from multiprocessing import Pool
 
@@ -327,6 +329,9 @@ def main(options, args):
     if b_group_date:
         # diff_days as 0, group images acquired at the same date
         geojson_groups = group_planet_images_date(geojson_list, diff_days=0)
+
+        # sort based on yeardate in accending order : operator.itemgetter(0)
+        geojson_groups = dict(sorted(geojson_groups.items(), key=operator.itemgetter(0)))
 
         save_group_txt = 'geojson_groups.txt'
         basic.outputlogMessage('images are divided into %d groups, save to %s' % (len(geojson_groups.keys()),save_group_txt))
