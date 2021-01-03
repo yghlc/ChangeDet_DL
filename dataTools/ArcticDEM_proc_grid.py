@@ -183,7 +183,7 @@ def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,save_source
     # becuase the tifs have been grouped, so we can use mosaic_dem_same_stripID
     return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method,save_source=save_source,o_format=o_format)
 
-def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None):
+def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None, area_pixel_num=None):
     '''
     get the valid pixel percentage for each DEM
     :param dem_tif_list:
@@ -197,7 +197,7 @@ def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None):
     dem_tif_valid_per = {}
     for tif in dem_tif_list:
         # RSImage.get_valid_pixel_count(tif)
-        per = RSImage.get_valid_pixel_percentage(tif)
+        per = RSImage.get_valid_pixel_percentage(tif,total_pixel_num=area_pixel_num)
         dem_tif_valid_per[tif] = per
         keep_dem_list.append(tif)
     # sort
@@ -323,6 +323,10 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
     if len(dem_tif_list) < 1:
         raise ValueError('No DEM extracted from tarballs')
 
+    # area pixel count
+    area_pixel_count = int(extent_poly.area / (o_res*o_res))
+    basic.outputlogMessage('Area pixel count: %d'%area_pixel_count)
+
     # groups DEM
     dem_groups = group_demTif_strip_pair_ID(dem_tif_list)
 
@@ -334,7 +338,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
-        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_dir,move_dem_threshold = keep_dem_percent)
+        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_dir,move_dem_threshold = keep_dem_percent, area_pixel_num=area_pixel_count)
 
     # groups DEM with original images acquired at the same year months
     dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=31)
@@ -353,7 +357,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
         dem_tif_list = mosaic_list
 
         # get valid pixel percentage
-        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_yeardate_dir,move_dem_threshold = keep_dem_percent)
+        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_yeardate_dir,move_dem_threshold = keep_dem_percent,area_pixel_num=area_pixel_count)
 
 
 
