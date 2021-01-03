@@ -39,12 +39,14 @@ def get_dem_path_in_unpack_tarball(out_dir):
             return dem_tif
     return False
 
-def subset_image_by_polygon_box(in_img, out_img, polygon,resample_m='bilinear', out_res=None):
-    # return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
-    # crop to the min extent (polygon or the image)
-    return RSImageProcess.subset_image_by_polygon_box_image_min(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
+def subset_image_by_polygon_box(in_img, out_img, polygon,resample_m='bilinear', out_res=None,same_extent=False):
+    if same_extent:
+        return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
+    else:
+        # crop to the min extent (polygon or the image)
+        return RSImageProcess.subset_image_by_polygon_box_image_min(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
 
-def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=None):
+def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=None, same_extent=False):
     '''
     process dem tarball one by one
     :param tar_list: tarball list
@@ -52,6 +54,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
     :param inter_format: format for saving files
     :param out_res: output resolution
     :param extent_poly: extent polygons, in the same projection of the ArcticDEM, if None, then skip
+    :param same_extent: if true, crop to the same extent (need when do DEM difference)
     :return: a list of final tif files
     '''
 
@@ -81,7 +84,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
                     # because later, we move the file to another foldeer, so we should not use 'VRT' format
                     # crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format=inter_format)
                     save_crop_path = io_function.get_name_by_adding_tail(reg_tif,'sub')
-                    crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res)
+                    crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res, same_extent=same_extent)
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
                         continue
@@ -310,7 +313,7 @@ def proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sav
     pass
 
 def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,
-                                    extent_poly, extent_id,keep_dem_percent,resample_method='average'):
+                                    extent_poly, extent_id,keep_dem_percent,resample_method='average',same_extent=False):
 
     # get file in the tar_dir
     tar_list = get_tar_list_sub(tar_dir, dem_polygons,dem_urls,extent_poly)
@@ -319,7 +322,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
         return False
 
     # unpackage and crop to extent
-    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, o_res, extent_poly=extent_poly)
+    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, o_res, extent_poly=extent_poly,same_extent=same_extent)
     if len(dem_tif_list) < 1:
         raise ValueError('No DEM extracted from tarballs')
 
@@ -363,6 +366,9 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
 
 
     # co-registration
+
+
+    # do DEM difference
 
 
     # remove intermediate files
@@ -433,9 +439,12 @@ def main(options, args):
         if b_ArcticDEM_tiles:
             proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_rm_inter,ext_poly, idx,extent_shp_base)
         else:
+            # crop each one to the same extent, easy for DEM differnce.
+            same_extent = True
+
             proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons, dem_urls, o_res,save_dir,inter_format,
                                                   b_mosaic_id,b_mosaic_date,b_rm_inter,
-                                                  ext_poly,idx,keep_dem_percent, resample_method='average')
+                                                  ext_poly,idx,keep_dem_percent, resample_method='average',same_extent=same_extent)
 
 
 
