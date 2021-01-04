@@ -84,7 +84,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
                 else:
                     # because later, we move the file to another foldeer, so we should not use 'VRT' format
                     # crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format=inter_format)
-                    save_crop_path = io_function.get_name_by_adding_tail(reg_tif,'sub_id_%d'%poly_id)
+                    save_crop_path = io_function.get_name_by_adding_tail(reg_tif,'sub_poly_%d'%poly_id)
                     crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res, same_extent=same_extent)
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
