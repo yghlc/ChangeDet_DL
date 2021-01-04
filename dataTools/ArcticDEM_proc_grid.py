@@ -170,7 +170,8 @@ def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, save_so
         #     RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method,o_format=o_format)
 
         # create mosaic, can handle only input one file
-        RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key], save_mosaic, resampling_method=resample_method,o_format=o_format)
+        RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key], save_mosaic, resampling_method=resample_method,o_format=o_format,
+                                                   compress='lzw',tiled='yes',bigtiff='if_safer')
         mosaic_list.append(save_mosaic)
 
     return mosaic_list
@@ -224,6 +225,32 @@ def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None, area_
 
     return keep_dem_list
 
+def dem_diff_newest_oldest(dem_tif_list, output):
+    '''
+    get DEM difference, for each pixel, newest vaild value - oldest valid value
+    :param dem_list:
+    :param output:
+    :return:
+    '''
+    if len(dem_tif_list) < 2:
+        basic.outputlogMessage('error, the count of DEM is smaller than 2')
+        return False
+
+    # check them have the width and height
+
+
+    # groups DEM with original images acquired at the same year months
+    dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=0)
+    # sort based on yeardate in accending order : operator.itemgetter(0)
+    dem_groups_date = dict(sorted(dem_groups_date.items(), key=operator.itemgetter(0)))
+
+    # read all and their date
+
+    #
+
+
+    pass
+
 def coregistration_dem():
     pass
 
@@ -252,7 +279,7 @@ def process_arcticDEM_tiles(tar_list,save_dir,inter_format, resample_method, o_r
     save_path = os.path.join(save_dir, pre_name + '_' + dem_name + '_ArcticTileDEM_sub_%d.tif'%extent_id )
 
     RSImageProcess.mosaic_crop_images_gdalwarp(dem_tif_list, save_path, resampling_method=resample_method,o_format=inter_format,
-                                               xres=o_res,yres=o_res)
+                                               xres=o_res,yres=o_res, compress='lzw',tiled='yes',bigtiff='if_safer')
 
     # remove intermediate files
     if b_rm_inter:
@@ -313,7 +340,7 @@ def proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sav
     pass
 
 def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,
-                                    extent_poly, extent_id,keep_dem_percent,resample_method='average',same_extent=False):
+                                    b_dem_diff,extent_poly, extent_id,keep_dem_percent,resample_method='average',same_extent=False):
 
     # get file in the tar_dir
     tar_list = get_tar_list_sub(tar_dir, dem_polygons,dem_urls,extent_poly)
@@ -369,13 +396,22 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
 
 
     # do DEM difference
+    if b_dem_diff:
+        save_dem_diff = 'output.tif'
+        dem_diff_newest_oldest(dem_tif_list,save_dem_diff)
 
+        pass
 
     # remove intermediate files
     if b_rm_inter:
         basic.outputlogMessage('remove intermediate files')
         for folder in tar_folders:
             io_function.delete_file_or_dir(folder)
+
+        # remove the mosaic folders
+        if b_dem_diff:
+            io_function.delete_file_or_dir(mosaic_dir)
+            io_function.delete_file_or_dir(mosaic_yeardate_dir)
 
     pass
 
@@ -398,6 +434,7 @@ def main(options, args):
     inter_format = options.format
     arcticDEM_shp = options.arcticDEM_shp
     o_res = options.out_res
+    b_dem_diff = options.create_dem_diff
 
     extent_shp_base = os.path.splitext(os.path.basename(extent_shp))[0]
 
@@ -433,17 +470,20 @@ def main(options, args):
         basic.outputlogMessage('Input is the mosaic version of ArcticDEM')
         b_ArcticDEM_tiles = True
 
+    same_extent = False
+    if b_dem_diff:
+        # crop each one to the same extent, easy for DEM differnce.
+        same_extent = True
+
     for idx, ext_poly in zip(extPolys_ids,extent_polys):
         basic.outputlogMessage('get data for the %d th extent (%d in total)' % (idx, len(extent_polys)))
 
         if b_ArcticDEM_tiles:
             proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_rm_inter,ext_poly, idx,extent_shp_base)
         else:
-            # crop each one to the same extent, easy for DEM differnce.
-            same_extent = True
 
             proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons, dem_urls, o_res,save_dir,inter_format,
-                                                  b_mosaic_id,b_mosaic_date,b_rm_inter,
+                                                  b_mosaic_id,b_mosaic_date,b_rm_inter, b_dem_diff,
                                                   ext_poly,idx,keep_dem_percent, resample_method='average',same_extent=same_extent)
 
 
@@ -486,6 +526,10 @@ if __name__ == "__main__":
     parser.add_option("-t", "--create_mosaic_date",
                       action="store_true", dest="create_mosaic_date",default=False,
                       help="for a small region, if true, then get a mosaic of dem with close acquisition date ")
+
+    parser.add_option("-c", "--create_dem_diff",
+                      action="store_true", dest="create_dem_diff",default=False,
+                      help="True to create DEM difference, c for change")
 
     parser.add_option("-r", "--remove_inter_data",
                       action="store_true", dest="remove_inter_data",default=False,
