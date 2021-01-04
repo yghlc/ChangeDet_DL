@@ -46,7 +46,7 @@ def subset_image_by_polygon_box(in_img, out_img, polygon,resample_m='bilinear', 
         # crop to the min extent (polygon or the image)
         return RSImageProcess.subset_image_by_polygon_box_image_min(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
 
-def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=None, same_extent=False):
+def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=None, poly_id=0, same_extent=False):
     '''
     process dem tarball one by one
     :param tar_list: tarball list
@@ -54,6 +54,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
     :param inter_format: format for saving files
     :param out_res: output resolution
     :param extent_poly: extent polygons, in the same projection of the ArcticDEM, if None, then skip
+    :param poly_id: extent polygon id, to help the subset filename
     :param same_extent: if true, crop to the same extent (need when do DEM difference)
     :return: a list of final tif files
     '''
@@ -83,7 +84,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
                 else:
                     # because later, we move the file to another foldeer, so we should not use 'VRT' format
                     # crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format=inter_format)
-                    save_crop_path = io_function.get_name_by_adding_tail(reg_tif,'sub')
+                    save_crop_path = io_function.get_name_by_adding_tail(reg_tif,'sub_id_%d'%poly_id)
                     crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res, same_extent=same_extent)
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
@@ -270,7 +271,7 @@ def process_arcticDEM_tiles(tar_list,save_dir,inter_format, resample_method, o_r
     '''
 
     # unpackage and crop to extent
-    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, o_res, extent_poly=extent_poly)
+    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, o_res, extent_poly=extent_poly, poly_id=extent_id)
     if len(dem_tif_list) < 1:
         raise ValueError('No DEM extracted from tarballs')
 
@@ -349,7 +350,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
         return False
 
     # unpackage and crop to extent
-    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, o_res, extent_poly=extent_poly,same_extent=same_extent)
+    dem_tif_list, tar_folders = process_dem_tarball(tar_list, save_dir, inter_format, o_res, extent_poly=extent_poly, poly_id=extent_id,same_extent=same_extent)
     if len(dem_tif_list) < 1:
         raise ValueError('No DEM extracted from tarballs')
 
