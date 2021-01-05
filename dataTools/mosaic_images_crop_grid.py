@@ -404,6 +404,7 @@ def main(options, args):
 
     # remove temporal folders
     global temporal_dirs
+    print('temporal_dirs:' + str(temporal_dirs))
     for dir in temporal_dirs:
         if os.path.isdir(dir):
             basic.outputlogMessage('remove temporal folder: %s'%dir)
