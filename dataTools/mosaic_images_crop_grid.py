@@ -32,9 +32,12 @@ from  get_planet_image_list import  get_Planet_SR_image_list_overlap_a_polygon
 
 prePlanetImage = os.path.expanduser('~/codes/PycharmProjects/Landuse_DL/planetScripts/prePlanetImage.py')
 
+temporal_dirs = []
+
 def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_max=3000, save_org_dir=None):
 
-    #TODO: if multiple processes try to derive the same rgb images, it may have problem.
+    #if multiple processes try to derive the same rgb images, it may have problem.
+    # save output to 'RGB_images' + processID
 
     if os.path.isdir(save_dir) is False:
         io_function.mkdir(save_dir)
@@ -108,7 +111,8 @@ def reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir='plane
     :return:
     '''
 
-    # TODO: if multiple processes try to derive the same rgb images, it may have problem.
+    # if multiple processes try to derive the same rgb images, it may have problem.
+    # save output to 'planet_images_reproj' + processID
 
     if os.path.isdir(save_dir) is False:
         io_function.mkdir(save_dir)
@@ -171,20 +175,28 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     for img, cloud_cover in zip(planet_img_list, cloud_covers):
         print(img, cloud_cover)
 
+    proc_id = multiprocessing.current_process().pid
+
     # convert to RGB images (for Planet)
     rgb_image_list = []
+    rgb_dir = 'RGB_images_'+str(proc_id)
+    if rgb_dir not in temporal_dirs:
+        temporal_dirs.append(rgb_dir)
     if to_rgb:
         for tif_path in planet_img_list:
-            rgb_img = convert_planet_to_rgb_images(tif_path,save_org_dir=save_org_dir, sr_min=sr_min, sr_max=sr_max)
+            rgb_img = convert_planet_to_rgb_images(tif_path,save_dir=rgb_dir,save_org_dir=save_org_dir, sr_min=sr_min, sr_max=sr_max)
             rgb_image_list.append(rgb_img)
     if len(rgb_image_list) > 0:
         planet_img_list = rgb_image_list
 
     reproj_img_list = []
     # reproject if necessary
+    reproj_dir = 'planet_images_reproj_' + str(proc_id)
+    if reproj_dir not in temporal_dirs:
+        temporal_dirs.append(reproj_dir)
     if new_prj_wkt != None and new_prj_proj4 != None:
         for tif_path in planet_img_list:
-            prj_out = reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir='planet_images_reproj')
+            prj_out = reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir=reproj_dir)
             # replace the image
             if prj_out is not False and os.path.isfile(prj_out):
                 reproj_img_list.append(prj_out)
@@ -384,6 +396,11 @@ def main(options, args):
     cost_time_sec = time.time() - time0
     basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
 
+    # remove temporal folders
+    for dir in temporal_dirs:
+        if os.path.isdir(dir):
+            basic.outputlogMessage('remove temporal folder: %s'%dir)
+            io_function.delete_file_or_dir(dir)
 
     pass
 
