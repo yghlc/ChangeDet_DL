@@ -180,6 +180,7 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     # convert to RGB images (for Planet)
     rgb_image_list = []
     rgb_dir = 'RGB_images_'+str(proc_id)
+    global temporal_dirs
     if rgb_dir not in temporal_dirs:
         temporal_dirs.append(rgb_dir)
     if to_rgb:
@@ -402,6 +403,7 @@ def main(options, args):
     basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
 
     # remove temporal folders
+    global temporal_dirs
     for dir in temporal_dirs:
         if os.path.isdir(dir):
             basic.outputlogMessage('remove temporal folder: %s'%dir)
