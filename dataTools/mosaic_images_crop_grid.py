@@ -195,6 +195,8 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     reproj_dir = 'planet_images_reproj_' + str(proc_id)
     if reproj_dir not in temporal_dirs:
         temporal_dirs.append(reproj_dir)
+    print("temporal_dirs:" + temporal_dirs)
+    time.sleep(10)
     if new_prj_wkt != None and new_prj_proj4 != None:
         for tif_path in planet_img_list:
             prj_out = reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir=reproj_dir)
