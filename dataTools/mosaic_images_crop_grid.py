@@ -32,6 +32,7 @@ from  get_planet_image_list import  get_Planet_SR_image_list_overlap_a_polygon
 
 prePlanetImage = os.path.expanduser('~/codes/PycharmProjects/Landuse_DL/planetScripts/prePlanetImage.py')
 
+# some issues for the global var in the multiple processes, so remove the temporal foolder in bash
 temporal_dirs = []
 
 def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_max=3000, save_org_dir=None):
@@ -180,9 +181,6 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     # convert to RGB images (for Planet)
     rgb_image_list = []
     rgb_dir = 'RGB_images_'+str(proc_id)
-    global temporal_dirs
-    if rgb_dir not in temporal_dirs:
-        temporal_dirs.append(rgb_dir)
     if to_rgb:
         for tif_path in planet_img_list:
             rgb_img = convert_planet_to_rgb_images(tif_path,save_dir=rgb_dir,save_org_dir=save_org_dir, sr_min=sr_min, sr_max=sr_max)
@@ -193,10 +191,6 @@ def create_moasic_of_each_grid_polygon(id,polygon, polygon_latlon, out_res, clou
     reproj_img_list = []
     # reproject if necessary
     reproj_dir = 'planet_images_reproj_' + str(proc_id)
-    if reproj_dir not in temporal_dirs:
-        temporal_dirs.append(reproj_dir)
-    print("temporal_dirs:" + str(temporal_dirs))
-    time.sleep(10)
     if new_prj_wkt != None and new_prj_proj4 != None:
         for tif_path in planet_img_list:
             prj_out = reproject_planet_image(tif_path, new_prj_wkt, new_prj_proj4, save_dir=reproj_dir)
@@ -404,13 +398,6 @@ def main(options, args):
     cost_time_sec = time.time() - time0
     basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
 
-    # remove temporal folders
-    global temporal_dirs
-    print('temporal_dirs:' + str(temporal_dirs))
-    for dir in temporal_dirs:
-        if os.path.isdir(dir):
-            basic.outputlogMessage('remove temporal folder: %s'%dir)
-            io_function.delete_file_or_dir(dir)
 
     pass
 
