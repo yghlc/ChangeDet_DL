@@ -369,6 +369,10 @@ def main(options, args):
 
     for key in geojson_groups.keys():
 
+        # test
+        if key != '20200701':
+            continue
+
         geojson_list = geojson_groups[key]
         save_dir = os.path.basename(cur_dir) + '_mosaic_' + str(out_res) + '_' + key
         # print(save_dir)
