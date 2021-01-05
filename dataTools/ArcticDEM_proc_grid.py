@@ -85,7 +85,11 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
                     # because later, we move the file to another foldeer, so we should not use 'VRT' format
                     # crop_tif = RSImageProcess.subset_image_by_shapefile(reg_tif, extent_shp, format=inter_format)
                     save_crop_path = io_function.get_name_by_adding_tail(reg_tif,'sub_poly_%d'%poly_id)
-                    crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res, same_extent=same_extent)
+                    if os.path.isfile(save_crop_path):
+                        basic.outputlogMessage('%s exists, skip cropping'%save_crop_path)
+                        crop_tif = save_crop_path
+                    else:
+                        crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res, same_extent=same_extent)
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
                         continue
@@ -226,7 +230,7 @@ def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None, area_
 
     return keep_dem_list
 
-def dem_diff_newest_oldest(dem_tif_list, output):
+def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
     '''
     get DEM difference, for each pixel, newest vaild value - oldest valid value
     :param dem_list:
@@ -341,7 +345,7 @@ def proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sav
     pass
 
 def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,
-                                    b_dem_diff,extent_poly, extent_id,keep_dem_percent,resample_method='average',same_extent=False):
+                                    b_dem_diff,extent_poly, extent_id,keep_dem_percent,pre_name,resample_method='average',same_extent=False):
 
     # get file in the tar_dir
     tar_list = get_tar_list_sub(tar_dir, dem_polygons,dem_urls,extent_poly)
@@ -364,12 +368,19 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
     # create mosaic (dem with the same strip pair ID)
     mosaic_dir = os.path.join(save_dir,'dem_stripID_mosaic_sub_%d'%extent_id)
     if b_mosaic_id:
-        io_function.mkdir(mosaic_dir)
-        mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format=inter_format)
-        dem_tif_list = mosaic_list
+        if os.path.isfile(os.path.join(mosaic_dir,'dem_valid_percent.txt')):
+            basic.outputlogMessage('mosaic based on stripID exists, skip mosaicking')
+            with open(os.path.join(mosaic_dir,'dem_valid_percent.txt')) as f_job:
+                tif_names = [ line.split()[0]  for line in f_job.readlines() ]
+                dem_tif_list = [os.path.join(mosaic_dir,item) for item in tif_names]
+                print(dem_tif_list)
+        else:
+            io_function.mkdir(mosaic_dir)
+            mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format=inter_format)
+            dem_tif_list = mosaic_list
 
-        # get valid pixel percentage
-        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_dir,move_dem_threshold = keep_dem_percent, area_pixel_num=area_pixel_count)
+            # get valid pixel percentage
+            dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_dir,move_dem_threshold = keep_dem_percent, area_pixel_num=area_pixel_count)
 
     # groups DEM with original images acquired at the same year months
     dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=31)
@@ -382,13 +393,20 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
     # merge DEM with close acquisition date
     mosaic_yeardate_dir = os.path.join(save_dir,'dem_date_mosaic_sub_%d'%extent_id)
     if b_mosaic_date:
-        io_function.mkdir(mosaic_yeardate_dir)
-        # this is the last output of mosaic, save to 'GTiff' format.
-        mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,resample_method, save_source=True, o_format='GTiff')
-        dem_tif_list = mosaic_list
+        if os.path.isfile(os.path.join(mosaic_yeardate_dir,'dem_valid_percent.txt')):
+            basic.outputlogMessage('mosaic based on acquisition date exists, skip mosaicking')
+            with open(os.path.join(mosaic_yeardate_dir,'dem_valid_percent.txt')) as f_job:
+                tif_names = [ line.split()[0]  for line in f_job.readlines() ]
+                dem_tif_list = [os.path.join(mosaic_dir,item) for item in tif_names]
+                print(dem_tif_list)
+        else:
+            io_function.mkdir(mosaic_yeardate_dir)
+            # this is the last output of mosaic, save to 'GTiff' format.
+            mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,resample_method, save_source=True, o_format='GTiff')
+            dem_tif_list = mosaic_list
 
-        # get valid pixel percentage
-        dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_yeardate_dir,move_dem_threshold = keep_dem_percent,area_pixel_num=area_pixel_count)
+            # get valid pixel percentage
+            dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_yeardate_dir,move_dem_threshold = keep_dem_percent,area_pixel_num=area_pixel_count)
 
 
 
@@ -398,8 +416,9 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
 
     # do DEM difference
     if b_dem_diff:
-        save_dem_diff = 'output.tif'
-        dem_diff_newest_oldest(dem_tif_list,save_dem_diff)
+        save_dem_diff = os.path.join(save_dir,pre_name + '_ArcticDEM_diff_sub_%d.tif'%extent_id)
+        save_date_diff = os.path.join(save_dir,pre_name + '_date_diff_sub_%d.tif'%extent_id)
+        dem_diff_newest_oldest(dem_tif_list,save_dem_diff,save_date_diff)
 
         pass
 
@@ -485,7 +504,7 @@ def main(options, args):
 
             proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons, dem_urls, o_res,save_dir,inter_format,
                                                   b_mosaic_id,b_mosaic_date,b_rm_inter, b_dem_diff,
-                                                  ext_poly,idx,keep_dem_percent, resample_method='average',same_extent=same_extent)
+                                                  ext_poly,idx,keep_dem_percent, extent_shp_base, resample_method='average',same_extent=same_extent)
 
 
 
