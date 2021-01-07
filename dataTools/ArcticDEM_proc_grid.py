@@ -23,6 +23,7 @@ import basic_src.basic as basic
 import basic_src.RSImageProcess as RSImageProcess
 import basic_src.RSImage as RSImage
 import basic_src.timeTools as timeTools
+import raster_io
 
 import operator
 
@@ -30,6 +31,10 @@ import re
 re_stripID='[0-9]{8}_[0-9A-F]{16}_[0-9A-F]{16}'
 
 from urllib.parse import urlparse
+
+from itertools import combinations
+
+import numpy as np
 
 def get_dem_path_in_unpack_tarball(out_dir):
     file_end = ['_dem.tif','_reg_dem.tif']   # Arctic strip and tile (mosaic) version
@@ -241,17 +246,88 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
         basic.outputlogMessage('error, the count of DEM is smaller than 2')
         return False
 
-    # check them have the width and height
-
-
     # groups DEM with original images acquired at the same year months
     dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=0)
     # sort based on yeardate in accending order : operator.itemgetter(0)
     dem_groups_date = dict(sorted(dem_groups_date.items(), key=operator.itemgetter(0)))
+    io_function.save_dict_to_txt_json('dem_date_for_diff.txt',dem_groups_date)
+
+    date_list = list(dem_groups_date.keys())
+    dem_tif_list = [ dem_groups_date[key][0] for key in dem_groups_date.keys()]  # eacy date, only have one tif
+    tif_obj_list = [ raster_io.open_raster_read(tif) for tif in dem_tif_list]
+
+
+    height, width, _ = raster_io.get_width_heigth_bandnum(tif_obj_list[0])
+
+    # check them have the width and height
+    for tif, obj in zip(dem_tif_list[1:],tif_obj_list[1:]):
+        h, w, _ = raster_io.get_width_heigth_bandnum(obj)
+        if h!=height or w!=width:
+            raise ValueError('the height and width of %s is different from others'%tif)
+
 
     # read all and their date
+    date_pair_list = list(combinations(date_list, 2))
+    date_diff_list = [ (item[1] - item[0]).days for item in date_pair_list ]
+    # sort based on day difference (from max to min)
+    date_pair_list_sorted = [x for _, x in sorted(zip(date_diff_list, date_pair_list),reverse=True)]    # descending
 
-    #
+    # use dict to read data from disk (only need)
+    dem_data_dict = {}
+
+    # get the difference
+    date_diff_np = np.zeros((height, width),dtype=np.uint16)
+    dem_diff_np = np.empty((height, width),dtype=np.float32)
+    dem_diff_np[:] = np.nan
+
+    for pair in date_pair_list_sorted:
+        diff_days = (pair[1] - pair[0]).days
+        basic.outputlogMessage('Getting DEM difference using the one on %s and %s, total day diff: %d'%
+                               (timeTools.date2str(pair[1]), timeTools.date2str(pair[0]),diff_days))
+        # print(pair,':',(pair[1] - pair[0]).days)
+
+        # read data to memory if need
+        if pair[0] not in dem_data_dict.keys():
+            data_old = raster_io.read_raster_one_band_np( dem_groups_date[pair[0]][0] )
+            dem_data_dict [pair[0]] = data_old
+        else:
+            data_old = dem_data_dict[pair[0]]
+
+        # read data to memory if need
+        if pair[1] not in dem_data_dict.keys():
+            data_new = raster_io.read_raster_one_band_np( dem_groups_date[pair[1]][0] )
+            dem_data_dict [pair[1]] = data_new
+        else:
+            data_new = dem_data_dict [pair[1]]
+
+        print('data_old shape:',data_old.shape)
+        print('data_new shape:',data_new.shape)
+
+        diff_two = data_new - data_old
+        # print(diff_two)
+
+        # fill the element
+        new_ele = np.where(np.logical_and( np.isnan(dem_diff_np), ~np.isnan(diff_two)))
+        dem_diff_np[ new_ele ] = diff_two[new_ele]
+
+        date_diff_np[new_ele] = diff_days
+
+        # check if all have been filled ( nan pixels)
+        diff_remain_hole = np.where(np.isnan(dem_diff_np))
+        basic.outputlogMessage(' remain %.4f percent pixels need to be filled'% (100.0*diff_remain_hole[0].size/dem_diff_np.size) )
+        if diff_remain_hole[0].size < 1:
+            break
+
+        # # test
+        # break
+
+    # stretch the DEM difference
+    dem_diff_np_8bit = raster_io.image_numpy_to_8bit(dem_diff_np,10,-10,dst_nodata=0)
+    raster_io.save_numpy_array_to_rasterfile(dem_diff_np_8bit, out_dem_diff, dem_tif_list[0], nodata=0)
+
+    # save to files
+    # raster_io.save_numpy_array_to_rasterfile(dem_diff_np,out_dem_diff,dem_tif_list[0])
+    raster_io.save_numpy_array_to_rasterfile(date_diff_np,out_date_diff,dem_tif_list[0], nodata=0)
 
 
     pass
@@ -373,7 +449,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
             with open(os.path.join(mosaic_dir,'dem_valid_percent.txt')) as f_job:
                 tif_names = [ line.split()[0]  for line in f_job.readlines() ]
                 dem_tif_list = [os.path.join(mosaic_dir,item) for item in tif_names]
-                print(dem_tif_list)
+                # print(dem_tif_list)
         else:
             io_function.mkdir(mosaic_dir)
             mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format=inter_format)
@@ -397,8 +473,8 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
             basic.outputlogMessage('mosaic based on acquisition date exists, skip mosaicking')
             with open(os.path.join(mosaic_yeardate_dir,'dem_valid_percent.txt')) as f_job:
                 tif_names = [ line.split()[0]  for line in f_job.readlines() ]
-                dem_tif_list = [os.path.join(mosaic_dir,item) for item in tif_names]
-                print(dem_tif_list)
+                dem_tif_list = [os.path.join(mosaic_yeardate_dir,item) for item in tif_names]
+                # print(dem_tif_list)
         else:
             io_function.mkdir(mosaic_yeardate_dir)
             # this is the last output of mosaic, save to 'GTiff' format.
@@ -435,7 +511,24 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
 
     pass
 
+def dem_diff():
+    # test in folder "~/Data/Arctic/canada_arctic/DEM/WR_dem"
+    extent_id = 1
+    mosaic_yeardate_dir = os.path.join('./', 'dem_date_mosaic_sub_%d' % extent_id)
+    with open(os.path.join(mosaic_yeardate_dir, 'dem_valid_percent.txt')) as f_job:
+        tif_names = [line.split()[0] for line in f_job.readlines()]
+        dem_tif_list = [os.path.join(mosaic_yeardate_dir, item) for item in tif_names]
+
+    save_dem_diff = 'test' + '_ArcticDEM_diff_sub_%d.tif' % extent_id
+    save_date_diff = 'test' + '_date_diff_sub_%d.tif' % extent_id
+    dem_diff_newest_oldest(dem_tif_list, save_dem_diff, save_date_diff)
+    pass
+
+
 def main(options, args):
+
+    # test
+    return dem_diff()
 
     extent_shp = args[0]
     # ext_shp_prj = map_projection.get_raster_or_vector_srs_info_epsg(extent_shp)
