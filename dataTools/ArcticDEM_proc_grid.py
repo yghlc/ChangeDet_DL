@@ -250,6 +250,11 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
         basic.outputlogMessage('warning, DEM difference already exist, skipping create new ones')
         return True
 
+    out_dem_diff_cm = io_function.get_name_by_adding_tail(out_dem_diff, 'cm')
+    if os.path.isfile(out_dem_diff_cm):
+        basic.outputlogMessage('warning, DEM difference already exist, skipping create new ones')
+        return True
+
     # groups DEM with original images acquired at the same year months
     dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=0)
     # sort based on yeardate in accending order : operator.itemgetter(0)
@@ -324,20 +329,30 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
 
         # # test
         # break
+    # save date diff to tif (16 bit)
+    raster_io.save_numpy_array_to_rasterfile(date_diff_np,out_date_diff,dem_tif_list[0], nodata=0,compress='lzw',tiled='yes',bigtiff='if_safer')
 
-    # # stretch the DEM difference
+    # # stretch the DEM difference, save to 8 bit.
     # dem_diff_np_8bit = raster_io.image_numpy_to_8bit(dem_diff_np,10,-10,dst_nodata=0)
     # out_dem_diff_8bit = io_function.get_name_by_adding_tail(out_dem_diff, '8bit')
     # raster_io.save_numpy_array_to_rasterfile(dem_diff_np_8bit, out_dem_diff_8bit, dem_tif_list[0], nodata=0)
 
-    # save to 16bit, centimeter
-    # dem_diff_np_cm = (dem_diff_np*100).astype(np.int16)
-    # out_dem_diff_cm = io_function.get_name_by_adding_tail(out_dem_diff,'cm')
-    # raster_io.save_numpy_array_to_rasterfile(dem_diff_np_cm, out_dem_diff_cm, dem_tif_list[0],nodata=-9999)
 
-    # save to files
-    raster_io.save_numpy_array_to_rasterfile(dem_diff_np,out_dem_diff,dem_tif_list[0])
-    raster_io.save_numpy_array_to_rasterfile(date_diff_np,out_date_diff,dem_tif_list[0], nodata=0)
+    # if possible, save to 16 bit, to save the disk storage.
+    # dem_diff_np[0:5,0] = -500
+    # dem_diff_np[0,0:5] = 500
+    # print(np.nanmin(dem_diff_np))
+    # print(np.nanmax(dem_diff_np))
+    range = np.iinfo(np.int16)
+    dem_diff_np_cm = dem_diff_np*100
+    if np.nanmin(dem_diff_np_cm) < range.min or np.nanmax(dem_diff_np_cm) > range.max:
+        # save dem diff to files (float), meter
+        raster_io.save_numpy_array_to_rasterfile(dem_diff_np,out_dem_diff,dem_tif_list[0],nodata=-9999,compress='lzw',tiled='yes',bigtiff='if_safer')
+    else:
+        # save dem diff to 16bit, centimeter, only handle diff from -327.67 to 327.67 meters
+        dem_diff_np_cm = dem_diff_np_cm.astype(np.int16)        # save to int16
+        raster_io.save_numpy_array_to_rasterfile(dem_diff_np_cm, out_dem_diff_cm, dem_tif_list[0],nodata=32767,compress='lzw',tiled='yes',bigtiff='if_safer')
+
 
     return True
 
