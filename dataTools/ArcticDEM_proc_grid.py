@@ -674,6 +674,7 @@ if __name__ == "__main__":
 
     # there is one mosaic: Failed to compute statistics, no valid pixels found in sampling, other are ok,
     # so, may still use GTiff format.
+    # TODO: need to check, 'VRT' format maybe is good.
     parser.add_option("-f", "--format",
                       action="store", dest="format", default='GTiff',  #default='VRT',
                       help="the data format for middle intermediate files")

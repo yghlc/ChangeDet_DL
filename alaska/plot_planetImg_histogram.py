@@ -79,6 +79,7 @@ def main(options, args):
         # if idx > 200:
         #     break
 
+    #TODO: save hist_allImg_list and bin_edges to txt file. Calculaing hist from over 600 GB images is time consuming.
 
     fig = plt.figure(figsize=(6,4)) #
     ax1 = fig.add_subplot(111)
