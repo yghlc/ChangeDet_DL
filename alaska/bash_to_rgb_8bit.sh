@@ -12,7 +12,7 @@ set -eE -o functrace
 dir=northern_alaska_2020_Jul_Aug
 
 odir=${dir}_8bit_rgb
-mkdir ${odir}
+mkdir -p ${odir}
 
 for dd in $(ls -d ${dir}/nor*_???????? ); do
 
