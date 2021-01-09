@@ -395,6 +395,8 @@ def main(options, args):
         else:
             raise ValueError('incorrect process number: %d'% process_num)
 
+        #TODO: some samll grid images (after mosaicking and cropping), need to be merged to the adjacent large one.
+
     cost_time_sec = time.time() - time0
     basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
 
