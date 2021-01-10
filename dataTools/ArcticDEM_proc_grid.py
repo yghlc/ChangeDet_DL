@@ -44,12 +44,12 @@ def get_dem_path_in_unpack_tarball(out_dir):
             return dem_tif
     return False
 
-def subset_image_by_polygon_box(in_img, out_img, polygon,resample_m='bilinear', out_res=None,same_extent=False):
+def subset_image_by_polygon_box(in_img, out_img, polygon,resample_m='bilinear',o_format='GTiff', out_res=None,same_extent=False):
     if same_extent:
-        return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
+        return RSImageProcess.subset_image_by_polygon_box(out_img,in_img,polygon,resample_m=resample_m, o_format=o_format, xres=out_res,yres=out_res)
     else:
         # crop to the min extent (polygon or the image)
-        return RSImageProcess.subset_image_by_polygon_box_image_min(out_img,in_img,polygon,resample_m=resample_m, xres=out_res,yres=out_res)
+        return RSImageProcess.subset_image_by_polygon_box_image_min(out_img,in_img,polygon,resample_m=resample_m,o_format=o_format, xres=out_res,yres=out_res)
 
 def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=None, poly_id=0, same_extent=False):
     '''
@@ -94,7 +94,7 @@ def process_dem_tarball(tar_list, work_dir,inter_format, out_res, extent_poly=No
                         basic.outputlogMessage('%s exists, skip cropping'%save_crop_path)
                         crop_tif = save_crop_path
                     else:
-                        crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', out_res = out_res, same_extent=same_extent)
+                        crop_tif = subset_image_by_polygon_box(reg_tif,save_crop_path, extent_poly, resample_m='near', o_format=inter_format, out_res = out_res, same_extent=same_extent)
                     if crop_tif is False:
                         basic.outputlogMessage('warning, crop %s faild' % reg_tif)
                         continue
