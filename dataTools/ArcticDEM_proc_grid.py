@@ -530,10 +530,10 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
         for folder in tar_folders:
             io_function.delete_file_or_dir(folder)
 
-        # remove the mosaic folders
-        if b_dem_diff:
-            io_function.delete_file_or_dir(mosaic_dir)
-            io_function.delete_file_or_dir(mosaic_yeardate_dir)
+        # # remove the mosaic folders
+        # if b_dem_diff:
+        #     io_function.delete_file_or_dir(mosaic_dir)
+        #     io_function.delete_file_or_dir(mosaic_yeardate_dir)
 
     pass
 
