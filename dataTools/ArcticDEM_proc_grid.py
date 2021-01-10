@@ -36,6 +36,9 @@ from itertools import combinations
 
 import numpy as np
 
+import multiprocessing
+from multiprocessing import Pool
+
 def get_dem_path_in_unpack_tarball(out_dir):
     file_end = ['_dem.tif','_reg_dem.tif']   # Arctic strip and tile (mosaic) version
     for end in file_end:
@@ -157,36 +160,55 @@ def group_demTif_strip_pair_ID(demTif_list):
 
     return dem_groups
 
-def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, save_source=False, o_format='GTiff'):
+def mosaic_dem_list(key, dem_list, save_tif_dir,resample_method,save_source, o_format):
+
+    save_mosaic = os.path.join(save_tif_dir, key + '.tif')
+    # check file existence
+    # if os.path.isfile(save_mosaic):
+    b_save_mosaic = io_function.is_file_exist_subfolder(save_tif_dir, key + '.tif')
+    if b_save_mosaic is not False:
+        basic.outputlogMessage('warning, mosaic file: %s exist, skip' % b_save_mosaic)
+        return b_save_mosaic
+        # mosaic_list.append(b_save_mosaic)
+        # continue
+    # save the source file for producing the mosaic
+    if save_source:
+        save_mosaic_source_txt = os.path.join(save_tif_dir, key + '_src.txt')
+        io_function.save_list_to_txt(save_mosaic_source_txt, dem_list)
+
+    # if len(demTif_groups[key]) == 1:
+    #     io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
+    # else:
+    #     # RSImageProcess.mosaics_images(dem_groups[key],save_mosaic)
+    #     RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method,o_format=o_format)
+
+    # create mosaic, can handle only input one file
+    result = RSImageProcess.mosaic_crop_images_gdalwarp(dem_list, save_mosaic, resampling_method=resample_method,
+                                               o_format=o_format,
+                                               compress='lzw', tiled='yes', bigtiff='if_safer')
+    if result is False:
+        return False
+    return save_mosaic
+
+def mosaic_dem_same_stripID(demTif_groups,save_tif_dir, resample_method, process_num=1, save_source=False, o_format='GTiff'):
     mosaic_list = []
-    for key in demTif_groups.keys():
-        save_mosaic = os.path.join(save_tif_dir, key+'.tif')
-        # check file existence
-        # if os.path.isfile(save_mosaic):
-        b_save_mosaic = io_function.is_file_exist_subfolder(save_tif_dir,key+'.tif')
-        if b_save_mosaic is not False:
-            basic.outputlogMessage('warning, mosaic file: %s exist, skip'%b_save_mosaic)
-            mosaic_list.append(b_save_mosaic)
-            continue
-        # save the source file for producing the mosaic
-        if save_source:
-            save_mosaic_source_txt = os.path.join(save_tif_dir, key + '_src.txt')
-            io_function.save_list_to_txt(save_mosaic_source_txt,demTif_groups[key])
+    if process_num == 1:
+        for key in demTif_groups.keys():
+            save_mosaic = mosaic_dem_list(key, demTif_groups[key], save_tif_dir,resample_method,save_source, o_format)
+            mosaic_list.append(save_mosaic)
+    elif process_num > 1:
+        theadPool = Pool(process_num)  # multi processes
 
-        # if len(demTif_groups[key]) == 1:
-        #     io_function.copy_file_to_dst(demTif_groups[key][0],save_mosaic)
-        # else:
-        #     # RSImageProcess.mosaics_images(dem_groups[key],save_mosaic)
-        #     RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key],save_mosaic,resampling_method=resample_method,o_format=o_format)
+        parameters_list = [(key, demTif_groups[key], save_tif_dir, resample_method, save_source, o_format) for key in demTif_groups.keys()]
 
-        # create mosaic, can handle only input one file
-        RSImageProcess.mosaic_crop_images_gdalwarp(demTif_groups[key], save_mosaic, resampling_method=resample_method,o_format=o_format,
-                                                   compress='lzw',tiled='yes',bigtiff='if_safer')
-        mosaic_list.append(save_mosaic)
+        results = theadPool.starmap(mosaic_dem_list, parameters_list)  # need python3
+        mosaic_list = [ out for out in results if out is not False]
+    else:
+        raise ValueError('Wrong process_num: %d'%process_num)
 
     return mosaic_list
 
-def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,save_source=False,o_format='GTiff'):
+def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,process_num=1,save_source=False,o_format='GTiff'):
 
     # convert the key in demTif_date_groups to string
     date_groups = {}
@@ -195,7 +217,7 @@ def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,save_source
         date_groups[new_key] = demTif_date_groups[key]
 
     # becuase the tifs have been grouped, so we can use mosaic_dem_same_stripID
-    return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method,save_source=save_source,o_format=o_format)
+    return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method, process_num=process_num,save_source=save_source,o_format=o_format)
 
 def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None, area_pixel_num=None):
     '''
@@ -445,7 +467,7 @@ def proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sav
     pass
 
 def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,
-                                    b_dem_diff,extent_poly, extent_id,keep_dem_percent,pre_name,resample_method='average',same_extent=False):
+                                    b_dem_diff,extent_poly, extent_id,keep_dem_percent,process_num,pre_name,resample_method='average',same_extent=False):
 
     # get file in the tar_dir
     tar_list = get_tar_list_sub(tar_dir, dem_polygons,dem_urls,extent_poly)
@@ -478,7 +500,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
             io_function.mkdir(mosaic_dir)
             # when create mosaic using VRT end some wrong results, so choose to use 'GTiff'
             # for creating a mosaic with VRT format, we should use "gdalbuildvrt"
-            mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format='GTiff')
+            mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,process_num=process_num,o_format='GTiff')
             dem_tif_list = mosaic_list
 
             # get valid pixel percentage
@@ -504,7 +526,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
         else:
             io_function.mkdir(mosaic_yeardate_dir)
             # this is the output of mosaic, save to 'GTiff' format.
-            mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,resample_method, save_source=True, o_format='GTiff')
+            mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,resample_method, process_num=process_num, save_source=True, o_format='GTiff')
             dem_tif_list = mosaic_list
 
             # get valid pixel percentage
@@ -594,6 +616,10 @@ def main(options, args):
         basic.outputlogMessage('Warning, field: id is not in %s, will create default ID for each grid'%extent_shp)
         extPolys_ids = [ id + 1 for id in range(len(extent_polys))]
 
+    # create mosaic is time consuming, but it also takes a lot memory. For a region of 50 km by 50 km, it may take 10 to 50 GB memory
+    process_num = options.process_num
+    basic.outputlogMessage('The number of processes for creating the mosaic is: %d' % process_num)
+
     # read dem polygons and url
     dem_polygons = vector_gpd.read_polygons_gpd(arcticDEM_shp)
     dem_urls = vector_gpd.read_attribute_values_list(arcticDEM_shp,'fileurl')
@@ -623,7 +649,7 @@ def main(options, args):
 
             proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons, dem_urls, o_res,save_dir,inter_format,
                                                   b_mosaic_id,b_mosaic_date,b_rm_inter, b_dem_diff,
-                                                  ext_poly,idx,keep_dem_percent, extent_shp_base, resample_method='average',same_extent=same_extent)
+                                                  ext_poly,idx,keep_dem_percent, process_num,extent_shp_base, resample_method='average',same_extent=same_extent)
 
 
 
@@ -680,6 +706,11 @@ if __name__ == "__main__":
     parser.add_option("-f", "--format",
                       action="store", dest="format", default='GTiff',  #default='VRT',
                       help="the data format for middle intermediate files")
+
+    parser.add_option("", "--process_num",
+                      action="store", dest="process_num", type=int, default=1,
+                      help="number of processes to create the mosaic")
+
 
     (options, args) = parser.parse_args()
     # print(options.create_mosaic)
