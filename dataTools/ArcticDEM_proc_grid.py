@@ -477,6 +477,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
         else:
             io_function.mkdir(mosaic_dir)
             # when create mosaic using VRT end some wrong results, so choose to use 'GTiff'
+            # for creating a mosaic with VRT format, we should use "gdalbuildvrt"
             mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format='GTiff')
             dem_tif_list = mosaic_list
 
