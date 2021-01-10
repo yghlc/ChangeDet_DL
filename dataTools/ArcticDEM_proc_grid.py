@@ -476,7 +476,8 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
                 # print(dem_tif_list)
         else:
             io_function.mkdir(mosaic_dir)
-            mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format=inter_format)
+            # when create mosaic using VRT end some wrong results, so choose to use 'GTiff'
+            mosaic_list = mosaic_dem_same_stripID(dem_groups,mosaic_dir,resample_method,o_format='GTiff')
             dem_tif_list = mosaic_list
 
             # get valid pixel percentage
@@ -501,7 +502,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
                 # print(dem_tif_list)
         else:
             io_function.mkdir(mosaic_yeardate_dir)
-            # this is the last output of mosaic, save to 'GTiff' format.
+            # this is the output of mosaic, save to 'GTiff' format.
             mosaic_list = mosaic_dem_date(dem_groups_date,mosaic_yeardate_dir,resample_method, save_source=True, o_format='GTiff')
             dem_tif_list = mosaic_list
 
