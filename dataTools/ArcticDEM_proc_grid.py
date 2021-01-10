@@ -219,7 +219,7 @@ def mosaic_dem_date(demTif_date_groups,save_tif_dir, resample_method,process_num
     # becuase the tifs have been grouped, so we can use mosaic_dem_same_stripID
     return mosaic_dem_same_stripID(date_groups,save_tif_dir,resample_method, process_num=process_num,save_source=save_source,o_format=o_format)
 
-def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None, area_pixel_num=None):
+def check_dem_valid_per(dem_tif_list, work_dir, process_num =1, move_dem_threshold = None, area_pixel_num=None):
     '''
     get the valid pixel percentage for each DEM
     :param dem_tif_list:
@@ -231,11 +231,25 @@ def check_dem_valid_per(dem_tif_list, work_dir, move_dem_threshold = None, area_
     keep_dem_list = []
 
     dem_tif_valid_per = {}
-    for tif in dem_tif_list:
-        # RSImage.get_valid_pixel_count(tif)
-        per = RSImage.get_valid_pixel_percentage(tif,total_pixel_num=area_pixel_num)
-        dem_tif_valid_per[tif] = per
-        keep_dem_list.append(tif)
+    if process_num == 1:
+        for tif in dem_tif_list:
+            # RSImage.get_valid_pixel_count(tif)
+            per = RSImage.get_valid_pixel_percentage(tif,total_pixel_num=area_pixel_num)
+            if per is False:
+                return False
+            dem_tif_valid_per[tif] = per
+            keep_dem_list.append(tif)
+    elif process_num > 1:
+        theadPool = Pool(process_num)  # multi processes
+        parameters_list = [(tif, area_pixel_num) for tif in dem_tif_list]
+        results = theadPool.starmap(RSImage.get_valid_pixel_percentage, parameters_list)  # need python3
+        for res, tif in zip(results, dem_tif_list):
+            if res is False:
+                return False
+            dem_tif_valid_per[tif] = res
+            keep_dem_list.append(tif)
+    else:
+        raise ValueError("Wrong process_num: %d"%process_num)
     # sort
     dem_tif_valid_per_d = dict(sorted(dem_tif_valid_per.items(), key=operator.itemgetter(1), reverse=True))
     percent_txt = os.path.join(work_dir,'dem_valid_percent.txt')
@@ -504,7 +518,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
             dem_tif_list = mosaic_list
 
             # get valid pixel percentage
-            dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_dir,move_dem_threshold = keep_dem_percent, area_pixel_num=area_pixel_count)
+            dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_dir,process_num=process_num, move_dem_threshold = keep_dem_percent, area_pixel_num=area_pixel_count)
 
     # groups DEM with original images acquired at the same year months
     dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=31)
@@ -530,7 +544,7 @@ def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sa
             dem_tif_list = mosaic_list
 
             # get valid pixel percentage
-            dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_yeardate_dir,move_dem_threshold = keep_dem_percent,area_pixel_num=area_pixel_count)
+            dem_tif_list = check_dem_valid_per(dem_tif_list,mosaic_yeardate_dir,process_num=process_num, move_dem_threshold = keep_dem_percent,area_pixel_num=area_pixel_count)
 
 
 
