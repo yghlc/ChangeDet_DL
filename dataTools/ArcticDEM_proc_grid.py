@@ -282,14 +282,6 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
         basic.outputlogMessage('error, the count of DEM is smaller than 2')
         return False
 
-    if os.path.isfile(out_dem_diff) and os.path.isfile(out_date_diff):
-        basic.outputlogMessage('warning, DEM difference already exist, skipping create new ones')
-        return True
-
-    out_dem_diff_cm = io_function.get_name_by_adding_tail(out_dem_diff, 'cm')
-    if os.path.isfile(out_dem_diff_cm):
-        basic.outputlogMessage('warning, DEM difference already exist, skipping create new ones')
-        return True
 
     # groups DEM with original images acquired at the same year months
     dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=0)
@@ -480,8 +472,28 @@ def proc_ArcticDEM_tile_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,sav
 
     pass
 
+def check_dem_diff_results(save_dir,pre_name,extent_id):
+
+    save_dem_diff = os.path.join(save_dir, pre_name + '_ArcticDEM_diff_sub_%d.tif' % extent_id)
+    save_date_diff = os.path.join(save_dir, pre_name + '_date_diff_sub_%d.tif' % extent_id)
+
+    if os.path.isfile(save_dem_diff) and os.path.isfile(save_date_diff):
+        basic.outputlogMessage('warning, DEM difference already exist, skipping create new ones')
+        return True
+
+    out_dem_diff_cm = io_function.get_name_by_adding_tail(save_dem_diff, 'cm')
+    if os.path.isfile(out_dem_diff_cm):
+        basic.outputlogMessage('warning, DEM difference already exist, skipping create new ones')
+        return True
+
+    return False
+
+
 def proc_ArcticDEM_strip_one_grid_polygon(tar_dir,dem_polygons,dem_urls,o_res,save_dir,inter_format,b_mosaic_id,b_mosaic_date,b_rm_inter,
                                     b_dem_diff,extent_poly, extent_id,keep_dem_percent,process_num,pre_name,resample_method='average',same_extent=False):
+
+    if check_dem_diff_results(save_dir,pre_name,extent_id):
+        return True
 
     # get file in the tar_dir
     tar_list = get_tar_list_sub(tar_dir, dem_polygons,dem_urls,extent_poly)
