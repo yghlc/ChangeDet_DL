@@ -287,7 +287,8 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
     dem_groups_date = group_demTif_yearmonthDay(dem_tif_list,diff_days=0)
     # sort based on yeardate in accending order : operator.itemgetter(0)
     dem_groups_date = dict(sorted(dem_groups_date.items(), key=operator.itemgetter(0)))
-    io_function.save_dict_to_txt_json('dem_date_for_diff.txt',dem_groups_date)
+    txt_save_path = os.path.splitext(out_date_diff)[0]+'.txt'
+    io_function.save_dict_to_txt_json(txt_save_path,dem_groups_date)
 
     date_list = list(dem_groups_date.keys())
     dem_tif_list = [ dem_groups_date[key][0] for key in dem_groups_date.keys()]  # eacy date, only have one tif
