@@ -92,6 +92,8 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
         if status != 0:
             print(result)
             sys.exit(status)
+    else:
+        io_function.move_file_to_dst('%s_8bit_rgb.tif'%output, fin_output)
 
     # set nodata
     # gdal_edit.py -a_nodata 0  ${fin_output}
