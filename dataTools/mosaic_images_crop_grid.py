@@ -35,7 +35,7 @@ prePlanetImage = os.path.expanduser('~/codes/PycharmProjects/Landuse_DL/planetSc
 # some issues for the global var in the multiple processes, so remove the temporal foolder in bash
 temporal_dirs = []
 
-def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_max=3000, save_org_dir=None):
+def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_max=3000, save_org_dir=None, sharpen=True, rgb_nodata=0):
 
     #if multiple processes try to derive the same rgb images, it may have problem.
     # save output to 'RGB_images' + processID
@@ -52,7 +52,10 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
 
     # filename_no_ext
     output = os.path.splitext(os.path.basename(tif_path))[0]
-    fin_output= os.path.join(save_dir, output + '_8bit_rgb_sharpen.tif')
+    if sharpen:
+        fin_output= os.path.join(save_dir, output + '_8bit_rgb_sharpen.tif')
+    else:
+        fin_output = os.path.join(save_dir, output + '_8bit_rgb.tif')
     if os.path.isfile(fin_output):
         basic.outputlogMessage("Skip, because File %s exists in current folder: %s"%(fin_output,os.getcwd()))
         return fin_output
@@ -84,21 +87,23 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
 
     # python ${code_dir}/planetScripts/prePlanetImage.py ${output}_8bit_rgb.tif ${fin_output}
     cmd_str = 'python %s %s_8bit_rgb.tif %s'%(prePlanetImage,output,fin_output)
-    status, result = basic.exec_command_string(cmd_str)
-    if status != 0:
-        print(result)
-        sys.exit(status)
+    if sharpen:
+        status, result = basic.exec_command_string(cmd_str)
+        if status != 0:
+            print(result)
+            sys.exit(status)
 
     # set nodata
     # gdal_edit.py -a_nodata 0  ${fin_output}
-    cmd_str = 'gdal_edit.py -a_nodata 0  %s' % fin_output
+    cmd_str = 'gdal_edit.py -a_nodata %d  %s' % (rgb_nodata, fin_output)
     status, result = basic.exec_command_string(cmd_str)
     if status != 0:
         print(result)
         sys.exit(status)
 
     io_function.delete_file_or_dir('%s_8bit.tif'%output)
-    io_function.delete_file_or_dir('%s_8bit_rgb.tif'%output)
+    if sharpen:
+        io_function.delete_file_or_dir('%s_8bit_rgb.tif'%output)
 
     return fin_output
 
