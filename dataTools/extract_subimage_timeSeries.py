@@ -380,6 +380,20 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cl
     if b_draw_scalebar_time:
         plt_obj = plt.figure()
 
+    sr_min = parameters.get_string_parameters_None_if_absence(para_file,'sr_min')
+    if sr_min is not None:
+        sr_min = float(sr_min)
+    else:
+        sr_min = 0
+    sr_max = float(parameters.get_string_parameters_None_if_absence(para_file,'sr_max'))
+    if sr_max is not None:
+        sr_max = float(sr_max)
+    else:
+        sr_max = 3000
+    b_sharpen = parameters.get_bool_parameters_None_if_absence(para_file,'b_sharpen')
+    if b_sharpen is None:
+        b_sharpen = True
+
     for idx, (id, polygon_latlon) in enumerate(zip(polygon_ids, polygons_latlon)):
         basic.outputlogMessage('obtaining %dth time series sub-images (polygon id: %d)' % (idx, id))
         # get image_list_2d, # 2D list, for a specific time, it may have multi images.
@@ -394,7 +408,7 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cl
         for image_list in image_list_2d_a_polygon:
             rgb_list = []
             for img in image_list:
-                rgb_img = convert_planet_to_rgb_images(img)
+                rgb_img = convert_planet_to_rgb_images(img,sr_min=sr_min, sr_max=sr_max,sharpen=b_sharpen)
                 rgb_list.append(rgb_img)
             image_list_2d_a_polygon_rgb.append(rgb_list)
         image_list_2d_a_polygon = image_list_2d_a_polygon_rgb
