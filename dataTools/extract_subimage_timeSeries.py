@@ -363,6 +363,10 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cl
         bufferSize = meters_to_degress_onEarth(bufferSize)
 
     polygons_latlon = vector_gpd.read_shape_gpd_to_NewPrj(poly_shp_path,'EPSG:4326')
+    if len(polygons_latlon) < 1:
+        raise ValueError('No polygons in %s'%poly_shp_path)
+    else:
+        basic.outputlogMessage('read %d polygons from %s'%(len(polygons_latlon),poly_shp_path ))
     polygon_ids = vector_gpd.read_attribute_values_list(poly_shp_path,'id')
     if polygon_ids is None:
         polygon_ids = [ id + 1 for id in range(len(polygons_latlon))]
