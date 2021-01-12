@@ -371,7 +371,7 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cl
     if polygon_ids is None:
         polygon_ids = [ id + 1 for id in range(len(polygons_latlon))]
     if None in polygon_ids:
-        basic.outputlogMessage('Warning, None in the id attributes. The entire id attributes will be ignore')
+        basic.outputlogMessage('Warning, None in the id attributes. The entire id attributes will be ignored')
         polygon_ids = [id + 1 for id in range(len(polygons_latlon))]
 
     pre_name = parameters.get_string_parameters(para_file, 'pre_name')
