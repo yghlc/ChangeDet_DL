@@ -86,14 +86,17 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
         sys.exit(status)
 
     # python ${code_dir}/planetScripts/prePlanetImage.py ${output}_8bit_rgb.tif ${fin_output}
-    cmd_str = 'python %s %s_8bit_rgb.tif %s'%(prePlanetImage,output,fin_output)
     if sharpen:
-        status, result = basic.exec_command_string(cmd_str)
-        if status != 0:
-            print(result)
-            sys.exit(status)
+        cmd_str = 'python %s %s_8bit_rgb.tif %s'%(prePlanetImage,output,fin_output)
     else:
-        io_function.move_file_to_dst('%s_8bit_rgb.tif'%output, fin_output)
+        # convert from VRT format to tif format
+        cmd_str = 'gdal_translate -of GTiff %s_8bit_rgb.tif %s' % (output, fin_output)
+    status, result = basic.exec_command_string(cmd_str)
+    if status != 0:
+        print(result)
+        sys.exit(status)
+
+
 
     # set nodata
     # gdal_edit.py -a_nodata 0  ${fin_output}
