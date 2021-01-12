@@ -107,8 +107,7 @@ def convert_planet_to_rgb_images(tif_path,save_dir='RGB_images', sr_min=0, sr_ma
         sys.exit(status)
 
     io_function.delete_file_or_dir('%s_8bit.tif'%output)
-    if sharpen:
-        io_function.delete_file_or_dir('%s_8bit_rgb.tif'%output)
+    io_function.delete_file_or_dir('%s_8bit_rgb.tif'%output)
 
     return fin_output
 
