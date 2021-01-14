@@ -271,6 +271,34 @@ def check_dem_valid_per(dem_tif_list, work_dir, process_num =1, move_dem_thresho
 
     return keep_dem_list
 
+def read_date_dem_to_memory(pair_idx, pair, date_pair_list_sorted,dem_data_dict, dem_groups_date, less_memory=False):
+
+    if less_memory is False:
+        # read data to memory if need, then store in memory, avoid to read them again.
+        # for a large area, because we read all raster to memory, it will cause "out of memory problem"
+        if pair[0] not in dem_data_dict.keys():
+            data_old = raster_io.read_raster_one_band_np(dem_groups_date[pair[0]][0])
+            dem_data_dict[pair[0]] = data_old
+        else:
+            data_old = dem_data_dict[pair[0]]
+
+        # read data to memory if need
+        if pair[1] not in dem_data_dict.keys():
+            data_new = raster_io.read_raster_one_band_np(dem_groups_date[pair[1]][0])
+            dem_data_dict[pair[1]] = data_new
+        else:
+            data_new = dem_data_dict[pair[1]]
+    else:
+        # if we don't have enough memory, don't store the all DEM data in memory, only read two needed.
+        # wil increase reading operation from disk
+        data_old = raster_io.read_raster_one_band_np(dem_groups_date[pair[0]][0])
+        data_new = raster_io.read_raster_one_band_np(dem_groups_date[pair[1]][0])
+
+    # release some memory if we can (NO)
+
+    return data_old, data_new
+
+
 def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
     '''
     get DEM difference, for each pixel, newest vaild value - oldest valid value
@@ -291,7 +319,7 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
     io_function.save_dict_to_txt_json(txt_save_path,dem_groups_date)
 
     date_list = list(dem_groups_date.keys())
-    dem_tif_list = [ dem_groups_date[key][0] for key in dem_groups_date.keys()]  # eacy date, only have one tif
+    dem_tif_list = [ dem_groups_date[key][0] for key in dem_groups_date.keys()]  # each date, only have one tif
     tif_obj_list = [ raster_io.open_raster_read(tif) for tif in dem_tif_list]
 
 
@@ -303,6 +331,7 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
         if h!=height or w!=width:
             raise ValueError('the height and width of %s is different from others'%tif)
 
+    tif_obj_list = None
 
     # read all and their date
     date_pair_list = list(combinations(date_list, 2))
@@ -318,25 +347,13 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
     dem_diff_np = np.empty((height, width),dtype=np.float32)
     dem_diff_np[:] = np.nan
 
-    for pair in date_pair_list_sorted:
+    for p_idx, pair in enumerate(date_pair_list_sorted):
         diff_days = (pair[1] - pair[0]).days
         basic.outputlogMessage('Getting DEM difference using the one on %s and %s, total day diff: %d'%
                                (timeTools.date2str(pair[1]), timeTools.date2str(pair[0]),diff_days))
         # print(pair,':',(pair[1] - pair[0]).days)
 
-        # read data to memory if need
-        if pair[0] not in dem_data_dict.keys():
-            data_old = raster_io.read_raster_one_band_np( dem_groups_date[pair[0]][0] )
-            dem_data_dict [pair[0]] = data_old
-        else:
-            data_old = dem_data_dict[pair[0]]
-
-        # read data to memory if need
-        if pair[1] not in dem_data_dict.keys():
-            data_new = raster_io.read_raster_one_band_np( dem_groups_date[pair[1]][0] )
-            dem_data_dict [pair[1]] = data_new
-        else:
-            data_new = dem_data_dict [pair[1]]
+        data_old, data_new = read_date_dem_to_memory(p_idx, pair, date_pair_list_sorted,dem_data_dict, dem_groups_date, less_memory=True)
 
         print('data_old shape:',data_old.shape)
         print('data_new shape:',data_new.shape)
