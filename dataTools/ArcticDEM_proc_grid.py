@@ -353,7 +353,7 @@ def dem_diff_newest_oldest(dem_tif_list, out_dem_diff, out_date_diff):
                                (timeTools.date2str(pair[1]), timeTools.date2str(pair[0]),diff_days))
         # print(pair,':',(pair[1] - pair[0]).days)
 
-        data_old, data_new = read_date_dem_to_memory(p_idx, pair, date_pair_list_sorted,dem_data_dict, dem_groups_date, less_memory=True)
+        data_old, data_new = read_date_dem_to_memory(p_idx, pair, date_pair_list_sorted,dem_data_dict, dem_groups_date)
 
         print('data_old shape:',data_old.shape)
         print('data_new shape:',data_new.shape)
