@@ -46,9 +46,9 @@ def check_repoject_raster_list(para_file, para_name, target_image_list):
             output_list.append(output)
 
         # update raster txt
-        bak_txt = io_function.get_name_by_adding_tail(raster_txt,'bak')
-        io_function.copy_file_to_dst(raster_txt,bak_txt)
-        io_function.save_list_to_txt(raster_txt,output_list)
+    bak_txt = io_function.get_name_by_adding_tail(raster_txt,'bak')
+    io_function.copy_file_to_dst(raster_txt,bak_txt)
+    io_function.save_list_to_txt(raster_txt,output_list)
 
     return True
 
