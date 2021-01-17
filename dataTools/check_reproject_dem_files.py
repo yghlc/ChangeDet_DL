@@ -57,8 +57,7 @@ def main(options, args):
     inf_images_dir = parameters.get_string_parameters_None_if_absence(para_file,'inf_images_dir')
     inf_image_list = io_function.read_list_from_txt('inf_image_list.txt')
 
-    t_image_list = io_function.read_list_from_txt(inf_image_list)
-    t_image_list = [ os.path.join(inf_images_dir, item) for item in t_image_list]
+    t_image_list = [ os.path.join(inf_images_dir, item) for item in inf_image_list]
 
     # dem
     check_repoject_raster_list(para_file,'multi_dem_files',t_image_list)
