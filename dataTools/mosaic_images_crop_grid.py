@@ -18,9 +18,12 @@ import basic_src.map_projection as map_projection
 import basic_src.RSImageProcess as RSImageProcess
 import basic_src.timeTools as timeTools
 import vector_gpd
+import raster_io
 from datetime import datetime
 
 import time
+
+import numpy as np
 
 import operator
 
@@ -304,6 +307,104 @@ def group_planet_images_date(geojson_list,diff_days=0):
 
     return strKey_dict
 
+def get_common_area_grid_polygon(grid_polygons):
+
+    # get the size of the most grid polygons
+    grid_poly_areas = [ item.area for item in grid_polygons ]
+    # print(grid_poly_areas)
+    grid_median_size = np.median(np.array(grid_poly_areas))
+    print('median of grid polygon size: %lf'%grid_median_size)
+
+    # get the majority of the size, but quite slow
+    # counts = np.bincount(grid_poly_areas)
+    # grid_majority_size = np.argmax(counts)
+    # print('majority of grid polygon size: %lf'%grid_majority_size)
+
+    return grid_median_size
+
+def get_file_name_pre_subID_tail(image_path):
+    basename = os.path.basename(image_path)
+    out = re.findall(r'sub_\d+_', basename)
+    subID = out[0][4:-1]
+    pre_name, tail = basename.split(subID)
+    # e.g., 'northern_alaska_2020_Jul_Aug_mosaic_3.0_20200701_sub_', '17', '_8bit_rgb.tif'
+    return pre_name, subID, tail
+
+def find_neighbour_images(samll_img, grid_img_list, buffer=None):
+    neighbours = []
+    for img_path in grid_img_list:
+        if img_path == samll_img:
+            continue
+        if raster_io.is_two_image_disjoint(samll_img, img_path, buffer=buffer) is False:
+            neighbours.append(img_path)
+    return neighbours
+
+def merge_small_grid_to_AdjacentGrid(grid_img_dir,grid_common_size):
+    '''
+    merge small grid images to its adjacent ones.
+    :param grid_img_dir:
+    :param grid_polygons: the common size of grid polygons
+    :return:
+    '''
+
+    allowed_size = grid_common_size/3    # greater than 1/3, an image smaller than this, only have maximum three neighbours
+
+    grid_img_list = ['','']
+    isolated_small_img = []     # some small image don't have neighbours
+    while len(grid_img_list) > 1:
+        grid_img_list = io_function.get_file_list_by_ext('.tif', grid_img_dir, bsub_folder=False)
+        for item in isolated_small_img:
+            grid_img_list.remove(item)
+        if len(grid_img_list) < 2:
+            break
+
+        # # set a buffer area of 5 meters, making it easier to group connected images
+        # # if don't set the buffer (None), only grid images with a shared line (not point) is considered as overlap
+        # img_boxes = [ raster_io.get_image_bound_box(img_path, buffer=None) for img_path in grid_img_list ]
+        # img_area_list = [raster_io.get_area_image_box(item) for item in grid_img_list]
+
+        # find one small image
+        samll_img = None
+        for img_path in grid_img_list:
+            img_area = raster_io.get_area_image_box(img_path)
+            if img_area > allowed_size:
+                continue
+            else:
+                samll_img = img_path
+                break
+        if samll_img is None:
+            break
+        # find the neighbours of the small image (if they connected)
+        neighbours = find_neighbour_images(samll_img,grid_img_list)
+        # if cannot find neighbours, increase the buffer because sometime, there is a small gap
+        if len(neighbours) == 0:
+            neighbours = find_neighbour_images(samll_img, grid_img_list, buffer=5)
+
+        if len(neighbours) == 0:
+            isolated_small_img.append(samll_img)
+            continue
+        elif len(neighbours) > 2:
+            raise ValueError('found more than two neighbours for %s'%samll_img)
+        else:
+            pass
+
+        # merge the small image to the neighbours (larger one)
+        neigh_areas = [ raster_io.get_area_image_box(item) for item in neighbours ]
+        max_neighbour = neighbours[ neigh_areas.index(max(neigh_areas)) ]
+
+        pre_name, subID, tail = get_file_name_pre_subID_tail(samll_img)
+        _, subid_neig, _ = get_file_name_pre_subID_tail(max_neighbour)
+
+        newID = '_'.join([subID,subid_neig])
+        merged_img = os.path.join(grid_img_dir, pre_name + newID + tail)
+
+        RSImageProcess.mosaic_crop_images_gdalwarp([samll_img,max_neighbour],merged_img,
+                                                   compress='lzw',tiled='yes',bigtiff='if_safer')
+
+        # remove
+        io_function.delete_file_or_dir(samll_img)
+        io_function.delete_file_or_dir(max_neighbour)
+
 
 def main(options, args):
 
@@ -404,7 +505,9 @@ def main(options, args):
         else:
             raise ValueError('incorrect process number: %d'% process_num)
 
-        #TODO: some samll grid images (after mosaicking and cropping), need to be merged to the adjacent large one.
+        #some samll grid images (after mosaicking and cropping), need to be merged to the adjacent large one.
+        grid_common_size = get_common_area_grid_polygon(grid_polygons)
+        merge_small_grid_to_AdjacentGrid(save_dir,grid_common_size)
 
     cost_time_sec = time.time() - time0
     basic.outputlogMessage('Done, total time cost %.2f seconds (%.2f minutes or %.2f hours)' % (cost_time_sec,cost_time_sec/60,cost_time_sec/3600))
