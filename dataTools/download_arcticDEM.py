@@ -68,7 +68,7 @@ def main(options, args):
 
         save_txt_path = os.path.join(save_folder, extent_shp_base + '_dem_urls_poly_%d.txt' % idx)
         if os.path.isfile(save_txt_path):
-            urls = io_function.read_txt_from_list(save_txt_path)
+            urls = io_function.read_list_from_txt(save_txt_path)
             basic.outputlogMessage('read %d dem urls from %s' % (len(urls),save_txt_path))
         else:
             # get fileurl
