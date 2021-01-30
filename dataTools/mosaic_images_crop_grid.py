@@ -324,10 +324,10 @@ def get_common_area_grid_polygon(grid_polygons):
 
 def get_file_name_pre_subID_tail(image_path):
     basename = os.path.basename(image_path)
-    out = re.findall(r'sub_\d+_', basename)
-    if len(out) < 0:
+    out = re.findall(r'sub_\d+', basename)
+    if len(out) != 1:
         raise ValueError('cannot get subID from %s'%image_path)
-    subID = out[0][4:-1]
+    subID = out[0][4:]
     pre_name, tail = basename.split(subID)
     # e.g., 'northern_alaska_2020_Jul_Aug_mosaic_3.0_20200701_sub_', '17', '_8bit_rgb.tif'
     return pre_name, subID, tail
