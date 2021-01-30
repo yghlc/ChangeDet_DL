@@ -63,7 +63,15 @@ def get_file_name_pre_subID_tail(image_path):
     subIDs = '_'.join(out)
     # print(subIDs)
 
-    pre_name, tail = basename.split(subIDs)
+    subIDs_split = basename.split(subIDs)
+    if len(subIDs_split) == 2:
+        pre_name, tail = basename.split(subIDs)
+    elif len(subIDs_split) > 2:
+        tail = subIDs_split[-1]
+        pre_name = subIDs.join(subIDs_split[:-1])
+    else:
+        raise ValueError('failed to split based on subIDs: %s, filename: %s'%(subIDs,basename))
+
     # e.g., 'northern_alaska_2020_Jul_Aug_mosaic_3.0_20200701_sub_', '17', '_8bit_rgb.tif'
     return pre_name, subIDs, tail
     # return '', '', ''
