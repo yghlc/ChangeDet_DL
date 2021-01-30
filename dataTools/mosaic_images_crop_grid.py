@@ -324,13 +324,25 @@ def get_common_area_grid_polygon(grid_polygons):
 
 def get_file_name_pre_subID_tail(image_path):
     basename = os.path.basename(image_path)
-    out = re.findall(r'sub_\d+', basename)
-    if len(out) != 1:
+    if 'sub' in basename is False:
+        raise ValueError('%s is not a sub-image'%basename)
+    id_parts = basename.split('sub')[1]
+    # print(id_parts)
+    id_parts = id_parts.replace('8bit','')  # remove 8bit
+    # print(id_parts)
+    # ids =  [item for item in  id_parts.split('_') if item.isdigit()]
+    # print(ids)
+    out = re.findall(r'\d+', id_parts)
+    if len(out) < 1:
         raise ValueError('cannot get subID from %s'%image_path)
-    subID = out[0][4:]
-    pre_name, tail = basename.split(subID)
+    # print(out)
+    subIDs = '_'.join(out)
+    # print(subIDs)
+
+    pre_name, tail = basename.split(subIDs)
     # e.g., 'northern_alaska_2020_Jul_Aug_mosaic_3.0_20200701_sub_', '17', '_8bit_rgb.tif'
-    return pre_name, subID, tail
+    return pre_name, subIDs, tail
+    # return '', '', ''
 
 def find_neighbour_images(samll_img, grid_img_list, buffer=None):
     neighbours = []
