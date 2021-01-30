@@ -361,7 +361,7 @@ def merge_small_grid_to_AdjacentGrid(grid_img_dir,grid_common_size):
     :return:
     '''
 
-    allowed_size = grid_common_size/3    # greater than 1/3, an image smaller than this, only have maximum three neighbours
+    allowed_size = grid_common_size/4    # greater than 1/4, an image smaller than this, only have maximum three neighbours
 
     grid_img_list = ['','']
     isolated_small_img = []     # some small image don't have neighbours
