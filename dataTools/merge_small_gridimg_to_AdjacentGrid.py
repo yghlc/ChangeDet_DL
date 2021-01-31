@@ -76,6 +76,11 @@ def get_file_name_pre_subID_tail(image_path):
     return pre_name, subIDs, tail
     # return '', '', ''
 
+def get_overlap_area_two_boxes(img1, img2,buffer=None):
+    box1 = raster_io.get_image_bound_box(img1)
+    box2 = raster_io.get_image_bound_box(img2)
+    return vector_gpd.get_overlap_area_two_boxes(box1,box2,buffer=buffer)
+
 def merge_small_grid_to_AdjacentGrid(grid_img_dir,grid_common_size):
     '''
     merge small grid images to its adjacent ones.
@@ -113,21 +118,17 @@ def merge_small_grid_to_AdjacentGrid(grid_img_dir,grid_common_size):
             break
         # find the neighbours of the small image (if they connected)
         neighbours = find_neighbour_images(samll_img,grid_img_list)
-        # if cannot find neighbours, increase the buffer because sometime, there is a small gap
+        # if cannot find neighbours, increase the buffer because sometimes, there is a small gap
         if len(neighbours) == 0:
             neighbours = find_neighbour_images(samll_img, grid_img_list, buffer=5)
 
         if len(neighbours) == 0:
             isolated_small_img.append(samll_img)
             continue
-        elif len(neighbours) > 2:
-            raise ValueError('found more than two neighbours for %s'%samll_img)
-        else:
-            pass
 
-        # merge the small image to the neighbours (larger one)
-        neigh_areas = [ raster_io.get_area_image_box(item) for item in neighbours ]
-        max_neighbour = neighbours[ neigh_areas.index(max(neigh_areas)) ]
+        # merge the small image to the neighbours with largest overlap area
+        neigh_overlap_areas = [ get_overlap_area_two_boxes(samll_img,item) for item in neighbours ]
+        max_neighbour = neighbours[ neigh_overlap_areas.index(max(neigh_overlap_areas)) ]
 
         pre_name, subID, tail = get_file_name_pre_subID_tail(samll_img)
         _, subid_neig, _ = get_file_name_pre_subID_tail(max_neighbour)
