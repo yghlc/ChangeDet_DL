@@ -277,22 +277,22 @@ def read_date_dem_to_memory(pair_idx, pair, date_pair_list_sorted,dem_data_dict,
         # read data to memory if need, then store in memory, avoid to read them again.
         # for a large area, because we read all raster to memory, it will cause "out of memory problem"
         if pair[0] not in dem_data_dict.keys():
-            data_old = raster_io.read_raster_one_band_np(dem_groups_date[pair[0]][0])
+            data_old, _ = raster_io.read_raster_one_band_np(dem_groups_date[pair[0]][0])
             dem_data_dict[pair[0]] = data_old
         else:
             data_old = dem_data_dict[pair[0]]
 
         # read data to memory if need
         if pair[1] not in dem_data_dict.keys():
-            data_new = raster_io.read_raster_one_band_np(dem_groups_date[pair[1]][0])
+            data_new, _ = raster_io.read_raster_one_band_np(dem_groups_date[pair[1]][0])
             dem_data_dict[pair[1]] = data_new
         else:
             data_new = dem_data_dict[pair[1]]
     else:
         # if we don't have enough memory, don't store the all DEM data in memory, only read two needed.
         # wil increase reading operation from disk
-        data_old = raster_io.read_raster_one_band_np(dem_groups_date[pair[0]][0])
-        data_new = raster_io.read_raster_one_band_np(dem_groups_date[pair[1]][0])
+        data_old, _ = raster_io.read_raster_one_band_np(dem_groups_date[pair[0]][0])
+        data_new, _ = raster_io.read_raster_one_band_np(dem_groups_date[pair[1]][0])
 
     # release some memory if we can (NO)
 
