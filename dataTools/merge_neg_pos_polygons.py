@@ -11,12 +11,11 @@ add time: 01 September, 2020
 
 import os, sys
 sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
-
+import vector_gpd
 import basic_src.io_function as io_function
 import basic_src.basic as basic
 
 from basic_src.map_projection import get_raster_or_vector_srs_info_proj4
-import vector_gpd
 
 import pandas as pd
 from optparse import OptionParser
