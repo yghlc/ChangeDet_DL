@@ -534,7 +534,7 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cl
             acquired_date_str = planet_base_name[:4] + '-' +planet_base_name[4:6] + '-' + planet_base_name[6:8]
             # draw time and scale bar on images (annotate)
             if b_draw_scalebar_time:
-                draw_annotate_for_a_image(plt_obj, subimg_saved_path, time_str=acquired_date_str)
+                draw_annotate_for_a_image(plt_obj, subimg_saved_path, time_str=acquired_date_str, polygon=c_polygon)
 
     return True
 
