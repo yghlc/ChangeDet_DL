@@ -207,6 +207,7 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
         poly_save_dir = os.path.join(save_dir, pre_name + '_poly_%d_timeSeries'%idx)
         io_function.mkdir(poly_save_dir)
 
+        ref_sub_image_for_polygon = None
         for time in range(time_count):
             image_tile_list = time_images_2d[time]
             img_tile_boxes = img_tile_boxes_list[time]
@@ -222,6 +223,11 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
             # draw time and scale bar on images (annotate)
             if b_draw:
                 draw_annotate_for_a_image(plt_obj,subimg_saved_path, time_str=time_str_list[time],type_str=des_str_list[time])
+                if ref_sub_image_for_polygon is None:
+                    ref_sub_image_for_polygon = subimg_saved_path
+
+        if b_draw:
+            draw_a_polygon(plt_obj,poly_save_dir,pre_name+'_poly_%d'%idx,c_polygon, ref_image=ref_sub_image_for_polygon)
         # test
         # sys.exit(0)
 
@@ -236,6 +242,24 @@ def get_time_str_list(image_folder_list):
 def get_time_info_from_filename(image_path):
     filename = os.path.basename(image_path)
     return timeTools.date2str( timeTools.get_yeardate_yyyymmdd(filename) )
+
+def draw_a_polygon(fig_obj, save_folder, pre_name, polygon,ref_image=None):
+    if ref_image is not None:
+        box = raster_io.get_image_bound_box(ref_image)
+        img_extent = vector_gpd.convert_image_bound_to_shapely_polygon(box)
+        p = gpd.GeoSeries([polygon,img_extent])
+    else:
+        p = gpd.GeoSeries(polygon)
+
+    # frame = p.plot()
+    frame = p.boundary.plot()   # only plot boundary, no fill
+    frame.axes.get_xaxis().set_visible(False)
+    frame.axes.get_yaxis().set_visible(False)
+
+    save_fig = os.path.join(save_folder, pre_name + '_polygon.png')
+    plt.savefig(save_fig, bbox_inches="tight")
+    # plt.show()
+    return True
 
 def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0', type_str=None):
     # type_str: sensor, source of data, etc.

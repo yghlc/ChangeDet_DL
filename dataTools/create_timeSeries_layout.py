@@ -28,6 +28,12 @@ def main():
         png_list = io_function.get_file_list_by_pattern(folder,'*.png')
         png_list.sort()
 
+        # put the polygon to the last one
+        if 'polygon' in png_list[0]:
+            poly_draw = png_list[0]
+            del png_list[0]
+            png_list.append(poly_draw)
+
         # test
         # if '142' not in folder:
         #     continue
