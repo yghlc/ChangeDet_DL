@@ -65,7 +65,7 @@ def main():
         basic.outputlogMessage('Save to %s'%save_path)
 
         # test
-        break
+        # break
 
 
 if __name__ == "__main__":

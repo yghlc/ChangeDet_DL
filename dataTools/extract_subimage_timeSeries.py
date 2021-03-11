@@ -259,9 +259,9 @@ def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0', type_str=None):
         frame = plt.gca()
         frame.add_artist(scalebar)
 
-        plt.text(40, height - 5, time_str, ha="center", size=14, color='white')
+        plt.text(50, height - 5, time_str, ha="center", size=14, color='white')
         if type_str is not None:
-            plt.text(width-len(type_str)*4, height - 5, type_str, ha="center", size=14, color='white')
+            plt.text(50, 15, type_str, ha="center", size=14, color='white')
 
         frame.axes.get_xaxis().set_visible(False)
         frame.axes.get_yaxis().set_visible(False)
