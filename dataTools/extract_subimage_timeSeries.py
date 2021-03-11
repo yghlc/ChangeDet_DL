@@ -258,6 +258,7 @@ def draw_a_polygon(fig_obj, save_folder, pre_name, polygon,ref_image=None):
 
     save_fig = os.path.join(save_folder, pre_name + '_polygon.png')
     plt.savefig(save_fig, bbox_inches="tight")
+    plt.close('all')
     # plt.show()
     return True
 
@@ -506,7 +507,6 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cl
                 draw_annotate_for_a_image(plt_obj, subimg_saved_path, time_str=acquired_date_str)
 
     return True
-
 
 def extract_timeSeries_from_shp(para_file, polygon_shp,bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
 
