@@ -53,7 +53,10 @@ if os.name == 'posix' and "DISPLAY" not in os.environ:
 import matplotlib.pyplot as plt
 import matplotlib.cbook as cbook
 from matplotlib_scalebar.scalebar import ScaleBar
+import matplotlib.patches as patches
 import calendar
+
+import math
 
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/ChangeDet_DL/thawSlumpChangeDet'))
 import polygons_change_analyze
@@ -222,7 +225,8 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
 
             # draw time and scale bar on images (annotate)
             if b_draw:
-                draw_annotate_for_a_image(plt_obj,subimg_saved_path, time_str=time_str_list[time],type_str=des_str_list[time])
+                draw_annotate_for_a_image(plt_obj,subimg_saved_path, time_str=time_str_list[time],
+                                          type_str=des_str_list[time], polygon=c_polygon)
                 if ref_sub_image_for_polygon is None:
                     ref_sub_image_for_polygon = subimg_saved_path
 
@@ -262,10 +266,28 @@ def draw_a_polygon(fig_obj, save_folder, pre_name, polygon,ref_image=None):
     # plt.show()
     return True
 
-def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0', type_str=None):
+def get_rectangle_of_polygon_on_image(polygon_bounds,transform):
+    # input the transform from raster io and  polygon_bounds: (minx, miny, maxx, maxy)
+    # return xy : (float, float) The bottom and left rectangle coordinates
+    #  and width, height
+    xres = transform[0]
+    x0 = transform[2]
+    yres = transform[4]
+    y0 = transform[5]
+
+    x_left = math.floor((polygon_bounds[0] - x0)/xres)  # smaller value
+    y_bottom = math.ceil((polygon_bounds[3] - y0)/yres) # larger value
+
+    width = math.ceil((polygon_bounds[2] - polygon_bounds[0])/xres)
+    heitht = math.ceil((polygon_bounds[1] - polygon_bounds[3])/yres)    # because yres is negative, so miny - maxy
+    # print(x_left, y_bottom,width,heitht)
+
+    return x_left, y_bottom,width,heitht
+
+
+def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0', type_str=None, polygon=None):
     # type_str: sensor, source of data, etc.
 
-    # TODO: draw a rectangle to mark the thaw slump
 
     with rasterio.open(tif_image) as img_obj:
         res = img_obj.res   # resolution
@@ -287,6 +309,14 @@ def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0', type_str=None):
         plt.text(10, height - 5, time_str, ha="left", size=14, color='white')
         if type_str is not None:
             plt.text(10, 15, type_str, ha="left", size=14, color='white')
+
+        # draw a rectangle to mark the thaw slump
+        if polygon is not None:
+            # Create a Rectangle patch
+            x_left, y_bottom,width,heitht = get_rectangle_of_polygon_on_image(polygon.bounds, img_obj.transform)
+            rect = patches.Rectangle((x_left, y_bottom), width, heitht, linewidth=1, edgecolor='r', facecolor='none')
+            # Add the patch to the Axes
+            frame.add_patch(rect)
 
         frame.axes.get_xaxis().set_visible(False)
         frame.axes.get_yaxis().set_visible(False)
