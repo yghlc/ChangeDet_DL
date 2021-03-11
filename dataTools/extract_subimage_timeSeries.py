@@ -20,6 +20,8 @@ import basic_src.io_function as io_function
 import basic_src.basic as basic
 import vector_gpd
 import basic_src.map_projection as map_projection
+import raster_io
+import basic_src.timeTools as timeTools
 
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
 from datasets.get_subImages import get_sub_image
@@ -44,6 +46,10 @@ import parameters
 
 import numpy as np
 
+import matplotlib
+# must be before importing matplotlib.pyplot or pylab!
+if os.name == 'posix' and "DISPLAY" not in os.environ:
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cbook as cbook
 from matplotlib_scalebar.scalebar import ScaleBar
@@ -162,7 +168,8 @@ def organize_change_info(txt_path):
 
     pass
 
-def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bufferSize, pre_name, dstnodata, brectangle=True, b_draw = False):
+def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bufferSize, pre_name, dstnodata, brectangle=True, b_draw = False,
+                                          time_info_list=None, des_str_list=None):
     '''
     extract time series sub-images at different polygon location,
     :param polygons:
@@ -174,6 +181,11 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
     :param brectangle:
     :return:
     '''
+
+    if time_info_list is not None:
+        time_str_list = time_info_list
+    if des_str_list is None:
+        des_str_list = [None]*len(time_info_list)
 
     img_tile_boxes_list = []
     time_count = len(time_images_2d)
@@ -202,12 +214,14 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
             # get one sub-image based on the buffer areas
             subimg_shortName = pre_name+'_poly_%d_t_%d.tif'%(idx,time)
             subimg_saved_path = os.path.join(poly_save_dir, subimg_shortName)
+            if dstnodata is None:
+                dstnodata = raster_io.get_nodata(image_tile_list[0])
             if get_sub_image(idx,expansion_polygon,image_tile_list,img_tile_boxes, subimg_saved_path, dstnodata, brectangle) is False:
                 basic.outputlogMessage('Warning, skip the %dth polygon'%idx)
 
             # draw time and scale bar on images (annotate)
             if b_draw:
-                draw_annotate_for_a_image(plt_obj,subimg_saved_path, time_str=time_str_list[time])
+                draw_annotate_for_a_image(plt_obj,subimg_saved_path, time_str=time_str_list[time],type_str=des_str_list[time])
         # test
         # sys.exit(0)
 
@@ -219,7 +233,12 @@ def get_time_str_list(image_folder_list):
         month_name = calendar.month_name[int(month)]
         time_str_list.append(year + ' ' +month_name)
 
-def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0'):
+def get_time_info_from_filename(image_path):
+    filename = os.path.basename(image_path)
+    return timeTools.date2str( timeTools.get_yeardate_yyyymmdd(filename) )
+
+def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0', type_str=None):
+    # type_str: sensor, source of data, etc.
 
     # TODO: draw a rectangle to mark the thaw slump
 
@@ -241,6 +260,8 @@ def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0'):
         frame.add_artist(scalebar)
 
         plt.text(50, height - 5, time_str, ha="center", size=14, color='white')
+        if type_str is not None:
+            plt.text(width-5, height - 5, type_str, ha="center", size=14, color='white')
 
         frame.axes.get_xaxis().set_visible(False)
         frame.axes.get_yaxis().set_visible(False)
@@ -462,6 +483,49 @@ def extract_timeSeries_from_planet_rgb_images(planet_images_dir_or_xlsx_list, cl
 
     return True
 
+
+def extract_timeSeries_from_shp(para_file, polygon_shp,bufferSize,out_dir,dstnodata,b_draw_scalebar_time,b_rectangle):
+
+    # input_image_dir = parameters.get_directory(para_file, 'input_image_dir')
+    # inf_image_or_pattern = parameters.get_string_parameters(para_file, 'inf_image_or_pattern')
+    pre_name = parameters.get_string_parameters(para_file, 'pre_name')
+
+    input_image_dir_Pattern_Description = parameters.get_string_parameters(para_file, 'input_image_dir_Pattern_Description')
+    image_folder_list = []
+    image_pattern_list = []
+    image_desription_list = []
+    with open(input_image_dir_Pattern_Description,'r') as f_obj:
+        lines = [ ll.strip() for ll in f_obj.readlines()]
+        for line in lines:
+            folder, pattern, des = line.split(':')
+            image_folder_list.append(os.path.expanduser(folder))
+            image_pattern_list.append(pattern)
+            image_desription_list.append(des)
+
+    # 2D list, for a specific time, it may have multi images.
+    image_list_2d = get_image_list_2d('', image_folder_list, image_pattern_list) # the folder is absolute, set input_image_dir as ""
+
+    # get image list
+    time_info_list = [get_time_info_from_filename(item[0]) for item in image_list_2d ]
+
+    # need to check: the shape file and raster should have the same projection.
+    poly_shp_prj = map_projection.get_raster_or_vector_srs_info_proj4(polygon_shp)
+    for image_tile_list in image_list_2d:
+        if poly_shp_prj != get_projection_proj4(image_tile_list[0]):
+            raise ValueError('error, the input raster (e.g., %s) and vector (%s) files don\'t have the same projection' % (image_tile_list[0], polygon_shp))
+
+    # read polygons
+    polygons = vector_gpd.read_polygons_gpd(polygon_shp)
+    if len(polygons) < 1:
+        raise ValueError('No polygons in %s'% polygon_shp)
+
+
+    get_time_series_subImage_for_polygons(polygons,image_list_2d,out_dir,bufferSize, pre_name,dstnodata, brectangle=b_rectangle,
+                                          b_draw=b_draw_scalebar_time, time_info_list=time_info_list,des_str_list=image_desription_list)
+
+
+    return True
+
 def main(options, args):
 
     out_dir = options.out_dir
@@ -471,16 +535,21 @@ def main(options, args):
 
     para_file = options.para_file
 
-    dstnodata = parameters.get_string_parameters(para_file, 'dst_nodata')
-    dstnodata = int(dstnodata)
-    bufferSize = parameters.get_string_parameters(para_file, 'buffer_size')
-    bufferSize = int(bufferSize)
+    dstnodata = parameters.get_digit_parameters_None_if_absence(para_file, 'dst_nodata','int')  # None, it read from images
+    bufferSize = parameters.get_digit_parameters (para_file, 'buffer_size','init')
 
     rectangle_ext = parameters.get_string_parameters(para_file, 'b_use_rectangle')
     if 'rectangle' in rectangle_ext:
         b_rectangle = True
     else:
         b_rectangle = False
+
+    # if the input a shapefiles, then get time series sub-images for each polygons directly
+    if args[0].endswith('.shp'):
+        extract_timeSeries_from_shp(para_file, args[0], bufferSize, out_dir, dstnodata, b_draw_scalebar_time,
+                                    b_rectangle)
+        return True
+
 
     planet_images_dir_or_txt =  options.planet_images_dir_or_xlsxTXT
 
@@ -500,7 +569,7 @@ def main(options, args):
 
 
 if __name__ == "__main__":
-    usage = "usage: %prog [options] polygon_image_list.txt "
+    usage = "usage: %prog [options] polygon_image_list.txt or polygons.shp "
     parser = OptionParser(usage=usage, version="1.0 2020-7-7")
     parser.description = 'Introduction: get sub Images (time series) from multi-temporal images. polygons_shp may contain change information ' \
                          'The images and shape file should have the same projection.'
