@@ -22,12 +22,12 @@ import vector_gpd
 import basic_src.map_projection as map_projection
 
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
-from sentinelScripts.get_subImages import get_sub_image
+from datasets.get_subImages import get_sub_image
 
-from sentinelScripts.get_subImages import get_projection_proj4
-from sentinelScripts.get_subImages import check_projection_rasters
-from sentinelScripts.get_subImages import meters_to_degress_onEarth
-from sentinelScripts.get_subImages import get_image_tile_bound_boxes
+from datasets.get_subImages import get_projection_proj4
+from datasets.get_subImages import check_projection_rasters
+from datasets.get_subImages import meters_to_degress_onEarth
+from datasets.get_subImages import get_image_tile_bound_boxes
 
 from get_planet_image_list import get_Planet_SR_image_list_overlap_a_polygon
 from mosaic_images_crop_grid import convert_planet_to_rgb_images
