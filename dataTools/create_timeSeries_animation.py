@@ -16,7 +16,8 @@ import basic_src.basic as basic
 
 def main():
 
-    folder_list = io_function.get_file_list_by_pattern('./','Planet_*timeSeries')
+    # poly_%d_timeSeries
+    folder_list = io_function.get_file_list_by_pattern('./','*poly_*timeSeries')
 
     for idx, folder in enumerate(folder_list):
         png_list = io_function.get_file_list_by_pattern(folder,'*.png')
