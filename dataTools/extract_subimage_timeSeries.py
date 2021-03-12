@@ -308,7 +308,7 @@ def draw_annotate_for_a_image(fig_obj, tif_image, time_str='0', type_str=None, p
 
         plt.text(10, height - 5, time_str, ha="left", size=14, color='white')
         if type_str is not None:
-            plt.text(10, 15, type_str, ha="left", size=14, color='white')
+            plt.text(10, 5, type_str, ha="left", va='top', size=14, color='white')
 
         # draw a rectangle to mark the thaw slump
         if polygon is not None:
