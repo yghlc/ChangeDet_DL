@@ -182,7 +182,7 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
                             'time_idx': occur_time_str_list,
                             'UnionPolygon': union_polygons
                             })
-    wkt_string = map_projection.get_raster_or_vector_srs_info_epsg(shp_list[0])
+    wkt_string = map_projection.get_raster_or_vector_srs_info_proj4(shp_list[0])
     vector_gpd.save_polygons_to_files(union_df, 'UnionPolygon', wkt_string, union_save_path)
     basic.outputlogMessage('Save the union polygons to %s'%union_save_path)
 
