@@ -586,6 +586,7 @@ def extract_timeSeries_from_shp(para_file, polygon_shp,bufferSize,out_dir,dstnod
         image_list_2d = []
         for key in img_groups.keys():
             image_list_2d.append(img_groups[key])
+        basic.outputlogMessage('Group images to %d group'%(len(image_list_2d)))
 
     # get image list
     time_info_list = [get_time_info_from_filename(item[0]) for item in image_list_2d ]
