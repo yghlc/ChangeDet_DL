@@ -243,6 +243,12 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
                 basic.outputlogMessage('Warning, skip the %dth polygon'%idx)
                 continue
 
+            valid_per = raster_io.get_valid_pixel_percentage(subimg_saved_path)
+            if valid_per < 20:
+                io_function.delete_file_or_dir(subimg_saved_path)
+                basic.outputlogMessage('%s has valid pixel < 20 , remove it' % subimg_saved_path)
+                continue
+
             # draw time and scale bar on images (annotate)
             if b_draw:
                 draw_annotate_for_a_image(plt_obj,subimg_saved_path, time_str=time_str_list[time],
@@ -617,9 +623,10 @@ def main(options, args):
     out_dir = options.out_dir
     if out_dir is None: out_dir = './'
 
-    b_draw_scalebar_time = True
 
     para_file = options.para_file
+
+    b_draw_scalebar_time = parameters.get_bool_parameters(para_file, 'b_draw_scalebar_time')
 
     dstnodata = parameters.get_digit_parameters_None_if_absence(para_file, 'dst_nodata','int')  # None, it read from images
     bufferSize = parameters.get_digit_parameters (para_file, 'buffer_size','init')
