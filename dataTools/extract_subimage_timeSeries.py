@@ -271,7 +271,10 @@ def get_time_str_list(image_folder_list):
 
 def get_time_info_from_filename(image_path):
     filename = os.path.basename(image_path)
-    return timeTools.date2str( timeTools.get_yeardate_yyyymmdd(filename,pattern='[0-9]{8}_') )
+    date_obj = timeTools.get_yeardate_yyyymmdd(filename,pattern='[0-9]{8}_')
+    if date_obj is None:
+        return 'noDate'
+    return timeTools.date2str(date_obj)
 
 def draw_a_polygon(fig_obj, save_folder, pre_name, polygon,ref_image=None):
     if ref_image is not None:
