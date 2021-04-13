@@ -241,6 +241,7 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
                 dstnodata = raster_io.get_nodata(image_tile_list[0])
             if get_sub_image(idx,expansion_polygon,image_tile_list,img_tile_boxes, subimg_saved_path, dstnodata, brectangle) is False:
                 basic.outputlogMessage('Warning, skip the %dth polygon'%idx)
+                continue
 
             # draw time and scale bar on images (annotate)
             if b_draw:
