@@ -79,7 +79,7 @@ def check_projection_rasters(image_path_list):
         proj4_tmp = raster_io.get_projection(image_path_list[idx],format='proj4')
         if proj4_tmp != proj4:
             raise ValueError('error, %s have different projection with the first raster'%image_path_list[idx])
-        print('%d/%d projection of %s is %d'%(idx+1, total_count,image_path_list[idx],proj4_tmp))
+        print('%d/%d projection of %s is %s'%(idx+1, total_count,image_path_list[idx],proj4_tmp))
     return True
 
 def get_union_polygons_at_the_same_loc(shp_list, out_dir='./', union_save_path = None):
