@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/Landuse_DL'))
 from datasets.get_subImages import get_sub_image
 
 from datasets.get_subImages import get_projection_proj4
-from datasets.get_subImages import check_projection_rasters
+# from datasets.get_subImages import check_projection_rasters
 from datasets.get_subImages import meters_to_degress_onEarth
 from datasets.get_subImages import get_image_tile_bound_boxes
 
@@ -62,6 +62,23 @@ sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/ChangeDet_DL/thaw
 import polygons_change_analyze
 
 time_str_list = []
+
+
+def check_projection_rasters(image_path_list):
+    '''
+    check the rasters: have the same projection,  use rasterio to get projection
+    :param image_path_list: a list containing all the images
+    :return:
+    '''
+
+    if len(image_path_list) < 2:
+        return True
+    proj4 = raster_io.get_projection(image_path_list[0], format='proj4')# get_projection_proj4()
+    for idx in range(1,len(image_path_list)):
+        proj4_tmp = raster_io.get_projection(image_path_list[idx],format='proj4')
+        if proj4_tmp != proj4:
+            raise ValueError('error, %s have different projection with the first raster'%image_path_list[idx])
+    return True
 
 def get_union_polygons_at_the_same_loc(shp_list, out_dir='./', union_save_path = None):
     '''
