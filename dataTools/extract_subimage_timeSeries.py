@@ -235,7 +235,7 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
             img_tile_boxes = img_tile_boxes_list[time]
 
             # get one sub-image based on the buffer areas
-            subimg_shortName = pre_name+'%s_poly_%d.tif'%(time_str_list[time],idx)
+            subimg_shortName = pre_name+'_%s_poly_%d.tif'%(time_str_list[time],idx)
             subimg_saved_path = os.path.join(poly_save_dir, subimg_shortName)
             if dstnodata is None:
                 dstnodata = raster_io.get_nodata(image_tile_list[0])
