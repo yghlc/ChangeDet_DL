@@ -15,6 +15,7 @@ import basic_src.io_function as io_function
 import basic_src.basic as basic
 
 import skimage
+import skimage.io   # manually import , to avoid module 'skimage' has no attribute io.
 from skimage.util import montage
 import numpy as np
 
