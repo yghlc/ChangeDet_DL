@@ -578,6 +578,15 @@ def extract_timeSeries_from_shp(para_file, polygon_shp,bufferSize,out_dir,dstnod
     # 2D list, for a specific time, it may have multi images.
     image_list_2d = get_image_list_2d('', image_folder_list, image_pattern_list) # the folder is absolute, set input_image_dir as ""
 
+    b_group_image_by_date = parameters.get_bool_parameters_None_if_absence(para_file,'b_group_image_by_date')
+    if b_group_image_by_date is True:
+        if len(image_list_2d) != 1:
+            raise ValueError('try to group images by dates, by there are multiple image folders')
+        img_groups = timeTools.group_files_yearmonthDay(image_list_2d[0],diff_days=0)
+        image_list_2d = []
+        for key in img_groups.keys():
+            image_list_2d.append(img_groups[key])
+
     # get image list
     time_info_list = [get_time_info_from_filename(item[0]) for item in image_list_2d ]
 
