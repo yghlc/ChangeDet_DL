@@ -545,20 +545,21 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
         num_cores = multiprocessing.cpu_count()
     else:
         num_cores = proc_num
-    print('number of thread %d' % num_cores)
-    theadPool = Pool(num_cores)  # multi processes
 
-    parameters_list = [
-        (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx], e_line_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
-    results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
-
-    ###################################################################
-    # # another way to test non-parallel version
-    # results = []
-    # for idx, exp_polygon in enumerate(expand_polygons):
-    #     res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
-    #     results.append(res)
-    #####################################################################
+    if proc_num > 1:
+        print('number of thread %d' % num_cores)
+        theadPool = Pool(num_cores)  # multi processes
+        parameters_list = [
+            (idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx], e_line_list[idx]) for idx, exp_polygon in enumerate(expand_polygons)]
+        results = theadPool.starmap(cal_one_expand_area_dis, parameters_list)  # need python3
+    else:
+        ##################################################################
+        # another way to test non-parallel version
+        results = []
+        for idx, exp_polygon in enumerate(expand_polygons):
+            res = cal_one_expand_area_dis(idx, exp_polygon, len(expand_polygons), dem_path, old_poly_list[idx],e_line_list[idx])
+            results.append(res)
+        ####################################################################
 
     for result in results:
         # it still has the same order as expand_polygons
