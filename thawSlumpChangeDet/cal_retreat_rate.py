@@ -472,7 +472,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
            dis_along_center, dis_c_angle, dis_c_line_x0, dis_c_line_y0, dis_e_line
 
 
-def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_shp= None):
+def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_shp= None, proc_num=None):
     '''
     calculate the distance of expanding areas along the upslope direction.
     The distance will be saved to expand_shp, backup it if necessary
@@ -541,7 +541,10 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
 
     #####################################################################
     # parallel getting medial axis of each polygon, then calculate distance.
-    num_cores = multiprocessing.cpu_count()
+    if proc_num is None:
+        num_cores = multiprocessing.cpu_count()
+    else:
+        num_cores = proc_num
     print('number of thread %d' % num_cores)
     theadPool = Pool(num_cores)  # multi processes
 
