@@ -471,7 +471,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
     select_medial_axis = []
     for segment, radiu_2 in zip(medial_axis,radiuses):
         r1, r2 = radiu_2
-        if r1 > median_medAxis_width:
+        if r1 > median_medAxis_width and r2 > median_medAxis_width:
             select_medial_axis.append(segment)
 
     # poly_min_Ws.append(min_medAxis_width * 2)  # multiply by 2, then it is diameter
