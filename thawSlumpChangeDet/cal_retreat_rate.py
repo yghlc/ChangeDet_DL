@@ -23,6 +23,9 @@ import parameters
 import basic_src.RSImage as RSImage
 from basic_src.RSImage import RSImageclass
 
+import basic_src.map_projection as map_projection
+import pandas as pd
+
 import random
 import math
 
@@ -411,6 +414,7 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
         # for a small polygon, it may failed to calculate its radiues, so get a approximation values
         basic.outputlogMessage('The polygon is very small (area < 1), use sqrt(area/pi) as its radius')
         radiuses = np.array([[math.sqrt(exp_polygon.area / math.pi)]])
+        medial_axis = None
     else:
 
 
@@ -462,6 +466,14 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
     mean_medAxis_width = np.mean(np_rad_nored)
     median_medAxis_width = np.median(np_rad_nored)  # np median will take the average of the middle two if necessary
 
+    # medial_axis is a list of line segment: ((x1, y1), (x2, y2)), these two are circle center of two polygons, radiuses
+    # only select medial_axis with large radius
+    select_medial_axis = []
+    for segment, radiu_2 in zip(medial_axis,radiuses):
+        r1, r2 = radiu_2
+        if r1 > median_medAxis_width:
+            select_medial_axis.append(segment)
+
     # poly_min_Ws.append(min_medAxis_width * 2)  # multiply by 2, then it is diameter
     # poly_max_Ws.append(max_medAxis_width * 2)
     # poly_mean_Ws.append(mean_medAxis_width * 2)
@@ -469,10 +481,10 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
 
     return idx, min_medAxis_width * 2, max_medAxis_width * 2, mean_medAxis_width * 2, median_medAxis_width * 2, \
            h_value, dis_slope, dis_direction,dis_line_p_x0, dis_line_p_y0, \
-           dis_along_center, dis_c_angle, dis_c_line_x0, dis_c_line_y0, dis_e_line
+           dis_along_center, dis_c_angle, dis_c_line_x0, dis_c_line_y0, dis_e_line, select_medial_axis
 
 
-def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_shp= None, proc_num=None):
+def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_shp= None, proc_num=None,save_medial_axis=False):
     '''
     calculate the distance of expanding areas along the upslope direction.
     The distance will be saved to expand_shp, backup it if necessary
@@ -523,6 +535,7 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
     poly_mean_Ws = []    #mean_medAxis_width
     poly_median_Ws = []  #median_medAxis_width
     h_value_list = []
+    medial_axis_list = []
 
     # distance along the direction of maximum elevation difference
     dis_slope_list = []      # distance along slope (direction of maximum elevation difference)
@@ -584,6 +597,8 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
 
         if expand_line is not None:
             dis_e_line_list.append(result[14])
+
+        medial_axis_list.append(result[15])     # medial_axis is a list of line segment: ((x1, y1), (x2, y2))
 
     # ################################################
     # # go through each polygon, get its medial axis, then calculate distance.
@@ -697,6 +712,21 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
         shp_obj.add_one_field_records_to_shapefile(expand_shp, dis_e_line_list, 'e_dis_line')
 
     basic.outputlogMessage('Save expanding distance of all the polygons to %s'%expand_shp)
+
+    if save_medial_axis:
+        save_path = io_function.get_name_by_adding_tail(expand_shp,'Axis')
+
+        # remove None
+        medial_axis_list = [ item for item in medial_axis_list if item is not None]
+        # medial_axis is a list of line segment: ((x1, y1), (x2, y2))
+        medial_axis_LineString_list = [vector_gpd.line_segments_to_LineString(medial_axis) for medial_axis in medial_axis_list]
+        # save to shapefile
+
+        wkt_string = map_projection.get_raster_or_vector_srs_info_wkt(expand_shp)
+        line_df = pd.DataFrame({"Lines":medial_axis_LineString_list})
+        vector_gpd.save_polygons_to_files(line_df,'Lines',wkt_string,save_path)
+
+        basic.outputlogMessage('Save medial axis of all the polygons to %s' % save_path)
 
     return True
 
