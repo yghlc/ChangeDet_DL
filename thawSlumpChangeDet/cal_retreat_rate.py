@@ -31,8 +31,9 @@ import math
 
 # local modules
 # sys.path.insert(0, '../../lib/')
-sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/yghlc_Computational-Geometry/HW/lib'))
-from polygon_medial_axis import compute_polygon_medial_axis, plot_polygon_medial_axis
+# polygon_medial_axis import matplotlib, that has lock issue when run in parallel in slurm environment  May 28, 2021
+# sys.path.insert(0,os.path.expanduser('~/codes/PycharmProjects/yghlc_Computational-Geometry/HW/lib'))
+# from polygon_medial_axis import compute_polygon_medial_axis
 
 
 import numpy as np
@@ -777,6 +778,9 @@ def find_top_n_medial_circle_with_sampling(medial_axis, radiuses, sep_distance=1
 
 def plot_polygon_medial_axis_circle_line(polygon, medial_axis,radiuses,draw_circle_idx,line_obj=None, save_path=None):
     # line_obj: (center_x, center_y, angle, length)
+
+    sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/yghlc_Computational-Geometry/HW/lib'))
+    from polygon_medial_axis import plot_polygon_medial_axis
 
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(8, 8))
