@@ -94,7 +94,7 @@ def draw_hist_for_RTS_change_manu_v2():
     c_RTS_info_2018vs2019_shp = os.path.join(shp_dir, 'rts_change_2018vs2019_v2.shp')
 
     # sum area
-    # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp,c_RTS_info_2018vs2019_shp,out_dir,'sum_c_area','rts_sum_area_manu_cd',0, 2.6, 0.2, [0, 190])
+    draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp,c_RTS_info_2018vs2019_shp,out_dir,'sum_c_area','rts_sum_area_manu_cd',0, 2.6, 0.2, [0, 190])
 
     # max area (the maximum (in area) change polygon for an thaw slump)
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'max_c_area', 'rts_max_area_manu_cd', 0, 2.6, 0.2, [0, 170])
@@ -109,13 +109,13 @@ def draw_hist_for_RTS_change_manu_v2():
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'maxDisLin','rts_maxDisLin_manu_cd', 5, 81, 5, [0, 65])
 
     # diffDisLin (difference between maximum retreat distance based on medial circle and manually drawn line)
-    draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'diffDisLin', 'rts_diffDisLin_manu_cd', -60, 61, 10, [0, 145])
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'diffDisLin', 'rts_diffDisLin_manu_cd', -60, 61, 10, [0, 145])
 
     # diffSloLin (difference between retreat distance along slope and manually drawn line)
-    draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'diffSloLin', 'rts_diffSloLin_manu_cd', -60, 61, 10, [0, 145])
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'diffSloLin', 'rts_diffSloLin_manu_cd', -60, 61, 10, [0, 145])
 
     # diffCenLin (difference between retreat distance across centroid of old polygon based on medial circle and manually draw line)
-    draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'diffCenLin', 'rts_diffCenLin_manu_cd', -60, 61, 10, [0, 145])
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'diffCenLin', 'rts_diffCenLin_manu_cd', -60, 61, 10, [0, 145])
 
 
     # ReDis_std (retreat distance variation)
@@ -183,7 +183,7 @@ def draw_hist_for_RTS_change_exp14_allPoly():
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'c_poly_num', 'rts_c_poly_num_exp7_cd', 0, 20, 1, [0, 100])
 
     ## maximum retreat distance (based on medial circle)
-    draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'max_re_dis', 'rts_max_re_dis_exp14_cd', 5, 81, 5, [0, 55])
+    # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'max_re_dis', 'rts_max_re_dis_exp14_cd', 5, 81, 5, [0, 55])
 
     ## maxDisLin (retread distance from manual delineation)
     # draw_two_hist_of_cd(c_RTS_info_2017vs2018_shp, c_RTS_info_2018vs2019_shp, out_dir, 'maxDisLin','rts_maxDisLin_exp7_cd', 5, 81, 5, [0, 55])

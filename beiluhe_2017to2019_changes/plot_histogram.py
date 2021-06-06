@@ -78,6 +78,7 @@ def histogram2logfile(value_list,bins,hist_tag=None):
     basic.outputlogMessage("min value: " + str(min(value_list)))
     basic.outputlogMessage("max value: " + str(max(value_list)))
     basic.outputlogMessage("average value: " + str(sum(value_list)/float(len(value_list))))
+    basic.outputlogMessage("total value: " + str(sum(value_list)))
     if len(value_list) != np.sum(np_hist):
         basic.outputlogMessage('warning: the count (%d) of input is not equal to the count (%d)'
                                ' in histogram'%(len(value_list),int(np.sum(np_hist))))
