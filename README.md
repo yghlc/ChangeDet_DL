@@ -16,14 +16,14 @@ If codes here are useful for your project, please consider citing our papers:
 ```
 ```
 @article{huang2021automatically,
-  title={Using Deep Learning to Map Retrogressive Thaw Slumps in the Beiluhe Region (Tibetan Plateau) from CubeSat Images},
+  title={Automatically quantifying evolution of retrogressive thaw slumps in Beiluhe (Tibetan Plateau) from multi-temporal CubeSat images},
   author={Huang, Lingcao and Liu, Lin and Luo, Jing and Lin, Zhanju and Niu, Fujun},
   journal={International Journal of Applied Earth Observationsand Geoinformation},
-  volume = {TBD},
-  pages={TBD},
-  year = {Accept},
+  volume = {102},
+  pages = {102399},
+  year = {2021},
   publisher={ELSEVIER},
-  doi = {TBD}
+  doi = {https://doi.org/10.1016/j.jag.2021.102399}
 }
 ```
 
