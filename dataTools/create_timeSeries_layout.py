@@ -28,6 +28,9 @@ def main():
         print("folder: %s"%folder)
         png_list = io_function.get_file_list_by_pattern(folder,'*.png')
         png_list.sort()
+        if len(png_list) < 1:
+            raise ValueError('No png file in %s, please make sure that the option for drawing figures is on when '
+                             'extracting sub-images'%folder)
 
         # put the polygon to the last one
         if 'polygon' in png_list[0]:
