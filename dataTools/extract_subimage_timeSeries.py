@@ -605,6 +605,9 @@ def extract_timeSeries_from_shp(para_file, polygon_shp,bufferSize,out_dir,dstnod
 
     # get image list
     time_info_list = [get_time_info_from_filename(item[0]) for item in image_list_2d ]
+    for idx, time_info in enumerate(time_info_list):
+        if time_info == 'noDate':
+            time_info_list[idx] = 'time%d'%idx
 
     # need to check: the shape file and raster should have the same projection.
     poly_shp_prj = map_projection.get_raster_or_vector_srs_info_proj4(polygon_shp)
