@@ -191,7 +191,7 @@ def organize_change_info(txt_path):
     pass
 
 def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bufferSize, pre_name, dstnodata, brectangle=True, b_draw = False,
-                                          time_info_list=None, des_str_list=None):
+                                          time_info_list=None, des_str_list=None, poly_ids=None):
     '''
     extract time series sub-images at different polygon location,
     :param polygons:
@@ -218,9 +218,12 @@ def get_time_series_subImage_for_polygons(polygons, time_images_2d, save_dir, bu
     if b_draw:
         plt_obj = plt.figure()
 
-    for idx, c_polygon in enumerate(polygons):
+    if poly_ids is None:
+        poly_ids = [idx for idx in range(len(polygons))]
+
+    for idx, c_polygon in zip(poly_ids,polygons):
         # output message
-        basic.outputlogMessage('obtaining %dth time series sub-images'%idx)
+        basic.outputlogMessage('obtaining %d (id) time series sub-images'%idx)
 
         # get buffer area
         expansion_polygon = c_polygon.buffer(bufferSize)
@@ -610,13 +613,14 @@ def extract_timeSeries_from_shp(para_file, polygon_shp,bufferSize,out_dir,dstnod
             raise ValueError('error, the input raster (e.g., %s) and vector (%s) files don\'t have the same projection' % (image_tile_list[0], polygon_shp))
 
     # read polygons
-    polygons = vector_gpd.read_polygons_gpd(polygon_shp)
+    polygons, poly_ids = vector_gpd.read_polygons_attributes_list(polygon_shp,'id')
     if len(polygons) < 1:
         raise ValueError('No polygons in %s'% polygon_shp)
 
 
     get_time_series_subImage_for_polygons(polygons,image_list_2d,out_dir,bufferSize, pre_name,dstnodata, brectangle=b_rectangle,
-                                          b_draw=b_draw_scalebar_time, time_info_list=time_info_list,des_str_list=image_desription_list)
+                                          b_draw=b_draw_scalebar_time, time_info_list=time_info_list,
+                                          des_str_list=image_desription_list,poly_ids=poly_ids)
 
 
     return True
