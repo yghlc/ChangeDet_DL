@@ -202,6 +202,7 @@ def cal_multi_temporal_iou_and_occurrence(shp_list,para_file):
 
         #####################################################################
         # parallel getting medial axis of each polygon, then calculate distance.
+        # on slurm cluster, may need to get cpu acount from slurm environment: https://slurm.schedmd.com/cpu_management.html
         num_cores = multiprocessing.cpu_count()
         basic.outputlogMessage('number of thread %d' % num_cores)
         theadPool = Pool(num_cores)  # multi processes
