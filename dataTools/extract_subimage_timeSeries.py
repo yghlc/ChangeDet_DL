@@ -648,7 +648,7 @@ def main(options, args):
         b_rectangle = False
 
     # if the input a shapefiles, then get time series sub-images for each polygons directly
-    if args[0].endswith('.shp'):
+    if args[0].endswith('.shp') or args[0].endswith('.gpkg'):
         extract_timeSeries_from_shp(para_file, args[0], bufferSize, out_dir, dstnodata, b_draw_scalebar_time,
                                     b_rectangle)
         return True
