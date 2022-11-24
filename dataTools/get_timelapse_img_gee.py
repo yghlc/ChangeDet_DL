@@ -221,6 +221,7 @@ def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, 
                                          region=crop_region,
                                          description=save_file_name,
                                          folder=save_folder,
+                                         maxPixels = 1e10,      # default is 1e8
                                          scale=res)
     # region=crop_region,
 
