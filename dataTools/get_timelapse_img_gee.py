@@ -331,7 +331,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
                                          [x[2], y[2]],
                                          [x[3], y[3]]])
 
-    cloud_mask = get_cloud_mask_function(img_speci['product'])
+    # cloud_mask = get_cloud_mask_function(img_speci['product'])
 
     product = img_speci['product']
     print(product)
