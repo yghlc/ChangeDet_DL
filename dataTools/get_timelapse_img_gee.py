@@ -348,8 +348,9 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
         filterDate(start, finish). \
         filter(ee.Filter.calendarRange(month_range[0], month_range[1], 'month')). \
         filter(ee.Filter.lt(cloud_cover, cloud_cover_thr*100)). \
-        map(cloud_mask). \
         sort('CLOUD_COVER', True)
+
+    # # map(cloud_mask). \
 
     # check count  # getInfo can get python number (not ee.Number)
     count = filtercollection.size().getInfo()
