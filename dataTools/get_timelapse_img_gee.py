@@ -39,7 +39,11 @@ shp_polygon_projection = None
 month_range = [7,8]
 
 # image specification
-img_speci = { # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_SR
+img_speci = {# https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC09_C02_T1_L2
+            'landsat9_rgb':{'product':'LANDSAT/LC09/C02/T1_L2', 'bands':['B4', 'B3', 'B2'], 'res':30},
+            # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC09_C02_T1_TOA
+            'landsat9_pan':{'product':'LANDSAT/LC09/C02/T1_TOA', 'bands':['B8'], 'res':15},
+            # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_SR
             'landsat8_rgb':{'product':'LANDSAT/LC08/C01/T1_SR', 'bands':['B4', 'B3', 'B2'], 'res':30},
               # https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_TOA
              'landsat8_pan':{'product':'LANDSAT/LC08/C01/T1_TOA', 'bands':['B8'], 'res':15},
