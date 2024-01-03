@@ -37,6 +37,7 @@ from shapely.ops import transform
 
 shp_polygon_projection = None
 month_range = [7,8]
+max_download_count  = None
 
 # image specification
 img_speci = {# https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC09_C02_T1_L2
@@ -216,6 +217,14 @@ def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, 
     image_info = select_image.getInfo()
     save_file_name = get_image_name(image_info,product) + '_poly_%d'%polygon_idx
 
+    local_record_folder = 'local_records'
+    if os.path.isdir(local_record_folder) is False:
+        io_function.mkdir(local_record_folder)
+
+    local_record = os.path.join(os.path.join(local_record_folder, save_file_name+'.submit'))
+    if os.path.isfile(local_record):
+        print('task %s already be submitted to GEE, skip' % local_record)
+        return False
 
     task = ee.batch.Export.image.toDrive(image=select_image,
                                          region=crop_region,
@@ -226,6 +235,11 @@ def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, 
     # region=crop_region,
 
     task.start()
+
+    # save a record in the local dir
+    with open(local_record, 'w') as f_obj:
+        f_obj.writelines('submitted to GEE on %s\n' % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
     # print(task.status())
     # print(ee.batch.Task.list())
     if wait2finished:
@@ -241,7 +255,7 @@ def export_one_imagetoDrive(select_image, save_folder,polygon_idx, crop_region, 
         return task
 
 def wait_all_task_finished(all_tasks, polygon_idx):
-
+    all_tasks = [ item for item in all_tasks if isinstance(item, bool) is False]
     all_count = len(all_tasks)
 
     finished_count = 0
@@ -349,7 +363,7 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
         filterDate(start, finish). \
         filter(ee.Filter.calendarRange(month_range[0], month_range[1], 'month')). \
         filter(ee.Filter.lt(cloud_cover, cloud_cover_thr*100)). \
-        sort('CLOUD_COVER', True)
+        sort(cloud_cover, True)   # True: ascending
 
     # # map(cloud_mask). \
 
@@ -359,8 +373,10 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
         basic.outputlogMessage('No results for %dth polygon with %s'%(polygon_idx,str(img_speci)))
         return False
 
-
-    print('Image count %d'%count)
+    if max_download_count is None:
+        print('Image count %d, try to download all'%count)
+    else:
+        print('Image count %d, try to %s images (maximum), less could cover first ' %(count, str(max_download_count)))
     # print(filtercollection)                 # print serialized request instructions
     # print(filtercollection.getInfo())       # print object information
     # polygon_idx
@@ -393,6 +409,8 @@ def gee_download_time_lapse_images(start_date, end_date, cloud_cover_thr, img_sp
             tasklist.append(task)
             n += 1
             print('%s: Start %dth task to download images covering %dth polygon'%(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), n, polygon_idx))
+            if max_download_count is not None and n >= max_download_count:
+                break
         except Exception as e:
             error = str(e).split(':')
             if error[0] == 'List.get':
@@ -441,6 +459,9 @@ def main(options, args):
     months_range_str = options.month_range
     global month_range
     month_range = [ int(item) for item in months_range_str.split(',') ]
+
+    global max_download_count
+    max_download_count = options.max_count
 
     # check training polygons
     assert io_function.is_file_exist(polygons_shp)
@@ -499,6 +520,9 @@ if __name__ == "__main__":
     parser.add_option("-b", "--buffer_size",
                       action="store", dest="buffer_size", type=int, default = 3000,
                       help="the buffer size to crop image in meters")
+    parser.add_option("-n", "--max_count",
+                      action="store", dest="max_count", type=int,
+                      help="the maximum count of images for a polyon to download, default is None (all available images)")
     parser.add_option("-i", "--image_type",
                       action="store", dest="image_type",
                       help="the image types want to download (contain product, bands, resolution), more find 'img_speci' in the head of this script")
