@@ -47,16 +47,15 @@ def save_annual_polygons_to_different_files(in_shp, out_dir='./'):
 
 def convert_to_2d(geometry):
     # Convert Polygon Z or MultiPolygon Z to 2D
+    # Convert 3D Polygons or MultiPolygons to 2D
     if geometry:
         if isinstance(geometry, Polygon):
             if geometry.has_z:
                 return Polygon([(x, y) for x, y, z in geometry.exterior.coords])
-            else:
-                return geometry
         elif isinstance(geometry, MultiPolygon):
             return MultiPolygon([
                 Polygon([(x, y) for x, y, z in poly.exterior.coords]) if poly.has_z else poly
-                for poly in geometry
+                for poly in geometry.geoms
             ])
     return geometry
 
