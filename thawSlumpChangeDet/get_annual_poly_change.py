@@ -101,7 +101,7 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
                 # only get the expanding parts, if want to get the shrinking parts, should be: previous_boundary.difference (previous_boundary)
                 change = current_boundary.difference(previous_boundary)
                 changes.append({'annual_id':annual_id, 'PreYear': previous_year, 'Year': year, 'Change': change,
-                                'c_area':change.area, 'Lat':year_group['Lat'].values[0], 'Long':year_group['Long'].values[0]})
+                                'expandArea':change.area, 'Lat':year_group['Lat'].values[0], 'Long':year_group['Long'].values[0]})
 
             previous_boundary = current_boundary
             previous_year = year
