@@ -17,6 +17,7 @@ import basic_src.io_function as io_function
 import basic_src.basic as basic
 import basic_src.map_projection as map_projection
 import parameters
+from raster_statistic import zonal_stats_multiRasters
 
 import polygons_cd
 import geopandas as gpd
@@ -76,12 +77,19 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
     # Sort by Annual_ID and Year
     gdf.sort_values(by=['Annual_ID', 'Year'], inplace=True)
 
+    save_file_list = []
+
     # Group by Annual_ID
     for annual_id, group in gdf.groupby('Annual_ID'):
         # Sort each group by Year
         print(f'calculate change for rts id: {annual_id}')
         group = group.sort_values('Year')
         # print(group)
+        output_path = os.path.join(out_dir, f"thawSlump_expand_Annual_ID_{annual_id}.gpkg")
+        save_file_list.append(output_path)
+        if os.path.isfile(output_path):
+            print(f'warning, {output_path} exists, skip')
+            continue
 
         # Initialize a list to store the annual changes
         changes = []
@@ -113,10 +121,70 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
             continue
         # Save changes to a new shapefile
         changes_gdf = gpd.GeoDataFrame(changes, crs=gdf.crs, geometry='Change')
-        output_path = os.path.join(out_dir,  f"thawSlump_expand_Annual_ID_{annual_id}.gpkg")
         # output_path = f"{output_directory}/rts_changes_{annual_id}.shp"
         changes_gdf.to_file(output_path)
 
+    return save_file_list
+
+
+def add_attributes_to_slumps_expanding(in_shp, slump_expand_file_list, attribute_files, para_file):
+    # add attributes from rasters to shapefiles
+
+    # b_use_buffer_area = parameters.get_bool_parameters(para_file,'b_topo_use_buffer_area')
+    # b_use_buffer_area = False
+    all_touched = True
+
+    # Read the shapefile
+    gdf = gpd.read_file(in_shp)
+
+    # Ensure the required columns exist
+    if 'Annual_ID' not in gdf.columns:
+        raise ValueError("The input shapefile must have 'Annual_ID' columns.")
+
+    # Sort by Annual_ID and Year
+    gdf.sort_values(by=['Annual_ID'], inplace=True)
+
+    union_poly_path = io_function.get_name_no_ext(in_shp) + '_union.shp'
+    if os.path.isfile(union_poly_path) is False:
+        union_polygons = []
+        # Group by Annual_ID
+        for annual_id, group in gdf.groupby('Annual_ID'):
+            # sort
+            max_boundary = convert_to_2d(unary_union(group.geometry))
+            union_polygons.append({'annual_id':annual_id,'unionPoly': max_boundary})
+
+        # Save changes to a new shapefile
+        changes_gdf = gpd.GeoDataFrame(union_polygons, crs=gdf.crs, geometry='unionPoly')
+
+        changes_gdf.to_file(union_poly_path)
+    else:
+        print(f'warning, {union_poly_path} exists, skip union operation')
+
+    # get attribute for the polygons
+    stats_list = ['min', 'max', 'mean', 'median', 'std']
+    process_num = 4
+    tile_min_overlap = None # for each attribute, only one file
+    nodata = 0
+    for key in attribute_files.keys():
+        if zonal_stats_multiRasters(union_poly_path,attribute_files[key],stats=stats_list,tile_min_overlap=tile_min_overlap,
+                                    nodata = nodata,prefix=key,band=1,all_touched=all_touched,
+                                    process_num=process_num) is False:
+            return False
+
+
+def get_raster_files_for_attribute(para_file):
+    dem_file = parameters.get_file_path_parameters_None_if_absence(para_file,'dem_file')
+    slope_file = parameters.get_file_path_parameters_None_if_absence(para_file,'slope_file')
+    pisr_file = parameters.get_file_path_parameters_None_if_absence(para_file,'pisr_file')
+    tpi_file = parameters.get_file_path_parameters_None_if_absence(para_file,'tpi_file')
+
+    attributes = {'dem': dem_file,
+                  'slo':slope_file,
+                  'pis':pisr_file,
+                  'tpi':tpi_file
+                  }
+
+    return attributes
 
 def main(options, args):
 
@@ -131,8 +199,12 @@ def main(options, args):
     # save_annual_polygons_to_different_files(in_shp_path, out_dir='shp_each_year')
 
     # get the expanding of each thaw slump
-    track_annual_changes_of_each_thawslump(in_shp_path, out_dir='thawSlump_expanding')
+    slump_expand_file_list = track_annual_changes_of_each_thawslump(in_shp_path, out_dir='thawSlump_expanding')
 
+    raster_attribute_dict = get_raster_files_for_attribute(para_file)
+    add_attributes_to_slumps_expanding(in_shp_path,slump_expand_file_list,raster_attribute_dict,para_file)
+
+    #TODO: put the expanding and attributes together
 
 
 
