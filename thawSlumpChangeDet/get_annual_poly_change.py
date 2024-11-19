@@ -113,7 +113,7 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
             continue
         # Save changes to a new shapefile
         changes_gdf = gpd.GeoDataFrame(changes, crs=gdf.crs, geometry='Change')
-        output_path = os.path.join(out_dir,  f"thawSlump_expand_{annual_id}.gpkg")
+        output_path = os.path.join(out_dir,  f"thawSlump_expand_Annual_ID_{annual_id}.gpkg")
         # output_path = f"{output_directory}/rts_changes_{annual_id}.shp"
         changes_gdf.to_file(output_path)
 
