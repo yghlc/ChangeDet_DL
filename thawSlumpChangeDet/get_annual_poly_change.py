@@ -177,11 +177,13 @@ def get_raster_files_for_attribute(para_file):
     slope_file = parameters.get_file_path_parameters_None_if_absence(para_file,'slope_file')
     pisr_file = parameters.get_file_path_parameters_None_if_absence(para_file,'pisr_file')
     tpi_file = parameters.get_file_path_parameters_None_if_absence(para_file,'tpi_file')
+    geosurface_file = parameters.get_file_path_parameters_None_if_absence(para_file,'geosurface_file')
 
     attributes = {'dem': dem_file,
                   'slo':slope_file,
                   'pis':pisr_file,
-                  'tpi':tpi_file
+                  'tpi':tpi_file,
+                  'sur':geosurface_file
                   }
 
     return attributes
