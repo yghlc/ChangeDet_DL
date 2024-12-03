@@ -16,10 +16,12 @@ sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
 import basic_src.io_function as io_function
 import basic_src.basic as basic
 import basic_src.map_projection as map_projection
+import vector_gpd
 import parameters
 from raster_statistic import zonal_stats_multiRasters
 
 import polygons_cd
+import pandas as pd
 import geopandas as gpd
 from shapely.ops import unary_union
 from shapely.geometry import Polygon, MultiPolygon
@@ -86,9 +88,9 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
         group = group.sort_values('Year')
         # print(group)
         output_path = os.path.join(out_dir, f"thawSlump_expand_Annual_ID_{annual_id}.gpkg")
-        save_file_list.append(output_path)
         if os.path.isfile(output_path):
             print(f'warning, {output_path} exists, skip')
+            save_file_list.append(output_path)
             continue
 
         # Initialize a list to store the annual changes
@@ -117,12 +119,13 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
 
         # print(changes)
         if len(changes) < 1:
-            basic.outputlogMessage(f'warning, the thaw slump: {annual_id} does have any changes, skip it')
+            basic.outputlogMessage(f'warning, the thaw slump: {annual_id} does not have any changes, skip it')
             continue
         # Save changes to a new shapefile
         changes_gdf = gpd.GeoDataFrame(changes, crs=gdf.crs, geometry='Change')
         # output_path = f"{output_directory}/rts_changes_{annual_id}.shp"
         changes_gdf.to_file(output_path)
+        save_file_list.append(output_path)
 
     return save_file_list
 
@@ -171,6 +174,7 @@ def add_attributes_to_slumps_expanding(in_shp, slump_expand_file_list, attribute
                                     process_num=process_num) is False:
             return False
 
+    return union_poly_path
 
 def get_raster_files_for_attribute(para_file):
     dem_file = parameters.get_file_path_parameters_None_if_absence(para_file,'dem_file')
@@ -188,6 +192,69 @@ def get_raster_files_for_attribute(para_file):
 
     return attributes
 
+def read_annual_expand_a_slump(slump_expand_shp, start_year, end_year):
+    # read annual expand area in a shapefile into dict
+
+    attribute_2d = vector_gpd.read_attribute_values_list_2d(slump_expand_shp,
+            ['annual_id','PreYear','Year','expandArea','Lat','Long', 'Study_area'])
+
+    # print(slump_expand_shp)
+    # print(attribute_2d)
+    expand_dict = {'annual_id': attribute_2d[0][0],
+                   'Lat':attribute_2d[4][0],
+                   'Long':attribute_2d[5][0],
+                   'Study_area':attribute_2d[6][0]
+                   }
+    for year in range(start_year,end_year+1):
+        # print(year)
+        expand_dict[str(year)] = -1
+
+    # add the expanding areas (this year - last year)
+    for year, expandArea in zip(attribute_2d[2],attribute_2d[3]):
+        expand_dict[str(year)] = expandArea
+
+    # print(expand_dict)
+    return expand_dict
+
+def assemble_expansion_and_attributes(org_shp, slump_expand_file_list, attribute_shp, save_path=None):
+    # combine the annual expansion of each slump and attributes into one file
+    year_list = vector_gpd.read_attribute_values_list(org_shp,'Year')
+    start_year = min(year_list)
+    end_year = max(year_list)
+
+    # read expanding information for each thaw slump
+    expand_info_list = []
+    for idx, expand_shp in enumerate(slump_expand_file_list):
+        # print(idx)
+        expand_info = read_annual_expand_a_slump(expand_shp, start_year, end_year)
+        expand_info_list.append(expand_info)
+
+    # Convert the list of dictionaries to a DataFrame
+    expand_info_df = pd.DataFrame(expand_info_list)
+
+    ## merge the information into the attribute_shp
+    attr_gdf = gpd.read_file(attribute_shp)
+
+    # Merge the new information into the GeoDataFrame
+    # The merge is performed on the 'annual_id' field
+    gdf = attr_gdf.merge(expand_info_df, on="annual_id", how="left")
+
+    if save_path is None:
+        save_path = io_function.get_name_by_adding_tail(attribute_shp,'expandArea')
+    gdf.to_file(save_path)
+    basic.outputlogMessage(f'save to {save_path}')
+
+
+
+def test_assemble_expansion_and_attributes():
+    data_dir = os.path.expanduser('~/Data/Arctic/canada_arctic/shp_slumps_growth')
+    org_shp = os.path.join(data_dir,'Planet_ThawSlumps_Sept26_24_with_Prj.shp')
+    slump_expand_file_list = io_function.get_file_list_by_pattern(data_dir,'polygon_changeDet/thawSlump_expanding/*.gpkg')
+    attribute_shp = os.path.join(data_dir,'polygon_changeDet','Planet_ThawSlumps_Sept26_24_with_Prj_union.shp')
+
+    assemble_expansion_and_attributes(org_shp, slump_expand_file_list, attribute_shp)
+
+
 def main(options, args):
 
     # the shapefile, contain annual boundaries of thaw slumps
@@ -204,9 +271,12 @@ def main(options, args):
     slump_expand_file_list = track_annual_changes_of_each_thawslump(in_shp_path, out_dir='thawSlump_expanding')
 
     raster_attribute_dict = get_raster_files_for_attribute(para_file)
-    add_attributes_to_slumps_expanding(in_shp_path,slump_expand_file_list,raster_attribute_dict,para_file)
+    slump_exp_attr_shp = add_attributes_to_slumps_expanding(in_shp_path,slump_expand_file_list,raster_attribute_dict,para_file)
+    if slump_exp_attr_shp is False:
+        return
 
-    #TODO: put the expanding and attributes together
+    #put the expanding and attributes together
+    assemble_expansion_and_attributes(in_shp_path, slump_expand_file_list,slump_exp_attr_shp)
 
 
 
@@ -222,6 +292,9 @@ if __name__ == "__main__":
     parser.add_option('-o', '--output',
                       action="store", dest = 'output',
                       help='the path to save the change detection results')
+
+    # test_assemble_expansion_and_attributes()
+    # sys.exit(0)
 
     (options, args) = parser.parse_args()
     if len(sys.argv) < 2:
