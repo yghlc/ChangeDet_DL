@@ -353,6 +353,90 @@ def add_meteorological_variables(slump_expand_shp, climate_dir, save_dir=None):
 
 
 
+def add_meteorological_variables_from_a_csv_file(slump_expand_shp, climate_csv_file, save_dir=None):
+    # add meteorological variables from a single csv file
+    # this csv file is exported from the window version of ClimateNA
+
+    slump_ids = vector_gpd.read_attribute_values_list(slump_expand_shp, 'annual_id')
+    slump_areas = vector_gpd.read_attribute_values_list(slump_expand_shp, 'Study_area')
+
+    # variables to read (ClimateNA -> name) # more on: https://climatena.ca/Help2
+    # qustions:
+    # Max Summer Precip (MSP??, then calculate the max?), which one should be used?
+    # how about Thawing Degree Days (DD5?), Freezing Degree Days (DD_0?)?
+    variable_names = {'MAT': 'Mean Annual Temp ',
+                      'Tave_sm': 'Mean Summer temp ',
+                      'PPT_sm': 'summer precipitation',  # Total Summer Precip ?
+                      'PPT_wt': 'winter precipitation',  # Total Winter Precip ?
+                      'Tmax_sm': 'summer mean maximum temperature',  # Max Summer Temp
+                      'DD5': 'degree-days above 5',
+                      'DD_0': 'degree-days below 0'
+                      }
+
+    if save_dir is None:
+        save_dir = 'climate_data'
+    if os.path.isdir(save_dir) is False:
+        io_function.mkdir(save_dir)
+
+    csv_df = pd.read_csv(climate_csv_file)
+
+    # get these valuables for each slump
+    start_year = 2000
+    end_year = 2024
+    for key in variable_names.keys():
+
+        save_path = os.path.join(save_dir, key + '.xlsx')
+        if os.path.isfile(save_path):
+            basic.outputlogMessage(f'{save_path} exists, would replace it')
+            # continue
+
+        # create a dict for tables
+        var_table = {'Annual_ID': [],
+                     'Latitude': [],
+                     'Longitude': [],
+                     'Elevation': [],
+                     'studyArea':[]
+                     }
+        for year in range(start_year, end_year):  # 2000 to 2023
+            var_table[year] = []
+
+        for s_id, stu_area in zip(slump_ids, slump_areas):
+
+            filtered_df = csv_df[csv_df['id1'] == s_id]
+            sel_df = filtered_df[[key,'Year','Latitude', 'Longitude','Elevation']]
+
+            # Year = csv_df['period']
+            # key_values = csv_df[key]
+            # lat_var = csv_df['Lat']
+            # long_var = csv_df['long']
+            # elev_var = csv_df['elev']
+
+            var_table['Annual_ID'].append(s_id)
+            var_table['Latitude'].append(float(sel_df['Latitude'].iloc[0]))
+            var_table['Longitude'].append(float(sel_df['Longitude'].iloc[0]))
+            var_table['Elevation'].append(float(sel_df['Elevation'].iloc[0]))
+            var_table['studyArea'].append(stu_area)
+
+            # Create a dictionary for current year's key-value pairs
+            # duplicate keys in the period column will result in only the last value being retained in the dictionary.
+            year_value_map = dict(zip(sel_df['Year'], sel_df[key]))
+            # print(year_value_map)
+
+            # Append values for each year, filling missing years with None
+            for year in range(start_year, end_year):
+                if year in year_value_map:
+                    var_table[year].append(year_value_map[year])
+                else:
+                    var_table[year].append(None)  # Fill with None for missing years
+
+
+        # Convert the dictionary to a pandas DataFrame
+        save_df = pd.DataFrame(var_table)
+
+        # Save the DataFrame to an Excel file
+        save_df.to_excel(save_path, index=False)  # Set `index=False` to exclude the index column
+        basic.outputlogMessage(f'save to {save_path}')
+
 
 def test_assemble_expansion_and_attributes():
     data_dir = os.path.expanduser('~/Data/Arctic/canada_arctic/shp_slumps_growth')
@@ -395,7 +479,9 @@ def main(options, args):
 
     # add meteorological variables
     climate_dir = 'climate_data'
-    add_meteorological_variables(slump_expArea_attr_shp, climate_dir)
+    # add_meteorological_variables(slump_expArea_attr_shp, climate_dir)
+    climate_csv_file = os.path.join('climate_data','site_locations_2000-2023MSY.csv')
+    add_meteorological_variables_from_a_csv_file(slump_expArea_attr_shp,climate_csv_file)
 
 
 if __name__ == "__main__":
