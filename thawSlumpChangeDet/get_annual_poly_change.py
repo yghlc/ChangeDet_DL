@@ -10,6 +10,7 @@ add time: 04 November, 2024
 
 import sys,os
 from optparse import OptionParser
+import re
 
 # added path of DeeplabforRS
 sys.path.insert(0, os.path.expanduser('~/codes/PycharmProjects/DeeplabforRS'))
@@ -244,6 +245,113 @@ def assemble_expansion_and_attributes(org_shp, slump_expand_file_list, attribute
     gdf.to_file(save_path)
     basic.outputlogMessage(f'save to {save_path}')
 
+    return save_path
+
+
+def read_climate_data_list(data_dir):
+    csv_list = io_function.get_file_list_by_pattern(data_dir,'*.csv')
+    climate_files_dict = {}
+    for csv in csv_list:
+        match = re.search(r'\d+', os.path.basename(csv))
+        if match:
+            id_digits = match.group()  # Extract the matched digits as a string
+            # print(digits)  # Output: 83
+        else:
+            raise ValueError(f'there is id in the file name: {os.path.basename(csv)}')
+        climate_files_dict[int(id_digits)]  = csv
+
+    return climate_files_dict
+
+def add_meteorological_variables(slump_expand_shp, climate_dir, save_dir=None):
+    # read and add _meteorological data from csv files to shapefile
+    # do not save to shape file, but save to an excel file
+
+    slump_ids = vector_gpd.read_attribute_values_list(slump_expand_shp,'annual_id')
+    slump_areas = vector_gpd.read_attribute_values_list(slump_expand_shp,'Study_area')
+    climate_files_dict = read_climate_data_list(climate_dir)
+
+    # variables to read (ClimateNA -> name) # more on: https://climatena.ca/Help2
+    # qustions:
+    # Max Summer Precip (MSP??, then calculate the max?), which one should be used?
+    # how about Thawing Degree Days (DD5?), Freezing Degree Days (DD_0?)?
+    variable_names = {'MAT': 'Mean Annual Temp ',
+                      'Tave_sm': 'Mean Summer temp ',
+                      'PPT_sm': 'summer precipitation', #  Total Summer Precip ?
+                      'PPT_wt': 'winter precipitation', # Total Winter Precip ?
+                      'Tmax_sm': 'summer mean maximum temperature', # Max Summer Temp
+                      'DD5': 'degree-days above 5',
+                      'DD_0': 'degree-days below 0'
+                      }
+
+    if save_dir is None:
+        save_dir = 'climate_data'
+    if os.path.isdir(save_dir) is False:
+        io_function.mkdir(save_dir)
+
+    #TODO: get these valuables for each slump
+    start_year = 2000
+    end_year = 2024
+    for key in variable_names.keys():
+
+        save_path = os.path.join(save_dir, key + '.xlsx')
+        if os.path.isfile(save_path):
+            basic.outputlogMessage(f'{save_path} exists, would replace it')
+            # continue
+
+        # create a dict for tables
+        var_table = {'Annual_ID': [],
+                     'Lat': [],
+                     'Long': [],
+                     'elev':[]}
+        for year in range(start_year, end_year):  # 2000 to 2023
+            var_table[f'Year_{year}.ann'] = []
+
+        for s_id, stu_area in zip(slump_ids, slump_areas):
+            csv_df = pd.read_csv(climate_files_dict[s_id])
+            csv_df.columns = csv_df.columns.str.replace(" ", "", regex=False)   # remove space in column names
+            # print(csv_df.keys())
+            # break
+            # print(csv_df)
+            period = csv_df['period']
+            key_values = csv_df[key]
+            lat_var = csv_df['Lat']
+            long_var = csv_df['long']
+            elev_var = csv_df['elev']
+
+            var_table['Annual_ID'].append(s_id)
+            var_table['Lat'].append(float(lat_var.iloc[0]))
+            var_table['Long'].append(float(long_var.iloc[0]))
+            var_table['elev'].append(float(elev_var.iloc[0]))
+
+            # Create a dictionary for current year's key-value pairs
+            # duplicate keys in the period column will result in only the last value being retained in the dictionary.
+            year_value_map = dict(zip(period, key_values))
+            # print(year_value_map)
+
+            # Append values for each year, filling missing years with None
+            for year in range(start_year, end_year):
+                year_key = f'Year_{year}.ann'
+                if year_key in year_value_map:
+                    var_table[year_key].append(year_value_map[year_key])
+                else:
+                    var_table[year_key].append(None)  # Fill with None for missing years
+
+            # for year_str, key_var in zip(period,key_values):
+            #     # print(year_str, key_var)
+            #     var_table[year_str].append(key_var)
+            #     # break
+
+            # print(var_table)
+            # break
+
+        # Convert the dictionary to a pandas DataFrame
+        save_df = pd.DataFrame(var_table)
+
+        # Save the DataFrame to an Excel file
+        save_df.to_excel(save_path, index=False)  # Set `index=False` to exclude the index column
+        basic.outputlogMessage(f'save to {save_path}')
+
+
 
 
 def test_assemble_expansion_and_attributes():
@@ -254,6 +362,13 @@ def test_assemble_expansion_and_attributes():
 
     assemble_expansion_and_attributes(org_shp, slump_expand_file_list, attribute_shp)
 
+
+def test_add_meteorological_variables():
+    data_dir = os.path.expanduser('~/Data/Arctic/canada_arctic/shp_slumps_growth')
+    slump_expand_shp = os.path.join(data_dir,'polygon_changeDet',
+                                    'Planet_ThawSlumps_Sept26_24_with_Prj_union_expandArea.shp')
+    climate_dir = 'climate_data'
+    add_meteorological_variables(slump_expand_shp, climate_dir)
 
 def main(options, args):
 
@@ -276,8 +391,11 @@ def main(options, args):
         return
 
     #put the expanding and attributes together
-    assemble_expansion_and_attributes(in_shp_path, slump_expand_file_list,slump_exp_attr_shp)
+    slump_expArea_attr_shp = assemble_expansion_and_attributes(in_shp_path, slump_expand_file_list,slump_exp_attr_shp)
 
+    # add meteorological variables
+    climate_dir = 'climate_data'
+    add_meteorological_variables(slump_expArea_attr_shp, climate_dir)
 
 
 if __name__ == "__main__":
@@ -294,6 +412,7 @@ if __name__ == "__main__":
                       help='the path to save the change detection results')
 
     # test_assemble_expansion_and_attributes()
+    # test_add_meteorological_variables()
     # sys.exit(0)
 
     (options, args) = parser.parse_args()
