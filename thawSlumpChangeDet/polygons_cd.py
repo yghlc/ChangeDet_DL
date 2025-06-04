@@ -25,7 +25,8 @@ import geopandas as gpd
 # from geopandas import GeoSeries
 
 # for polygon comparison
-
+from packaging.version import Version
+import shapely
 
 def polygons_change_detection(old_shp_path, new_shp_path,expand_save_path,shrink_save_path):
     '''
@@ -207,6 +208,8 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
     attribute_names = None
     polygon_attributes_list = [] # 2d list
     polygon_list = []   #
+    # Parse the Shapely version
+    shapely_version = Version(shapely.__version__)
 
     # go through each MULTIPOLYGON
     for idx,row in shapefile.iterrows():
@@ -219,7 +222,11 @@ def Multipolygon_to_Polygons(input_shp, ouptput_shp):
         if multiPolygon is None:
             raise ValueError('The %d th (0 index) record in %s does not has a geometry'%(idx, input_shp))
         if multiPolygon.geom_type == 'MultiPolygon':
-            polygons = list(multiPolygon)
+            if shapely_version >= Version("2.0.0"):
+                # Shapely 2.x: Use `.geoms` explicitly
+                polygons = list(multiPolygon.geoms)
+            else:
+                polygons = list(multiPolygon)
         elif multiPolygon.geom_type == 'Polygon':
             polygons = [multiPolygon]
         else:
