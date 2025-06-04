@@ -131,6 +131,34 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
     return save_file_list
 
 
+def test_calculate_retreat_distance_medial_axis():
+    data_dir = os.path.expanduser('~/Data/Arctic/canada_arctic/shp_slumps_growth/polygon_changeDet')
+    test_file = os.path.join(data_dir,'thawSlump_expanding','thawSlump_expand_Annual_ID_312.gpkg')
+
+    calculate_retreat_distance_medial_axis([test_file])
+
+
+def calculate_retreat_distance_medial_axis(input_files):
+    # calculate the retreat distance of expanding areas by using medial axis
+    # input_files: files contain annual expand areas of each RTS
+
+    from polygons_cd import  Multipolygon_to_Polygons
+    from cal_retreat_rate import cal_expand_area_distance
+
+    for idx, in_file in enumerate(input_files):
+        print(f'({idx+1}/{len(input_files)}) calculating retreat distance for {os.path.basename(in_file)}')
+        save_medial_axis = io_function.get_name_by_adding_tail(in_file,'medial_axis')
+        all_change_polygons = os.path.join(os.path.dirname(in_file),io_function.get_name_no_ext(in_file)  + '_all_changes.shp')
+
+        # Multipolygon_to_Polygons(in_file,all_change_polygons)
+        cal_expand_area_distance(all_change_polygons,proc_num=1, save_medial_axis=save_medial_axis)
+
+
+
+
+
+
+
 def add_attributes_to_slumps_expanding(in_shp, slump_expand_file_list, attribute_files, para_file):
     # add attributes from rasters to shapefiles
 
@@ -499,7 +527,8 @@ if __name__ == "__main__":
 
     # test_assemble_expansion_and_attributes()
     # test_add_meteorological_variables()
-    # sys.exit(0)
+    test_calculate_retreat_distance_medial_axis()
+    sys.exit(0)
 
     (options, args) = parser.parse_args()
     if len(sys.argv) < 2:
