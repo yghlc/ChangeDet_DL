@@ -470,10 +470,11 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
     # medial_axis is a list of line segment: ((x1, y1), (x2, y2)), these two are circle center of two polygons, radiuses
     # only select medial_axis with large radius
     select_medial_axis = []
-    for segment, radiu_2 in zip(medial_axis,radiuses):
-        r1, r2 = radiu_2
-        if r1 > median_medAxis_width and r2 > median_medAxis_width:
-            select_medial_axis.append(segment)
+    if select_medial_axis is not None:
+        for segment, radiu_2 in zip(medial_axis,radiuses):
+            r1, r2 = radiu_2
+            if r1 > median_medAxis_width and r2 > median_medAxis_width:
+                select_medial_axis.append(segment)
 
     # poly_min_Ws.append(min_medAxis_width * 2)  # multiply by 2, then it is diameter
     # poly_max_Ws.append(max_medAxis_width * 2)
