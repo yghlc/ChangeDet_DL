@@ -561,7 +561,7 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
     else:
         num_cores = proc_num
 
-    if proc_num > 1:
+    if num_cores > 1:
         print('number of thread %d' % num_cores)
         theadPool = Pool(num_cores)  # multi processes
         parameters_list = [
