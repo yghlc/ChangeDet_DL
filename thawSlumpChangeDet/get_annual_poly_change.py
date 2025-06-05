@@ -142,6 +142,8 @@ def test_calculate_retreat_distance_medial_axis():
     expand_shp_files = io_function.get_file_list_by_pattern(data_dir,'thawSlump_expanding/*.gpkg')
     calculate_retreat_distance_medial_axis(expand_shp_files)
 
+def get_filename_retreat_distance(in_file):
+    return os.path.join(os.path.dirname(in_file), io_function.get_name_no_ext(in_file) + '_all_changes.shp')
 
 def calculate_retreat_distance_medial_axis(input_files):
     # calculate the retreat distance of expanding areas by using medial axis
@@ -149,21 +151,23 @@ def calculate_retreat_distance_medial_axis(input_files):
 
     from polygons_cd import  Multipolygon_to_Polygons
     from cal_retreat_rate import cal_expand_area_distance
+    b_save_medial_axis = True
+
+    output_list = []
 
     for idx, in_file in enumerate(input_files):
-        print(f'({idx+1}/{len(input_files)}) calculating retreat distance for {os.path.basename(in_file)}')
-        save_medial_axis = io_function.get_name_by_adding_tail(in_file,'medial_axis')
-        all_change_polygons = os.path.join(os.path.dirname(in_file),io_function.get_name_no_ext(in_file)  + '_all_changes.shp')
+        all_change_polygons = get_filename_retreat_distance(in_file)
+        if os.path.isfile(all_change_polygons):
+            basic.outputlogMessage(f'retreat distance for {os.path.basename(in_file)} exists, skip calculating')
+        else:
+            print(f'({idx + 1}/{len(input_files)}) calculating retreat distance for {os.path.basename(in_file)}')
+            Multipolygon_to_Polygons(in_file,all_change_polygons)
+            vector_gpd.check_remove_None_geometries_file(all_change_polygons,all_change_polygons)
+            cal_expand_area_distance(all_change_polygons,proc_num=None, save_medial_axis=b_save_medial_axis)
 
-        Multipolygon_to_Polygons(in_file,all_change_polygons)
-        vector_gpd.check_remove_None_geometries_file(all_change_polygons,all_change_polygons)
-        cal_expand_area_distance(all_change_polygons,proc_num=None, save_medial_axis=save_medial_axis)
+        output_list.append(all_change_polygons)
 
-
-
-
-
-
+    return output_list
 
 def add_attributes_to_slumps_expanding(in_shp, slump_expand_file_list, attribute_files, para_file):
     # add attributes from rasters to shapefiles
@@ -243,10 +247,28 @@ def read_annual_expand_a_slump(slump_expand_shp, start_year, end_year):
     for year in range(start_year,end_year+1):
         # print(year)
         expand_dict[str(year)+'eArea'] = -1
+        expand_dict[str(year)+'eDis'] = -1
 
     # add the expanding areas (this year - last year)
     for year, expandArea in zip(attribute_2d[2],attribute_2d[3]):
         expand_dict[str(year)+'eArea'] = expandArea
+
+    # add retreat distance
+    retreat_dis_shp = get_filename_retreat_distance(slump_expand_shp)
+    if os.path.isfile(retreat_dis_shp):
+        # choose the maximum medial axis as the retreat distance
+        dis_attribute_2d = vector_gpd.read_attribute_values_list_2d(retreat_dis_shp,
+                                        ['Year','e_max_dis'])
+
+        if  dis_attribute_2d[1] is None:
+            basic.outputlogMessage(f'Warning, No retreat distance in {retreat_dis_shp}')
+        else:
+            for year, expand_dis in zip(dis_attribute_2d[0], dis_attribute_2d[1]):
+                # for multiple values, save the largest one
+                if expand_dis > expand_dict[str(year)+'eDis']:
+                    expand_dict[str(year)+'eDis'] = expand_dis
+
+
 
     # print(expand_dict)
     return expand_dict
@@ -503,6 +525,8 @@ def main(options, args):
     # get the expanding of each thaw slump
     slump_expand_file_list = track_annual_changes_of_each_thawslump(in_shp_path, out_dir='thawSlump_expanding')
 
+    calculate_retreat_distance_medial_axis(slump_expand_file_list)
+
     raster_attribute_dict = get_raster_files_for_attribute(para_file)
     slump_exp_attr_shp = add_attributes_to_slumps_expanding(in_shp_path,slump_expand_file_list,raster_attribute_dict,para_file)
     if slump_exp_attr_shp is False:
@@ -533,8 +557,8 @@ if __name__ == "__main__":
 
     # test_assemble_expansion_and_attributes()
     # test_add_meteorological_variables()
-    test_calculate_retreat_distance_medial_axis()
-    sys.exit(0)
+    # test_calculate_retreat_distance_medial_axis()
+    # sys.exit(0)
 
     (options, args) = parser.parse_args()
     if len(sys.argv) < 2:
