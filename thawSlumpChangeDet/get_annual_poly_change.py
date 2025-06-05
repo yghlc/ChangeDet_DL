@@ -133,9 +133,14 @@ def track_annual_changes_of_each_thawslump(in_shp, out_dir='./'):
 
 def test_calculate_retreat_distance_medial_axis():
     data_dir = os.path.expanduser('~/Data/Arctic/canada_arctic/shp_slumps_growth/polygon_changeDet')
-    test_file = os.path.join(data_dir,'thawSlump_expanding','thawSlump_expand_Annual_ID_312.gpkg')
+    # test_file = os.path.join(data_dir,'thawSlump_expanding','thawSlump_expand_Annual_ID_312.gpkg')
+    # test_file = os.path.join(data_dir,'thawSlump_expanding','thawSlump_expand_Annual_ID_218.gpkg')
+    # test_file = os.path.join(data_dir,'thawSlump_expanding','thawSlump_expand_Annual_ID_115.gpkg')
+    # calculate_retreat_distance_medial_axis([test_file])
 
-    calculate_retreat_distance_medial_axis([test_file])
+
+    expand_shp_files = io_function.get_file_list_by_pattern(data_dir,'thawSlump_expanding/*.gpkg')
+    calculate_retreat_distance_medial_axis(expand_shp_files)
 
 
 def calculate_retreat_distance_medial_axis(input_files):
@@ -150,8 +155,9 @@ def calculate_retreat_distance_medial_axis(input_files):
         save_medial_axis = io_function.get_name_by_adding_tail(in_file,'medial_axis')
         all_change_polygons = os.path.join(os.path.dirname(in_file),io_function.get_name_no_ext(in_file)  + '_all_changes.shp')
 
-        # Multipolygon_to_Polygons(in_file,all_change_polygons)
-        cal_expand_area_distance(all_change_polygons,proc_num=1, save_medial_axis=save_medial_axis)
+        Multipolygon_to_Polygons(in_file,all_change_polygons)
+        vector_gpd.check_remove_None_geometries_file(all_change_polygons,all_change_polygons)
+        cal_expand_area_distance(all_change_polygons,proc_num=None, save_medial_axis=save_medial_axis)
 
 
 

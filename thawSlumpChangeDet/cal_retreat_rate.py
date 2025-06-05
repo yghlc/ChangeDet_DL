@@ -501,7 +501,8 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
     # read polygons as shapely objects
     expand_polygons = vector_gpd.read_polygons_gpd(expand_shp)
     if len(expand_polygons) < 1:
-        raise ValueError('No polygons in %s' % expand_shp)
+       basic.outputlogMessage ('Warning, No polygons in %s' % expand_shp)
+       return False
 
     # read old polygon list for each expanding polygons
     old_poly_list = [None]*len(expand_polygons)
