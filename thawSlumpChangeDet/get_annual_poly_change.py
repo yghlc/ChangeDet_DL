@@ -145,7 +145,7 @@ def test_calculate_retreat_distance_medial_axis():
 def get_filename_retreat_distance(in_file):
     return os.path.join(os.path.dirname(in_file), io_function.get_name_no_ext(in_file) + '_all_changes.shp')
 
-def calculate_retreat_distance_medial_axis(input_files):
+def calculate_retreat_distance_medial_axis(input_files, para_file):
     # calculate the retreat distance of expanding areas by using medial axis
     # input_files: files contain annual expand areas of each RTS
 
@@ -154,6 +154,7 @@ def calculate_retreat_distance_medial_axis(input_files):
     b_save_medial_axis = True
 
     output_list = []
+    expanding_direction_lines = parameters.get_file_path_parameters_None_if_absence(para_file,'expanding_direction_lines')
 
     for idx, in_file in enumerate(input_files):
         all_change_polygons = get_filename_retreat_distance(in_file)
@@ -163,7 +164,8 @@ def calculate_retreat_distance_medial_axis(input_files):
             print(f'({idx + 1}/{len(input_files)}) calculating retreat distance for {os.path.basename(in_file)}')
             Multipolygon_to_Polygons(in_file,all_change_polygons)
             vector_gpd.check_remove_None_geometries_file(all_change_polygons,all_change_polygons)
-            cal_expand_area_distance(all_change_polygons,proc_num=None, save_medial_axis=b_save_medial_axis)
+            cal_expand_area_distance(all_change_polygons,expand_line=expanding_direction_lines,
+                                     proc_num=None, save_medial_axis=b_save_medial_axis)
 
         output_list.append(all_change_polygons)
 
@@ -525,7 +527,7 @@ def main(options, args):
     # get the expanding of each thaw slump
     slump_expand_file_list = track_annual_changes_of_each_thawslump(in_shp_path, out_dir='thawSlump_expanding')
 
-    calculate_retreat_distance_medial_axis(slump_expand_file_list)
+    calculate_retreat_distance_medial_axis(slump_expand_file_list, para_file)
 
     raster_attribute_dict = get_raster_files_for_attribute(para_file)
     slump_exp_attr_shp = add_attributes_to_slumps_expanding(in_shp_path,slump_expand_file_list,raster_attribute_dict,para_file)
