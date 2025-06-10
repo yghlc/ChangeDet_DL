@@ -164,7 +164,8 @@ def calculate_retreat_distance_medial_axis(input_files, para_file):
             print(f'({idx + 1}/{len(input_files)}) calculating retreat distance for {os.path.basename(in_file)}')
             Multipolygon_to_Polygons(in_file,all_change_polygons)
             vector_gpd.check_remove_None_geometries_file(all_change_polygons,all_change_polygons)
-            cal_expand_area_distance(all_change_polygons,expand_line=expanding_direction_lines,
+            # adding b_line_only_one, to indicate if an expanding line only corresponding to one Area
+            cal_expand_area_distance(all_change_polygons,expand_line=expanding_direction_lines,b_line_only_one=False,
                                      proc_num=None, save_medial_axis=b_save_medial_axis)
 
         output_list.append(all_change_polygons)

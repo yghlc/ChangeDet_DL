@@ -486,12 +486,13 @@ def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_
            dis_along_center, dis_c_angle, dis_c_line_x0, dis_c_line_y0, dis_e_line, select_medial_axis
 
 
-def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_shp= None, proc_num=None,save_medial_axis=False):
+def cal_expand_area_distance(expand_shp, expand_line=None, b_line_only_one=True, dem_path = None, old_shp= None, proc_num=None,save_medial_axis=False):
     '''
     calculate the distance of expanding areas along the upslope direction.
     The distance will be saved to expand_shp, backup it if necessary
     :param expand_shp: the shape file containing polygons which represent expanding areas of active thaw slumps
     :param expand_line: lines indicating the expanding the direction
+    :param b_line_only_one: each expanding line only corresponding to one expanding polygon
     :param dem_path: the dem path for calculating the slope distance along slope
     :param old_shp: the shape file storing the old polygons
     :return: True if successful
@@ -522,7 +523,7 @@ def cal_expand_area_distance(expand_shp, expand_line=None, dem_path = None, old_
         lines = vector_gpd.read_lines_gpd(expand_line)
         line_checked = [False]*len(lines)
         for idx, e_polygon in enumerate(expand_polygons):
-            e_line = vector_gpd.find_one_line_intersect_Polygon(e_polygon,lines,line_checked)
+            e_line = vector_gpd.find_one_line_intersect_Polygon(e_polygon,lines,line_checked,b_line_only_one)
             e_line_list[idx] = e_line
 
     # dem_src = None
