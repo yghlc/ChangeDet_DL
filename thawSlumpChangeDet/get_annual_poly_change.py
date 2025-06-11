@@ -249,9 +249,9 @@ def read_annual_expand_a_slump(slump_expand_shp, start_year, end_year):
                    }
     for year in range(start_year,end_year+1):
         # print(year)
-        expand_dict[str(year)+'eArea'] = -1
-        expand_dict[str(year)+'eDis'] = -1
-        expand_dict[str(year)+'eDisL'] = -1
+        expand_dict[str(year)+'eArea'] = -1.0
+        expand_dict[str(year)+'eDis'] = -1.0
+        expand_dict[str(year)+'eDisL'] = -1.0
 
     # add the expanding areas (this year - last year)
     for year, expandArea in zip(attribute_2d[2],attribute_2d[3]):
@@ -271,9 +271,9 @@ def read_annual_expand_a_slump(slump_expand_shp, start_year, end_year):
             for year, expand_dis, dis_line in zip(dis_attribute_2d[0], dis_attribute_2d[1],dis_attribute_2d[2]):
                 # for multiple values, save the largest one
                 if expand_dis > expand_dict[str(year)+'eDis']:
-                    expand_dict[str(year)+'eDis'] = expand_dis
+                    expand_dict[str(year)+'eDis'] = round(expand_dis, 2)
                 if dis_line > expand_dict[str(year)+'eDisL']:
-                    expand_dict[str(year) + 'eDisL'] = dis_line
+                    expand_dict[str(year) + 'eDisL'] = round(dis_line, 2)
 
 
     # print(expand_dict)
