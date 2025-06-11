@@ -384,6 +384,7 @@ def cal_distance_along_expanding_line(idx, exp_polygon,expanding_line):
         return inter_lines.length
     elif inter_lines.geom_type == 'MultiLineString':
         # if there are multiple lines, need to find the one intersect with center_point
+        print(inter_lines)
         raise ValueError('The line at location of %d expanding polygon cross multiple polygons '%idx)
 
     pass
