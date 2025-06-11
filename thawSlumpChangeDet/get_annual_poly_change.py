@@ -251,6 +251,7 @@ def read_annual_expand_a_slump(slump_expand_shp, start_year, end_year):
         # print(year)
         expand_dict[str(year)+'eArea'] = -1
         expand_dict[str(year)+'eDis'] = -1
+        expand_dict[str(year)+'eDisL'] = -1
 
     # add the expanding areas (this year - last year)
     for year, expandArea in zip(attribute_2d[2],attribute_2d[3]):
@@ -259,18 +260,20 @@ def read_annual_expand_a_slump(slump_expand_shp, start_year, end_year):
     # add retreat distance
     retreat_dis_shp = get_filename_retreat_distance(slump_expand_shp)
     if os.path.isfile(retreat_dis_shp):
-        # choose the maximum medial axis as the retreat distance
+        # choose the maximum medial axis as the retreat distance,
+        # also add the retreat distance calculated from expanding lines
         dis_attribute_2d = vector_gpd.read_attribute_values_list_2d(retreat_dis_shp,
-                                        ['Year','e_max_dis'])
+                                        ['Year','e_max_dis','e_dis_line'])
 
         if  dis_attribute_2d[1] is None:
             basic.outputlogMessage(f'Warning, No retreat distance in {retreat_dis_shp}')
         else:
-            for year, expand_dis in zip(dis_attribute_2d[0], dis_attribute_2d[1]):
+            for year, expand_dis, dis_line in zip(dis_attribute_2d[0], dis_attribute_2d[1],dis_attribute_2d[2]):
                 # for multiple values, save the largest one
                 if expand_dis > expand_dict[str(year)+'eDis']:
                     expand_dict[str(year)+'eDis'] = expand_dis
-
+                if dis_line > expand_dict[str(year)+'eDisL']:
+                    expand_dict[str(year) + 'eDisL'] = dis_line
 
 
     # print(expand_dict)
