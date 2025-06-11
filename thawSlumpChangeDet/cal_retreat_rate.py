@@ -384,10 +384,18 @@ def cal_distance_along_expanding_line(idx, exp_polygon,expanding_line):
         return inter_lines.length
     elif inter_lines.geom_type == 'MultiLineString':
         # if there are multiple lines, need to find the one intersect with center_point
-        print(inter_lines)
-        raise ValueError('The line at location of %d expanding polygon cross multiple polygons '%idx)
+        # print(inter_lines)
+        # raise ValueError('The line at location of %d expanding polygon cross multiple polygons '%idx)
 
-    pass
+        # MultiLineString case: extract individual LineStrings (change to output the longest line on June 11, 2025)
+        longest_line = max(inter_lines.geoms, key=lambda line: line.length)
+        basic.outputlogMessage(f'Warning, The line {inter_lines} at location of %d expanding polygon cross multiple polygons, output the longest part '%idx)
+        return longest_line.length
+    else:
+        # Handle unexpected cases
+        print(f"Unexpected geometry type: {inter_lines.geom_type}")
+        raise ValueError(f'The line {inter_lines} at index {idx} intersects the polygon in an unexpected way.')
+
 
 def cal_one_expand_area_dis(idx,exp_polygon, total_polygon_count, dem_path, old_poly, expand_line):
 
