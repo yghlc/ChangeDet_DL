@@ -391,6 +391,10 @@ def cal_distance_along_expanding_line(idx, exp_polygon,expanding_line):
         longest_line = max(inter_lines.geoms, key=lambda line: line.length)
         basic.outputlogMessage(f'Warning, The line {inter_lines} at location of %d expanding polygon cross multiple polygons, output the longest part '%idx)
         return longest_line.length
+    elif inter_lines.geom_type == 'Point':
+        # Intersection is a single Point (no length)
+        basic.outputlogMessage(f"Warning, Intersection between expanding polygon and lines at index {idx} is a Point. Returning distance as 0.")
+        return 0
     else:
         # Handle unexpected cases
         print(f"Unexpected geometry type: {inter_lines.geom_type}")
